@@ -67,3 +67,7 @@ yarn-error.log*
 /compose.override.yaml
 /.foundry-host-override.*
 /.foundry-host.json
+
+# Independent service runtime and operator configuration
+/local/
+/music.env

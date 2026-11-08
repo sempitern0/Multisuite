@@ -16,12 +16,8 @@ Se autoriza incorporar librerías PHP/JavaScript/CSS que aporten velocidad, cali
 
 No hay nuevas librerías instaladas por el hito documental H00. Los paquetes del starter se inventariarán en H01, con sus versiones reales.
 
-## Decisiones de arquitectura iniciales
-- D001: producto en este repositorio, infraestructura Foundry heredada y app/ versionable.
-- D002: Laravel + Livewire; estado visual inmediato en JS/Alpine cuando aporte valor.
-- D003: PostgreSQL y colas database inicialmente. Redis requiere necesidad medible.
-- D004: motores existentes para música/lectura, módulos propios para experiencia común y notas.
-- D005: cuentas individuales y permisos por recurso; sin SaaS multi-tenant complejo ni cobros automatizados.
-- D006: VPN inicial, operador responsable de servidor/backups. Tailscale es candidato del piloto; confirmar antes de desplegar.
-- D007: descargas independientes para offline; edición offline y sincronización avanzada fuera del MVP.
-Para cambiar una decisión registrar fecha, motivo, alternativas, consecuencias y tareas afectadas; no reescribir la historia como si siempre hubiera sido así.
+## Decisión vigente D008 — Portal de servicios (2026-11-08)
+Sustituye D004–D007 del plan inicial: Laravel/Livewire solo índice y navegación, sin catálogo/reproductor/lector/notas propios ni sincronización entre motores. Cada servicio gestiona cuentas y datos.
+Navidrome se incorpora como contenedor autónomo, no paquete PHP/JS: navidrome/navidrome:0.64.2, upstream https://github.com/navidrome/navidrome/releases/tag/v0.64.2 (consultado 2026-11-08). Revisar licencia GPL-3.0 y obligaciones al redistribuir/modificar. No se redistribuye su código en este cambio.
+Versión fijada, sin latest; mantenimiento oficial activo. Coste: RAM/CPU/disco del servicio y sus actualizaciones. Validación runtime pendiente por falta de Docker. Salida: música en directorio independiente y backup de data.
+Conservar política de librerías PHP/JS, pero instalarlas solo para el portal cuando aporte valor. Historia del enfoque anterior: commit 614ab0f.

@@ -1,0 +1,36 @@
+# Standalone stack: do NOT merge with Laravel's compose.yaml.
+name: ${MUSIC_PROJECT_NAME:-multisuite-music}
+services:
+  navidrome:
+    image: ${NAVIDROME_IMAGE:-navidrome/navidrome:0.64.2}
+    user: "${NAVIDROME_UID:-1000}:${NAVIDROME_GID:-1000}"
+    restart: unless-stopped
+    environment:
+      ND_MUSICFOLDER: /music
+      ND_DATAFOLDER: /data
+      ND_LOGLEVEL: info
+      ND_SCANSCHEDULE: 5m
+      ND_BASEURL: "${NAVIDROME_BASE_URL:-}"
+    ports:
+      - "127.0.0.1:${NAVIDROME_PORT:-4533}:4533"
+    volumes:
+      - type: bind
+        source: ${NAVIDROME_MUSIC_PATH:-./local/navidrome/music}
+        target: /music
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${NAVIDROME_DATA_PATH:-./local/navidrome/data}
+        target: /data
+        bind:
+          create_host_path: false
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

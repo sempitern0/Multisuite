@@ -1,50 +1,28 @@
-# Estado y relevo de Multisuite
-Actualizado: 2026-11-08. Fuente operativa compartida para humanos y agentes.
+# Estado de Multisuite
+2026-11-08. Decisión vigente: portal Laravel/Livewire de enlaces a servicios existentes. Sustituye Hxx; ver [ROADMAP.md](ROADMAP.md).
 
-## Punto de partida comprobado
-- Base inspeccionada: main, commit ad71db395106015fc911d6541a66f36aeb204e12, importación inicial de Foundry.
-- Existen Compose local/producción, scripts de bootstrap, Makefile, documentación y CI heredados.
-- El producto Laravel/Livewire todavía no está generado/verificado; no hay release familiar ni servidor desplegado.
-- H00 incorpora planificación e instrucciones; ningún servicio multimedia ni librería nueva se instala en esta entrega.
-- La autorización de esta entrega permite publicar documentación directamente en main. No implica autorización para desplegar producción o modificar secretos.
-
-## Tablero
-| Hito | Estado | Evidencia / siguiente paso |
+| Hito | Estado | Evidencia |
 | --- | --- | --- |
-| H00 | Completado documental | ROADMAP, AGENTS, CLAUDE, ENVIRONMENTS y DEPENDENCIES en el commit que introduce este archivo |
-| H01 | Pendiente | Auditar versiones/scripts y generar starter Livewire en app/ |
-| H02 | Pendiente | Adaptar producción privada y validar restore |
-| H03 | Pendiente | Implementar identidad/permisos/UI |
-| H04 | Pendiente | Música y notas para piloto |
-| H05 | Pendiente | Lecturas |
-| H06 | Pendiente | Descargas multimedia aisladas |
-| H07 | Pendiente | Progreso y experiencia común |
-| H08 | Pendiente | Offline comprobado |
-| H09 | Pendiente | Release/aceptación familiar |
+| P00 | Completado | private-nas revisado; cambio de alcance documentado |
+| P01 | En curso | Compose autónomo, ejemplo env y guía añadidos; runtime Docker pendiente |
+| P02 | Pendiente | App Livewire aún no generada |
+| P03 | Pendiente | Proxy/VPN y acceso desde segundo dispositivo |
+| P04 | Pendiente | Selección de servicios adicionales |
+| P05 | Pendiente | Producción/restore/piloto |
 
-## Próxima acción concreta
-Tomar H01-01: leer AGENTS.md, Makefile, scripts/setup.sh, scripts/setup.ps1 y configuración PHP/Node/DB; comprobar estado Git y disponibilidad de Docker. Confirmar ausencia de app/artisan antes de bootstrap. Registrar versiones seleccionadas. Continuar H01-02 sin modificar servicios remotos.
+## Rescate realizado
+Origen: private-nas rama feat/music-library-player, a97d48ee8872dfcd36ada9b6be364428bc4a90ff.
+Rescatado patrón Docker Navidrome, música read-only, persistencia y loopback; separados del storage Laravel.
+No portados: catálogo, parsers, sincronización, Svelte player ni agente de host. private-nas no modificado.
+Imagen elegida navidrome/navidrome:0.64.2 según release oficial; pull/arranque pendientes.
 
-## Decisiones pendientes
-No bloquean la preparación local: número de usuarios concurrentes, dispositivos móviles/TV/e-readers, volumen de archivos, VPS/proveedor, presupuesto, dominio y destino de backup.
-Sí bloquean desplegar: host y credenciales autorizados, acceso VPN/TLS y almacenamiento/backup reales.
-Defaults: PostgreSQL, cola database, acceso por invitación, sin registro público, sin facturación automática.
+## Próxima acción
+P01-03: en equipo con Docker, copiar music.env.example a music.env, crear directorios y ajustar UID/GID; ejecutar comandos de docs/NAVIDROME.md. Completar reproducción/persistencia/restore antes de marcar P01 terminado.
+Si Docker no está disponible, continuar P02-01 sin afirmar pruebas de Navidrome.
 
-## Validación de la entrega documental
-Comprobados los enlaces Markdown locales, IDs únicos de tareas e importación literal @AGENTS.md; revisadas dependencias de hitos, ausencia de secretos y consistencia del alcance. No se han ejecutado tests de aplicación, bootstrap Docker ni despliegue como parte de H00. El historial Git aporta el SHA definitivo de esta entrega; no introducir uno ficticio.
+## Validación y límites
+Validación estática YAML y documentación. No Docker disponible en entorno del agente: no se ha arrancado ni probado audio, permisos o Compose con su CLI. No hay despliegue ni migración de datos.
+Presupuesto, dispositivos y host pendientes; no bloquean preparar portal y prueba local.
 
-## Plantilla de relevo (actualizar en cada iteración)
-- Fecha / agente:
-- Rama / commit o PR:
-- Hito y tareas:
-- Cambios terminados:
-- Pruebas ejecutadas: comando, resultado y entorno:
-- Pruebas no ejecutadas y motivo:
-- Archivos o cambios sin commit:
-- Bloqueos y riesgos concretos:
-- Decisiones nuevas:
-- Siguiente tarea ejecutable:
-- Recuperación/rollback si aplica:
-
-## Reglas de mantenimiento
-Actualizar este archivo en el mismo cambio que el trabajo relacionado. Una tarea completada necesita evidencia; una propuesta no equivale a implementación. No almacenar secretos, datos personales ni logs completos. Conservar incidencias no resueltas y no borrar trabajo de otro agente para simplificar el relevo.
+## Relevo por iteración
+Registrar fecha/agente, rama/commit, IDs de tareas, archivos cambiados, comandos y resultados, pruebas no ejecutadas, bloqueos, cambios sin commit y siguiente paso. Nunca guardar secretos. Completado requiere evidencia de aceptación.

@@ -1,54 +1,29 @@
 # Multisuite
+Portal privado Laravel + Livewire para acceder a servicios existentes. Cada aplicación conserva su interfaz y gestiona sus usuarios/datos: Navidrome para música; los demás servicios se incorporarán progresivamente.
 
-Suite privada para música, vídeos, libros, cómics, notas y documentación, pensada para el propietario, familiares y conocidos. Interfaz Laravel + Livewire, servicios especializados reutilizados y archivos exportables.
+**Estado:** índice Laravel pendiente; configuración de Navidrome local preparada, aún pendiente de prueba Docker.
 
-**Estado: planificación y scaffold de infraestructura. La aplicación todavía debe generarse; no está desplegada ni lista para uso familiar.**
-
-## Continuar el trabajo
-1. Leer [AGENTS.md](AGENTS.md).
-2. Consultar [estado y siguiente tarea](docs/PROJECT_STATUS.md).
-3. Ejecutar el hito correspondiente del [planning detallado](docs/ROADMAP.md).
-4. Revisar el [contrato local/producción](docs/ENVIRONMENTS.md) y registrar nuevas [dependencias/decisiones](docs/DEPENDENCIES.md).
-
-[CLAUDE.md](CLAUDE.md) importa las instrucciones comunes y añade pautas para Claude Code.
-
-## Arquitectura prevista
-- Laravel + Livewire, PostgreSQL y colas database.
-- Navidrome para música; Komga para lectura; yt-dlp/FFmpeg en procesamiento aislado.
-- Notas Markdown, biblioteca, permisos, favoritos y experiencia común propios.
-- Acceso privado mediante VPN, cuentas individuales y backups externos.
-- Descargas locales para uso offline; una PWA no sustituye sincronización ni backup.
-
-## Desarrollo local
-Infraestructura heredada de [Laravel Foundry](https://github.com/sempitern0/laravel-foundry). Este repositorio sí es el producto: versionar app/, migraciones y lockfiles sin secretos.
-
-Requisitos: Docker Engine o Docker Desktop con contenedores Linux, Compose v2 y Git; Make opcional.
-Bootstrap previsto, solo cuando no exista una aplicación configurada:
+## Probar música sin instalar Laravel
+Seguir [Navidrome local](docs/NAVIDROME.md): copiar music.env.example, crear carpetas y ejecutar:
 
 ~~~sh
-make setup STARTER=livewire
+docker compose --env-file music.env -f compose.music.yaml up -d
 ~~~
 
-Windows sin Make:
+Abrir http://127.0.0.1:4533. El archivo es autónomo: no combinar con compose.yaml.
+Música en solo lectura, datos persistentes separados, puerto solo loopback y sin catálogo/reproductor Laravel duplicados.
 
-~~~powershell
-powershell -NoProfile -File scripts/setup.ps1 -Starter livewire
-~~~
+## Continuar
+- [Planning vigente P00–P05](docs/ROADMAP.md)
+- [Estado y siguiente paso](docs/PROJECT_STATUS.md)
+- [Análisis y rescate de private-nas](docs/PRIVATE_NAS_REVIEW.md)
+- [Instrucciones comunes](AGENTS.md) y [Claude](CLAUDE.md)
+- [Entornos](docs/ENVIRONMENTS.md) y [dependencias](docs/DEPENDENCIES.md)
 
-Elegir PostgreSQL y colas database. Estos flujos se validarán para Multisuite en H01.
-No usar reset-project para iniciar o actualizar: elimina datos.
-
-## Producción
-El objetivo es desplegar sin editar código, aportando variables, dominio/TLS, VPN, secretos y almacenamiento. La configuración heredada requiere adaptación y validación en H02.
-
-- [Contrato de entornos](docs/ENVIRONMENTS.md): requisitos específicos del producto.
-- [Guía de despliegue heredada](docs/DEPLOYMENT.md): imágenes y promoción.
-- [Reconstrucción portable](docs/PROJECT_REBUILD.md): fuente, lockfiles y configuración.
-- [Proveedores](docs/HOSTING_PROVIDERS.md): referencia, no proveedor elegido.
-
-## Dependencias y calidad
-Se permiten librerías PHP, JavaScript y CSS estables, mantenidas y utilizadas por la comunidad que aceleren el trabajo o mejoren la experiencia. Revisar compatibilidad/licencia/seguridad, registrar la decisión y versionar lockfiles.
-Agrupar cambios, ejecutar checks proporcionales y evitar ejecuciones de CI redundantes. No marcar hitos como completados sin pruebas.
-
-## Licencia
-Consultar [LICENSE](LICENSE). Las dependencias y servicios conservan sus propias licencias.
+## Portal y producción
+Infraestructura heredada de [Laravel Foundry](https://github.com/sempitern0/laravel-foundry). Bootstrap previsto: make setup STARTER=livewire en checkout sin app configurada; Windows sin Make: scripts/setup.ps1 -Starter livewire.
+Versionar app/ y lockfiles; nunca secretos o datos. No ejecutar reset para actualizar.
+La portada enlazará a los servicios; /services/music será una redirección controlada. Servir realmente bajo /music requiere proxy y BaseUrl comprobados. No hay SSO implícito.
+Producción exige VPN/TLS, cuentas por servicio y backups/restauración verificados; todavía no está desplegada. Ver [guía heredada](docs/DEPLOYMENT.md) y contrato de entornos vigente.
+Librerías PHP/JS/CSS permitidas si estables, mantenidas y útiles; documentar compatibilidad/licencia.
+Licencia del repositorio: [LICENSE](LICENSE). Los servicios conservan sus licencias.
