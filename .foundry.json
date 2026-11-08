@@ -1,0 +1,25 @@
+{
+    "version": 1,
+    "starter": "livewire",
+    "settings": {
+        "PROJECT_NAME": "multisuite",
+        "APP_LABEL": "Laravel Foundry",
+        "DB_ENGINE": "postgres",
+        "DB_DATABASE": "foundry",
+        "DB_USERNAME": "foundry",
+        "QUEUE_ENGINE": "redis",
+        "MAIL_ENGINE": "mailpit",
+        "DB_UI": "pgweb",
+        "HTTP_PORT": "8080",
+        "HTTPS_ENABLED": "1",
+        "HTTPS_PORT": "443",
+        "LOCAL_DOMAIN": "multisuite.test",
+        "VITE_PORT": "5173",
+        "DB_UI_PORT": "8081",
+        "MAILPIT_PORT": "8025",
+        "TENANCY_MODE": "none",
+        "TENANCY_TEST_TENANTS": "alpha,beta",
+        "TENANCY_TEST_PATH": "/",
+        "TENANCY_ASSERT_HEADER": ""
+    }
+}
