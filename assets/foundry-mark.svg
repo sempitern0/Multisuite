@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+<title id="title">Laravel Foundry</title>
+<desc id="desc">Bloque esmeralda isométrico con un módulo marfil integrado en su esquina frontal.</desc>
+<defs><linearGradient id="top" x1="56" y1="44" x2="200" y2="128" gradientUnits="userSpaceOnUse"><stop stop-color="#48e0ac"/><stop offset="1" stop-color="#10b981"/></linearGradient></defs>
+<rect width="256" height="256" rx="54" fill="#0f172a"/>
+<path d="M128 44 200 86 128 128 56 86Z" fill="url(#top)"/>
+<path d="M56 86 128 128V212L56 170Z" fill="#10b981"/>
+<path d="M200 86 128 128V212L200 170Z" fill="#047857"/>
+<path d="M128 128 164 149 128 170 92 149Z" fill="#f8fafc"/>
+<path d="M92 149 128 170V212L92 191Z" fill="#e2e8f0"/>
+<path d="M164 149 128 170V212L164 191Z" fill="#a9bfc2"/>
+<path d="M56 86 128 44 200 86" fill="none" stroke="#a7f3d0" stroke-opacity=".65" stroke-width="2" stroke-linejoin="round"/>
+</svg>
