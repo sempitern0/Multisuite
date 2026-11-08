@@ -21,7 +21,8 @@ for host_values in (False, True):
         result = subprocess.run(
             ['docker', 'compose', '--env-file', '/dev/null', '-f', filename,
              '--profile', '*', 'config', '--format', 'json'],
-            cwd=ROOT, env=env, capture_output=True, text=True, check=True)
+            cwd=ROOT, env=env, capture_output=True, text=True, check=False)
+        assert result.returncode == 0, (filename, result.stderr)
         services = json.loads(result.stdout)['services']
         if filename == 'compose.yaml':
             for app_service in ('app', 'composer', 'node', 'worker', 'scheduler'):

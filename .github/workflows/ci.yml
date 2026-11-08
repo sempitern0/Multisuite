@@ -1,8 +1,24 @@
-name: Template CI
+name: Infrastructure CI
 on:
   push:
     branches: [main]
+    paths: &infrastructure-paths
+      - '.github/workflows/ci.yml'
+      - 'compose*.yaml'
+      - 'docker/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'Makefile'
+      - '*.env.example'
+      - '.env.example'
+      - '.gitignore'
   pull_request:
+    paths: *infrastructure-paths
+permissions:
+  contents: read
+concurrency:
+  group: infrastructure-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   unix-scripts:
     runs-on: ubuntu-latest
@@ -68,10 +84,7 @@ jobs:
           make -n tenancy-check
       - name: Ensure source can be tracked but runtime files remain ignored
         run: |
-          if git ls-files app/ | grep -q .; then
-            echo "Generated app/ must not be committed to the template."
-            exit 1
-          fi
+          git ls-files --error-unmatch app/artisan app/composer.lock app/package-lock.json > /dev/null
           if git check-ignore -q app/artisan; then echo "Application source is unexpectedly ignored"; exit 1; fi
           git check-ignore -q app/vendor/example.php
           git check-ignore -q app/node_modules/example.js
@@ -105,9 +118,10 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           compose = Path("compose.yaml").read_text()
           for name in ("app", "web"):
-              section = compose.split(f"  {name}:\n", 1)[1].split("\n  ", 1)[0]
+              section = re.split(r"\n  [\w-]+:\n", compose.split(f"  {name}:\n", 1)[1], 1)[0]
               assert "healthcheck:" in section, name
               assert "start_interval: 2s" in section, name
               assert "start_period: 45s" in section, name
@@ -121,9 +135,10 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           s = Path('compose.yaml').read_text()
-          web = s.split('\n  web:\n', 1)[1].split('\n  ', 1)[0]
-          caddy = s.split('\n  caddy-local:\n', 1)[1].split('\n  ', 1)[0]
+          web = re.split(r'\n  [\w-]+:\n', s.split('\n  web:\n', 1)[1], 1)[0]
+          caddy = re.split(r'\n  [\w-]+:\n', s.split('\n  caddy-local:\n', 1)[1], 1)[0]
           assert 'app: {condition: service_started}' in web
           assert 'web: {condition: service_started}' in caddy
           assert 'healthcheck:' in web
@@ -146,9 +161,9 @@ jobs:
       - name: Check provider guide navigation and no implicit cloud deployment
         run: |
           test -s docs/HOSTING_PROVIDERS.md
-          grep -q 'HOSTING_PROVIDERS.md' README.md
+          grep -q 'ROADMAP.md' README.md
           grep -q 'HOSTING_PROVIDERS.md' docs/DEPLOYMENT.md
-          grep -q 'HOSTING_PROVIDERS.md' AGENTS.md
+          grep -q 'DEPLOYMENT.md' AGENTS.md
           ! grep -Eq '^(deploy-cloud|deploy-production|provision-vps):' Makefile
       - name: Check staged and production environment contract
         run: |
@@ -203,7 +218,7 @@ jobs:
           grep -q 'Caddyfile.saas' scripts/wizard.php
           grep -Fq '*.{$LOCAL_DOMAIN}' docker/caddy/Caddyfile.saas
           grep -q 'tenancy-check:' Makefile
-          grep -q 'SAAS.md' README.md
+          test -s docs/ROADMAP.md
           docker compose config -q
       - name: Validate Compose
         run: docker compose config -q
@@ -221,7 +236,8 @@ jobs:
           fi
       - name: Test starter checkout with the mounted node_modules directory
         run: |
-          docker compose run --rm --no-deps --entrypoint sh composer -ec '
+          docker compose run --rm --no-deps --volume /var/www/html --entrypoint sh composer -ec '
+            mkdir -p /var/www/html/node_modules
             repo=$(mktemp -d /tmp/letsgo-repo.XXXXXX)
             git init -q -b main "$repo"
             git -C "$repo" config user.name CI

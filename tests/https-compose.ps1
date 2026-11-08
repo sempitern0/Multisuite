@@ -26,3 +26,6 @@ foreach ($exitCode in @(0, 7)) {
     }
 }
 Write-Host 'HTTPS Compose exit-code regression checks passed.'
+
+# Expected native failures above must not become the test process exit code.
+$global:LASTEXITCODE = 0
