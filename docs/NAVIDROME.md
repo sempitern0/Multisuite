@@ -61,3 +61,6 @@ Completar TLS, VPN, backups y pruebas antes de compartir. No activar autenticaci
 Para copia consistente sencilla, detener Navidrome, copiar data completa y la colección de música a destino independiente, y arrancar. Restaurar sobre una copia vacía con misma versión/permisos; luego probar actualización. No copiar SQLite activo como si fuera un backup consistente.
 Antes de actualizar, respaldar y revisar notas de versión. Una imagen anterior puede no aceptar una DB migrada: recuperar copia compatible si es necesario.
 Fuentes: https://www.navidrome.org/docs/installation/docker/ y https://github.com/navidrome/navidrome/releases/tag/v0.64.2
+
+## Tarjeta en el portal
+En app/.env configurar PORTAL_MUSIC_ENABLED=true y PORTAL_MUSIC_URL=http://127.0.0.1:4533. Ejecutar `make artisan CMD="config:clear"` y abrir /dashboard autenticado. El enlace abre la UI independiente; no proporciona SSO. Esta URL solo sirve en el mismo ordenador.

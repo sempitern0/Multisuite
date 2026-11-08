@@ -33,9 +33,9 @@ Salida: checklist de NAVIDROME.md ejecutado con muestras propias. YAML validado 
 
 ## P02 — Índice Laravel/Livewire
 - [ ] P02-01 Auditar Foundry y generar starter Livewire en app/; versionar código y lockfiles.
-- [ ] P02-02 Configuración de servicios: id, título, descripción, icono, categoría, URL por entorno y enabled. Sin credenciales.
+- [x] P02-02 Configuración de servicios: id, título, descripción, icono, categoría, URL por entorno y enabled. Sin credenciales.
 - [ ] P02-03 Portada responsive con tarjetas y navegación por teclado; estados vacíos y servicios aún no configurados.
-- [ ] P02-04 Ruta /services/{id}: solo IDs del registro y destinos HTTP(S) administrados; 404 para desconocidos, sin redirect arbitrario.
+- [x] P02-04 Ruta /services/{id}: solo IDs del registro y destinos HTTP(S) administrados; 404 para desconocidos, sin redirect arbitrario.
 - [ ] P02-05 Autenticación del portal por invitación si se necesita; registro público cerrado. No replicar cuentas de motores.
 - [ ] P02-06 Tests de navegación, validación URL y acceso; comprobar 360/768/1440px, foco, contraste, zoom y reduced-motion.
 Salida: abrir Música conduce a Navidrome. La portada funciona aunque Navidrome esté caído y no importa su catálogo.

@@ -1,7 +1,7 @@
 # Multisuite
 Portal privado Laravel + Livewire para acceder a servicios existentes. Cada aplicación conserva su interfaz y gestiona sus usuarios/datos: Navidrome para música; los demás servicios se incorporarán progresivamente.
 
-**Estado:** índice Laravel pendiente; configuración de Navidrome local preparada, aún pendiente de prueba Docker.
+**Estado:** portada de aplicaciones y redirecciones autenticadas implementadas; validación runtime y visual pendiente. Navidrome local preparado, aún pendiente de prueba Docker.
 
 ## Probar música sin instalar Laravel
 Seguir [Navidrome local](docs/NAVIDROME.md): copiar music.env.example, crear carpetas y ejecutar:
@@ -23,7 +23,7 @@ Música en solo lectura, datos persistentes separados, puerto solo loopback y si
 ## Portal y producción
 Infraestructura heredada de [Laravel Foundry](https://github.com/sempitern0/laravel-foundry). Bootstrap previsto: make setup STARTER=livewire en checkout sin app configurada; Windows sin Make: scripts/setup.ps1 -Starter livewire.
 Versionar app/ y lockfiles; nunca secretos o datos. No ejecutar reset para actualizar.
-La portada enlazará a los servicios; /services/music será una redirección controlada. Servir realmente bajo /music requiere proxy y BaseUrl comprobados. No hay SSO implícito.
+La portada autenticada está en /dashboard; /services/music es una redirección controlada. Activar PORTAL_MUSIC_ENABLED=true y configurar PORTAL_MUSIC_URL en app/.env; ejecutar make artisan CMD="config:clear". Servir realmente bajo /music requiere proxy y BaseUrl comprobados. No hay SSO implícito.
 Producción exige VPN/TLS, cuentas por servicio y backups/restauración verificados; todavía no está desplegada. Ver [guía heredada](docs/DEPLOYMENT.md) y contrato de entornos vigente.
 Librerías PHP/JS/CSS permitidas si estables, mantenidas y útiles; documentar compatibilidad/licencia.
 Licencia del repositorio: [LICENSE](LICENSE). Los servicios conservan sus licencias.

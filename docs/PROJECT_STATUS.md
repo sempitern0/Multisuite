@@ -5,7 +5,7 @@
 | --- | --- | --- |
 | P00 | Completado | private-nas revisado; cambio de alcance documentado |
 | P01 | En curso | Compose autónomo, ejemplo env y guía añadidos; runtime Docker pendiente |
-| P02 | Pendiente | App Livewire aún no generada |
+| P02 | En curso | Starter existente; portada y rutas implementadas; pruebas runtime/QA pendientes |
 | P03 | Pendiente | Proxy/VPN y acceso desde segundo dispositivo |
 | P04 | Pendiente | Selección de servicios adicionales |
 | P05 | Pendiente | Producción/restore/piloto |
@@ -18,7 +18,7 @@ Imagen elegida navidrome/navidrome:0.64.2 según release oficial; pull/arranque 
 
 ## Próxima acción
 P01-03: en equipo con Docker, copiar music.env.example a music.env, crear directorios y ajustar UID/GID; ejecutar comandos de docs/NAVIDROME.md. Completar reproducción/persistencia/restore antes de marcar P01 terminado.
-Si Docker no está disponible, continuar P02-01 sin afirmar pruebas de Navidrome.
+El starter ya está versionado; no repetir bootstrap. Continuar comprobaciones P02-06 y flujo de invitaciones P02-05.
 
 ## Validación y límites
 Validación estática YAML y documentación. No Docker disponible en entorno del agente: no se ha arrancado ni probado audio, permisos o Compose con su CLI. No hay despliegue ni migración de datos.
@@ -26,3 +26,6 @@ Presupuesto, dispositivos y host pendientes; no bloquean preparar portal y prueb
 
 ## Relevo por iteración
 Registrar fecha/agente, rama/commit, IDs de tareas, archivos cambiados, comandos y resultados, pruebas no ejecutadas, bloqueos, cambios sin commit y siguiente paso. Nunca guardar secretos. Completado requiere evidencia de aceptación.
+
+## Iteración de portada
+Starter encontrado en main d60f641. Añadidos portal.php, portada y redirección autenticada con URL controlada. Activar PORTAL_MUSIC_ENABLED=true en app/.env; limpiar config. Tests de acceso añadidos, pendientes de ejecución: entorno sin PHP/Docker. Continuar P02-05 (invitaciones/registro) y P02-06 (QA y tests). No repetir bootstrap.
