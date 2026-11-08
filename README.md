@@ -10,6 +10,8 @@ Seguir [Navidrome local](docs/NAVIDROME.md): copiar music.env.example, crear car
 docker compose --env-file music.env -f compose.music.yaml up -d
 ~~~
 
+Con music.env preparado, `make up` arranca también Navidrome; `make stop/start/restart` gestionan ambos stacks. Para omitir música en una llamada: `make up MUSIC_AUTO=0`. Diagnóstico: `make music-status` y `make music-logs`.
+
 Abrir http://127.0.0.1:4533. El archivo es autónomo: no combinar con compose.yaml.
 Música en solo lectura, datos persistentes separados, puerto solo loopback y sin catálogo/reproductor Laravel duplicados.
 

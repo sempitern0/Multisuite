@@ -26,11 +26,15 @@ endif
 
 .DEFAULT_GOAL := help
 DC := docker compose
+# A configured music.env opts the independent stack into local lifecycle commands.
+# Override with MUSIC_AUTO=0 for Laravel-only operation.
+MUSIC_AUTO ?= $(if $(wildcard music.env),1,0)
+MUSIC_DC := docker compose --env-file music.env -f compose.music.yaml
 STARTER ?=
 # Explicit all-profiles stop also removes containers started manually through a
 # profile not included in the current .env.
 ALL_PROFILES := --profile dev --profile tools --profile workers --profile scheduler --profile redis --profile https --profile postgres --profile mariadb --profile mysql --profile phpmyadmin --profile mailpit --profile pgweb --profile adminer
-.PHONY: help check status doctor host-config setup reconfigure up up-detached up-wait up-logs start stop restart down build images rebuild ps logs shell artisan composer npm migrate test lint backup env-sync https-setup reset-project worker scheduler redis config tenancy-check
+.PHONY: music-up music-stop music-status music-logs music-config help check status doctor host-config setup reconfigure up up-detached up-wait up-logs start stop restart down build images rebuild ps logs shell artisan composer npm migrate test lint backup env-sync https-setup reset-project worker scheduler redis config tenancy-check
 
 help:
 	@echo "Laravel Foundry - self-hosted Laravel environments with Docker Compose"
@@ -43,6 +47,8 @@ help:
 	@echo "Laravel:     make artisan CMD='route:list' | migrate | test | lint"
 	@echo "Tooling:     make composer CMD='install' | npm CMD='run build'"
 	@echo "Optional:    make worker | scheduler | redis"
+	@echo "Music:       make music-up | music-stop | music-status | music-logs"
+	@echo "Auto music:  music.env enables Navidrome; use MUSIC_AUTO=0 to skip"
 	@echo "Operations:  make env-sync | backup | https-setup | reset-project"
 	@echo "SaaS:        make tenancy-check     Check local tenant hostname routing"
 	@echo ""
@@ -65,6 +71,9 @@ up:
 	@$(HOST_PREPARE)
 	@$(PREFLIGHT_SCRIPT)
 	@$(DC) up -d
+ifeq ($(MUSIC_AUTO),1)
+	@$(MUSIC_DC) up -d
+endif
 	-@$(STATUS_SCRIPT)
 
 up-detached: up
@@ -73,11 +82,17 @@ up-wait:
 	@$(HOST_PREPARE)
 	@$(PREFLIGHT_SCRIPT)
 	@$(DC) up -d --wait --wait-timeout 120
+ifeq ($(MUSIC_AUTO),1)
+	@$(MUSIC_DC) up -d --wait --wait-timeout 120
+endif
 	-$(HTTP_CHECK)
 	-@$(STATUS_SCRIPT)
 
 up-logs:
 	@$(HOST_PREPARE)
+ifeq ($(MUSIC_AUTO),1)
+	@$(MUSIC_DC) up -d
+endif
 	@$(DC) up
 
 # Retain containers/networks for fast daily resume; no destructive operations.
@@ -85,14 +100,23 @@ start:
 	@$(HOST_PREPARE)
 	@$(PREFLIGHT_SCRIPT)
 	@$(DC) start
+ifeq ($(MUSIC_AUTO),1)
+	@$(MUSIC_DC) up -d
+endif
 	-@$(STATUS_SCRIPT)
 
 stop:
+ifeq ($(MUSIC_AUTO),1)
+	@$(MUSIC_DC) stop
+endif
 	@$(DC) stop
 
 restart: stop start
 
 down:
+ifeq ($(MUSIC_AUTO),1)
+	@$(MUSIC_DC) down
+endif
 	@$(DC) $(ALL_PROFILES) down --remove-orphans
 
 # Build explicit image targets; do not force Vite/HMR when HTTPS was selected.
@@ -172,3 +196,19 @@ reset-project:
 
 tenancy-check:
 	$(TENANCY_CHECK_SCRIPT)
+
+# Independent commands deliberately fail if music.env is absent or invalid.
+music-up:
+	@$(MUSIC_DC) up -d
+
+music-stop:
+	@$(MUSIC_DC) stop
+
+music-status:
+	@$(MUSIC_DC) ps
+
+music-logs:
+	@$(MUSIC_DC) logs -f --tail=100 navidrome
+
+music-config:
+	@$(MUSIC_DC) config --quiet

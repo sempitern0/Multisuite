@@ -8,6 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Test independent Navidrome lifecycle
+        run: |
+          python3 tests/music-lifecycle.py
+          docker compose --env-file music.env.example -f compose.music.yaml config --quiet
       - name: Validate POSIX scripts
         run: |
           for script in scripts/*.sh tests/*.sh; do

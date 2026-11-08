@@ -4,9 +4,9 @@
 | Hito | Estado | Evidencia |
 | --- | --- | --- |
 | P00 | Completado | private-nas revisado; cambio de alcance documentado |
-| P01 | En curso | Compose autónomo, ejemplo env y guía añadidos; runtime Docker pendiente |
+| P01 | En curso | Usuario confirma Navidrome operativo; ciclo Make integrado, restore y QA completo pendientes |
 | P02 | En curso | Starter existente; portada y rutas implementadas; pruebas runtime/QA pendientes |
-| P03 | Pendiente | Proxy/VPN y acceso desde segundo dispositivo |
+| P03 | En curso | P03-01 enlace directo elegido; proxy/VPN y segundo dispositivo pendientes |
 | P04 | Pendiente | Selección de servicios adicionales |
 | P05 | Pendiente | Producción/restore/piloto |
 
@@ -14,7 +14,7 @@
 Origen: private-nas rama feat/music-library-player, a97d48ee8872dfcd36ada9b6be364428bc4a90ff.
 Rescatado patrón Docker Navidrome, música read-only, persistencia y loopback; separados del storage Laravel.
 No portados: catálogo, parsers, sincronización, Svelte player ni agente de host. private-nas no modificado.
-Imagen elegida navidrome/navidrome:0.64.2 según release oficial; pull/arranque pendientes.
+Imagen fijada navidrome/navidrome:0.64.2. Usuario confirma que Navidrome funciona; no se ha registrado digest ni versión observada en su dispositivo.
 
 ## Próxima acción
 P01-03: en equipo con Docker, copiar music.env.example a music.env, crear directorios y ajustar UID/GID; ejecutar comandos de docs/NAVIDROME.md. Completar reproducción/persistencia/restore antes de marcar P01 terminado.
@@ -29,3 +29,9 @@ Registrar fecha/agente, rama/commit, IDs de tareas, archivos cambiados, comandos
 
 ## Iteración de portada
 Starter encontrado en main d60f641. Añadidos portal.php, portada y redirección autenticada con URL controlada. Activar PORTAL_MUSIC_ENABLED=true en app/.env; limpiar config. Tests de acceso añadidos, pendientes de ejecución: entorno sin PHP/Docker. Continuar P02-05 (invitaciones/registro) y P02-06 (QA y tests). No repetir bootstrap.
+
+## Iteración de ciclo de vida
+Petición: Navidrome junto a make up. Implementado opt-in por presencia de music.env, opt-out MUSIC_AUTO=0 y comandos music-*. No modifica bibliotecas ni credenciales.
+Validado: python3 tests/music-lifecycle.py y make -n up OS=Windows_NT MUSIC_AUTO=1; errores de Docker no se silencian. No se ha ejecutado Docker/PowerShell real aquí.
+CI anterior (run 42528988764) ya fallaba en compose-healthchecks y https-compose.ps1; su estado no prueba estas nuevas funciones. Se añade validación dedicada al principio del job Unix, sin repetir ejecuciones manualmente.
+Próximo paso: usuario ejecuta make up y stop/start; comprobar persistencia de playlist/usuarios. Después completar P02-05 (alta por invitación/registro) y P02-06. P03 mantiene enlace directo; no prometer SSO ni acceso móvil por localhost.

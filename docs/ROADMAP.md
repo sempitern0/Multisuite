@@ -31,6 +31,12 @@ Salida: ningún documento activo ordena implementar el antiguo catálogo/reprodu
 - [ ] P01-05 Recrear contenedor, probar permisos y backup/restore.
 Salida: checklist de NAVIDROME.md ejecutado con muestras propias. YAML validado no significa runtime validado.
 
+### P01-06 — Ciclo de vida integrado (añadido por petición del usuario)
+- [x] Arrancar Navidrome automáticamente con make up cuando existe music.env.
+- [x] Coordinar start/stop/restart/down sin borrar datos y conservar opt-out.
+- [x] Pruebas Make con Docker simulado: ausencia/configuración, errores y dispatch Windows.
+- [ ] Confirmar make up y stop/start en Docker Desktop con la biblioteca del usuario.
+
 ## P02 — Índice Laravel/Livewire
 - [ ] P02-01 Auditar Foundry y generar starter Livewire en app/; versionar código y lockfiles.
 - [x] P02-02 Configuración de servicios: id, título, descripción, icono, categoría, URL por entorno y enabled. Sin credenciales.
@@ -41,7 +47,7 @@ Salida: checklist de NAVIDROME.md ejecutado con muestras propias. YAML validado 
 Salida: abrir Música conduce a Navidrome. La portada funciona aunque Navidrome esté caído y no importa su catálogo.
 
 ## P03 — Rutas y red privada
-- [ ] P03-01 Elegir enlace directo, subdominio o subruta por servicio. Empezar con enlace para evitar reescrituras.
+- [x] P03-01 Elegir enlace directo, subdominio o subruta por servicio. Empezar con enlace para evitar reescrituras.
 - [ ] P03-02 Para /music/: BaseUrl correcto y proxy conserva prefijo; probar login, assets, Range y cliente móvil.
 - [ ] P03-03 Tailscale o alternativa elegida; permisos mínimos, TLS y revocación. No confiar solo en ocultar enlaces.
 - [ ] P03-04 Cuentas propias en cada servicio; documentar login/logout independientes y baja en todos los servicios.

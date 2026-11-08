@@ -6,6 +6,25 @@ compose.music.yaml es un Compose autónomo con proyecto propio: no combinarlo co
 Se fija navidrome/navidrome:0.64.2, versión estable publicada consultada el 2026-11-08; revisar actualizaciones y fijar digest tras probar la imagen. No reutiliza datos ni migra el antiguo 0.55.2 automáticamente.
 No se crean usuarios/passwords en Git ni se guardan credenciales de Navidrome en Laravel.
 
+## Arranque integrado con Make
+Una vez creado music.env y preparadas las carpetas, make up levanta también Navidrome. No copia ni reemplaza configuración o datos. Si music.env no existe, solo arranca Laravel.
+
+| Comando | Resultado |
+| --- | --- |
+| make up / make up-detached | Arranca ambos stacks |
+| make up-wait | Espera el arranque de ambos; Navidrome no tiene healthcheck HTTP, comprobar navegador |
+| make start | Reanuda Laravel y crea/reanuda Navidrome |
+| make stop / make restart | Detiene/reanuda ambos |
+| make down | Retira ambos stacks sin borrar carpetas de música/data |
+| make up MUSIC_AUTO=0 | Arranca solo Laravel; no detiene Navidrome si ya estaba activo |
+| make music-up / music-stop | Controla únicamente Navidrome |
+| make music-status / music-logs | Estado y logs de Navidrome |
+| make music-config | Valida su Compose sin arrancarlo |
+
+music.env es el opt-in del ciclo de vida; PORTAL_MUSIC_ENABLED solo controla la tarjeta del portal. Mantener music.env mientras se quiera gestionar el stack con Make. No cambiar MUSIC_PROJECT_NAME ni las rutas de datos de una instalación existente sin plan de migración.
+make up-logs arranca música en segundo plano y sigue logs de Laravel; usar make music-logs para música. make setup/build/rebuild y reset-project siguen dedicados a Laravel. Los comandos Docker directos también continúan siendo independientes.
+Si Navidrome falla, Make devuelve error; Laravel puede haber arrancado ya. Consultar make music-logs y corregir configuración, sin resetear datos.
+
 ## Arranque desde la raíz del repositorio
 Requiere Docker y Compose v2. Linux/macOS:
 
