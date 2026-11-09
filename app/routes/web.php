@@ -1,9 +1,9 @@
 <?php
 
-use App\Http\Controllers\InvitationController;
-use App\Http\Controllers\ServiceController;
-use App\Http\Controllers\ManualUserController;
 use App\Http\Controllers\InitialPasswordController;
+use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\ManualUserController;
+use App\Http\Controllers\ServiceController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
