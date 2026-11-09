@@ -65,3 +65,10 @@ PR #3 abierta. CI 42676163302: build, PHPStan, 50 tests/164 assertions e integra
 
 ### Corrección de acceso durante aprovisionamiento
 Usuario reporta spinner y vuelta a portada: /services/music bloqueaba cuentas pendientes pero la tarjeta ofrecía Abrir. Se desactiva el botón hasta ready, se añade Actualizar estado y diagnóstico de solo lectura portal:accounts-status {email}. Test cubre cuenta ausente, pendiente, configuración, conflicto, caducada y preparada. La causa operativa en el equipo del usuario sigue pendiente de diagnóstico de red/configuración; este cambio corrige la interfaz, no presupone haber reparado su instancia.
+
+## Iteración P03 — Alta manual por administradores (PR #4)
+2026-11-09. Rama `feat/p03-manual-user-provisioning` desde `feat/p03-service-accounts` (PR #3), sin modificar la rama base. Se añade opción Crear usuario para owner/admin, con jerarquía ya existente, contraseña temporal, marcador de cambio obligatorio y persistencia del creador. La cuenta manual comienza sin aprovisionamiento remoto; el primer cambio de contraseña crea cuentas para los servicios seleccionados con la contraseña personal. Invitación anterior revocada para ese correo. Documentación operativa en `docs/MANUAL_USER_CREATION.md`.
+
+Validación automática: GitHub Actions `42691493183` correcto; build, Pint, PHPStan, 57 tests funcionales/unitarios (251 assertions) y Navidrome 0.64.2 real en CI (1 test, 7 assertions). No se ha hecho QA interactiva en Docker Desktop/Windows/Linux, revisión de passkeys/2FA bajo middleware, despliegue, ni prueba de concurrencia PostgreSQL. Requiere ejecutar migración antes de habilitar la función. No se han creado cuentas reales.
+
+Siguiente acción: revisar PR #4 y QA con cuentas de prueba (owner, admin, member), primer login, cambio obligatorio y propagación a Navidrome con scheduler; integrar después de aceptar PR #3. No fusionar automáticamente.
