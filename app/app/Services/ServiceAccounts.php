@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ServiceAccount;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -33,8 +34,13 @@ class ServiceAccounts
     {
         DB::transaction(function () use ($user, $password): void {
             $locked = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $initialActivation = $locked->must_change_password;
             $locked->password = $password;
+            $locked->must_change_password = false;
             $locked->save();
+            if ($initialActivation) {
+                $this->enroll($locked, $locked->service_access ?? [], $password);
+            }
             foreach (ServiceAccount::where('user_id', $user->id)->lockForUpdate()->get() as $account) {
                 $this->stage($account, $password);
             }
