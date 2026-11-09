@@ -62,3 +62,6 @@ Rama feat/p03-service-accounts desde main. Navidrome 0.64.2 mediante API nativa,
 Validación de esta iteración pendiente de CI (sin PHP/Docker local). Integración real añadida al job app, un contenedor efímero. Próximos hitos y límites en ROADMAP P03-06. No marcar completo hasta QA de entorno/SMTP/scheduler. Cuentas existentes, SSO y revocación integral pendientes.
 
 PR #3 abierta. CI 42676163302: build, PHPStan, 50 tests/164 assertions e integración real Navidrome (7 assertions) superados; solo formato pendiente en ese commit. El adaptador crea y actualiza credenciales válidas en contenedor 0.64.2. Última revisión añade rechazo de servicios inyectados y diferencia fallos transitorios del login administrativo. Validación final en la PR.
+
+### Corrección de acceso durante aprovisionamiento
+Usuario reporta spinner y vuelta a portada: /services/music bloqueaba cuentas pendientes pero la tarjeta ofrecía Abrir. Se desactiva el botón hasta ready, se añade Actualizar estado y diagnóstico de solo lectura portal:accounts-status {email}. Test cubre cuenta ausente, pendiente, configuración, conflicto, caducada y preparada. La causa operativa en el equipo del usuario sigue pendiente de diagnóstico de red/configuración; este cambio corrige la interfaz, no presupone haber reparado su instancia.
