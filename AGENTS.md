@@ -14,7 +14,7 @@ Multisuite es un portal privado de acceso a servicios existentes para el propiet
 - Página principal Laravel/Livewire con registro de servicios, tarjetas y rutas de acceso controladas.
 - Cada servicio conserva su interfaz, cuentas, catálogo, reproductor, historial y datos. No implementar equivalentes propios ni adaptadores para duplicar catálogos.
 - Navidrome es la interfaz completa de música. compose.music.yaml es autónomo y se ejecuta separado de compose.yaml.
-- El portal no monta música, no almacena passwords de motores y no controla Docker ni un agente de host.
+- El portal no monta música ni controla Docker. Por petición del usuario, aprovisiona cuentas y sincroniza contraseñas en servicios compatibles. Credenciales administrativas solo en configuración secreta; contraseñas de usuarios cifradas temporalmente para reintentos, con caducidad de una hora y borrado tras éxito. Ver docs/SERVICE_ACCOUNTS.md.
 - Una ruta de redirección no es proxy ni SSO. Solo destinos configurados por el administrador; no aceptar redirects arbitrarios.
 - Preferir enlaces; subrutas proxy únicamente con compatibilidad validada. Autenticación del portal no protege el acceso directo a los servicios.
 - Mantener bibliotecas, volúmenes, backups y autenticación propios de cada servicio; la VPN no sustituye permisos.

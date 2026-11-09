@@ -1,0 +1,12 @@
+# Copy/merge into compose.override.yaml after creating multisuite-accounts.
+services:
+  app:
+    networks: [internal, accounts]
+  composer:
+    networks: [internal, devtools, accounts]
+  scheduler:
+    networks: [internal, accounts]
+networks:
+  accounts:
+    external: true
+    name: multisuite-accounts

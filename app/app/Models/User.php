@@ -16,6 +16,7 @@ use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
 /**
+ * @property list<string>|null $service_access
  * @property int $id
  * @property string $role
  * @property string $name
@@ -52,6 +53,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'service_access' => 'array',
         ];
     }
 

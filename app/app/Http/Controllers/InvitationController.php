@@ -7,6 +7,7 @@ use App\Concerns\ProfileValidationRules;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Notifications\PortalInvitation;
+use App\Services\ServiceAccounts;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -30,6 +31,7 @@ class InvitationController extends Controller
 
         return view('invitations.index', [
             'roles' => $roles,
+            'services' => app(ServiceAccounts::class)->available(),
             'invitations' => Invitation::whereIn('role', $roles)->latest()->paginate(20),
         ]);
     }
@@ -40,6 +42,8 @@ class InvitationController extends Controller
         $data = $request->validate([
             'email' => ['required', 'string', 'email', 'lowercase', 'max:255', Rule::unique('users', 'email')],
             'role' => ['required', Rule::in(['admin', 'member'])],
+            'services' => ['sometimes', 'array'],
+            'services.*' => ['string', 'distinct', Rule::in(app(ServiceAccounts::class)->available())],
         ]);
         abort_unless($request->user()?->canInviteRole($data['role']), 403);
         $token = Str::random(64);
@@ -49,6 +53,7 @@ class InvitationController extends Controller
             abort_if($invitation->exists && ! $request->user()->canInviteRole($invitation->role), 403);
             $invitation->email = $data['email'];
             $invitation->role = $data['role'];
+            $invitation->services = $data['services'] ?? [];
             $invitation->invited_by = $request->user()->id;
             $invitation->token_hash = hash('sha256', $token);
             $invitation->expires_at = now()->addDays(7);
@@ -90,6 +95,7 @@ class InvitationController extends Controller
             'email' => ['prohibited'],
             'role' => ['prohibited'],
             'invited_by' => ['prohibited'],
+            'services' => ['prohibited'],
         ]);
         $user = DB::transaction(function () use ($data, $token): User {
             $invitation = Invitation::where('token_hash', hash('sha256', $token))->lockForUpdate()->firstOrFail();
@@ -103,12 +109,15 @@ class InvitationController extends Controller
             $user->email = $invitation->email;
             $user->password = $data['password'];
             $user->role = $invitation->role;
+            $user->service_access = $invitation->services ?? [];
             // Possession of the link delivered to this mailbox proves email access.
             $user->email_verified_at = now();
             $user->save();
+            app(ServiceAccounts::class)->enroll($user, $invitation->services ?? [], $data['password']);
 
             return $user;
         });
+        app(ServiceAccounts::class)->syncUser($user);
         Auth::login($user);
         $request->session()->regenerate();
 

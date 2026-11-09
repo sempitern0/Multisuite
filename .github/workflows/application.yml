@@ -35,6 +35,7 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
       - name: Install locked dependencies
+        id: dependencies
         run: |
           composer install --no-interaction --prefer-dist --no-progress
           npm ci
@@ -45,8 +46,21 @@ jobs:
       - name: Build assets
         run: npm run build
       - name: Check formatting
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: composer lint:check
       - name: Static analysis
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: composer types:check
       - name: Feature and unit tests
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: php artisan test
+      - name: Navidrome account integration
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: |
+          docker run -d --name navidrome-ci -p 127.0.0.1:4533:4533 navidrome/navidrome:0.64.2
+          trap 'docker rm -f navidrome-ci >/dev/null' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4533/ping >/dev/null; then break; fi
+            sleep 1
+          done
+          NAVIDROME_TEST_URL=http://127.0.0.1:4533 php artisan test tests/Integration/NavidromeAccountsTest.php

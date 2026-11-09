@@ -18,7 +18,7 @@ El operador aporta dominio/resolución DNS, secretos, VPN y destinos de almacena
 Probar paridad local y staging con misma imagen antes de promoción; nunca copiar datos personales a staging.
 
 ## Operación
-Alta y baja se realizan en portal (si tiene login), VPN y servicios; no hay SSO ni revocación automática.
+Las altas y contraseñas de cuentas nuevas pueden aprovisionarse desde el portal mediante SERVICE_ACCOUNTS.md. VPN, sesión web unificada y baja integral siguen pendientes.
 Backup de cada DB de forma consistente y de archivos originales. Ensayar restore con versión compatible antes de actualizar.
 Despliegue real, cambios de secretos y operaciones destructivas requieren autorización aplicable. down -v o reset no son procedimientos de actualización.
 No se afirma readiness de producción hasta completar P03 y P05. Guía Foundry: [DEPLOYMENT.md](DEPLOYMENT.md); adaptar al alcance actual.

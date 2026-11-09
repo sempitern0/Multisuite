@@ -16,6 +16,9 @@
                 @endforeach
             </flux:select>
             <flux:text>Los administradores pueden invitar miembros. Solo el propietario puede invitar administradores.</flux:text>
+            @foreach ($services as $service)
+                <flux:checkbox name="services[]" :value="$service" :label="config('portal.services.'.$service.'.name')" :checked="in_array($service, old('services', $services))" />
+            @endforeach
             <flux:button type="submit" variant="primary">Enviar invitación</flux:button>
         </form>
         <section class="space-y-4" aria-label="Invitaciones emitidas">

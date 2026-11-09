@@ -5,6 +5,9 @@
             <p class="break-all">{{ $invitation->email }}</p>
             <flux:text>Rol asignado: {{ $invitation->role === 'admin' ? 'Administrador' : 'Miembro' }}. El correo y el rol los determina tu invitación.</flux:text>
         </div>
+        @foreach ($invitation->services ?? [] as $service)
+            <flux:text>{{ config('portal.services.'.$service.'.name', $service) }} se preparará con tu correo y esta contraseña.</flux:text>
+        @endforeach
         <form method="POST" action="{{ request()->fullUrl() }}" class="flex flex-col gap-6">
             @csrf
             <flux:input name="name" label="Nombre" :value="old('name')" required autofocus autocomplete="name" />
