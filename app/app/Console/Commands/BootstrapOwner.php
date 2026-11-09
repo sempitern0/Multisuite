@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\User;
 use App\Concerns\PasswordValidationRules;
+use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 
@@ -51,7 +51,7 @@ class BootstrapOwner extends Command
             // The trusted operator establishes the initial administrative identity.
             $user->email_verified_at = now();
         }
-        if ($user === null || ! $user->hasVerifiedEmail()) {
+        if ($user === null || $user->hasVerifiedEmail() === false) {
             $this->error('An existing verified account is required. No account has been created or verified.');
 
             return self::FAILURE;
