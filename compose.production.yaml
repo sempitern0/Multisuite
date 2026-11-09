@@ -2,7 +2,7 @@ name: ${PROJECT_NAME:-foundry}-prod
 x-app: &app
   image: ${APP_IMAGE:?APP_IMAGE must point to a published release}
   # Select secrets independently per deployment environment.
-  env_file: [${APP_ENV_FILE:-./app.production.env}]
+  env_file: ["${APP_ENV_FILE:-./app.production.env}"]
   restart: unless-stopped
   volumes:
     - app-storage:/var/www/html/storage
@@ -41,7 +41,7 @@ services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
-    env_file: [${DB_ENV_FILE:-./db.production.env}]
+    env_file: ["${DB_ENV_FILE:-./db.production.env}"]
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
       # Credentials live in db env_file, not necessarily in Compose host env.

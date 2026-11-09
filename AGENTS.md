@@ -60,7 +60,7 @@ Usar make up, make config, make test y make npm CMD="run build" cuando estén di
 Tests proporcionales: autorización entre dos usuarios, recuperación, jobs y flujos críticos; no tests que solo repitan implementación. No inventar resultados.
 Para Compose validar configuración renderizada; para scripts comprobar variantes Unix/PowerShell afectadas.
 CI: agrupar cambios coherentes, evitar pushes de prueba, no repetir jobs verdes sin causa. Construir una vez por versión y promover los mismos digests. No desactivar controles necesarios para conseguir verde.
-Por defecto trabajar en rama/PR; respetar instrucciones explícitas de escribir en main. Nunca force-push ni sobrescribir cambios ajenos.
+Cada nuevo hito o incremento revisable debe tener su propia rama desde main actualizado y su propia pull request. No integrar directamente en main ni fusionar automáticamente. Esta instrucción sustituye la autorización inicial de escribir en main. Nunca force-push ni sobrescribir cambios ajenos.
 
 ## Definición de terminado
 Código y docs coherentes; criterios del hito comprobados; pruebas relevantes registradas; permisos y exportación revisados; dependencia anotada; estado actualizado. Distinguir implementado, validado localmente y desplegado. Un bloqueo debe incluir causa, trabajo preservado y acción concreta para resolverlo.

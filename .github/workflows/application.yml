@@ -1,0 +1,52 @@
+name: Application CI
+on:
+  push:
+    branches: [main]
+    paths: &application-paths
+      - 'app/**'
+      - '.github/workflows/application.yml'
+  pull_request:
+    paths: *application-paths
+permissions:
+  contents: read
+concurrency:
+  group: application-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, pdo_sqlite
+          tools: composer:v2
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install locked dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          npm ci
+      - name: Prepare test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+      - name: Build assets
+        run: npm run build
+      - name: Check formatting
+        run: composer lint:check
+      - name: Static analysis
+        run: composer types:check
+      - name: Feature and unit tests
+        run: php artisan test

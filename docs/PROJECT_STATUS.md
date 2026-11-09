@@ -35,3 +35,10 @@ Petición: Navidrome junto a make up. Implementado opt-in por presencia de music
 Validado: python3 tests/music-lifecycle.py y make -n up OS=Windows_NT MUSIC_AUTO=1; errores de Docker no se silencian. No se ha ejecutado Docker/PowerShell real aquí.
 CI anterior (run 42528988764) ya fallaba en compose-healthchecks y https-compose.ps1; su estado no prueba estas nuevas funciones. Se añade validación dedicada al principio del job Unix, sin repetir ejecuciones manualmente.
 Próximo paso: usuario ejecuta make up y stop/start; comprobar persistencia de playlist/usuarios. Después completar P02-05 (alta por invitación/registro) y P02-06. P03 mantiene enlace directo; no prometer SSO ni acceso móvil por localhost.
+
+## Iteración P02-06 — CI del producto (en revisión)
+Rama: `feat/p02-product-validation`, basada en main `05658e7`.
+Se activa CI Laravel desde la raíz: PHP 8.4 compatible con el lockfile, dependencias bloqueadas, build, Pint, PHPStan y tests. Los workflows se filtran por rutas y cancelan ejecuciones obsoletas; no se ejecutan builds por cambios solo documentales.
+Infraestructura conserva sus controles, corrige YAML de env_file en producción, aislamiento del checkout de prueba, extracción de secciones y el código de salida residual de PowerShell. app/ debe estar versionada.
+Validación runtime pendiente de GitHub Actions: este entorno no dispone de PHP, Docker ni PowerShell. P02-06 sigue abierto hasta superar CI y QA visual. La plantilla de workflow bajo app/.github es inactiva; el workflow autoritativo es .github/workflows/application.yml.
+Siguiente acción: revisar CI de esta PR y corregir fallos; después QA visual de P02-03/P02-06 y nueva PR para P02-05 (registro cerrado/invitaciones). Cada incremento nuevo requiere PR; no fusionar automáticamente.
