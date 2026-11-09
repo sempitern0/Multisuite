@@ -7,6 +7,7 @@ use App\Models\ServiceAccount;
 use App\Models\User;
 use App\Services\ServiceAccounts;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
@@ -47,6 +48,10 @@ class ServiceProvisioningTest extends TestCase
         $url = URL::temporarySignedRoute('invitation.accept', now()->addDay(), ['token' => str_repeat('a', 64)]);
         Http::fake(['*' => Http::response([], 503)]);
         $this->post($url, [
+            'services' => ['music'], 'name' => 'Guest', 'password' => 'safe-password', 'password_confirmation' => 'safe-password',
+        ])->assertSessionHasErrors('services');
+        $this->assertDatabaseCount('service_accounts', 0);
+        $this->post($url, [
             'name' => 'Guest', 'password' => 'safe-password', 'password_confirmation' => 'safe-password',
         ])->assertRedirect(route('dashboard'));
         $account = ServiceAccount::firstOrFail();
@@ -64,7 +69,7 @@ class ServiceProvisioningTest extends TestCase
 
     private function fakeRemote(ServiceAccount $account, bool $existing = false): void
     {
-        Http::swap(new \Illuminate\Http\Client\Factory);
+        Http::swap(new Factory);
         Http::preventStrayRequests();
         $remote = ['id' => $account->remote_id, 'userName' => $account->username, 'isAdmin' => false];
         Http::fake([

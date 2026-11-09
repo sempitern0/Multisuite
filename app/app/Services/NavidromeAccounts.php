@@ -27,6 +27,9 @@ class NavidromeAccounts
                 'username' => config('provisioning.music.username'),
                 'password' => config('provisioning.music.password'),
             ]);
+            if ($login->serverError() || $login->status() === 429) {
+                throw new RuntimeException('unavailable');
+            }
             $token = $login->json('token');
             if (! $login->successful() || ! is_string($token) || $token === '' || $login->json('isAdmin') !== true) {
                 throw new RuntimeException('configuration');
