@@ -226,7 +226,7 @@ jobs:
         run: |
           docker compose build app composer node
           docker compose run --rm --no-deps --entrypoint php app -r 'exit(extension_loaded("redis") ? 0 : 1);'
-          docker compose run --rm --no-deps --user 0:0 composer sh -ec 'chown "$DEV_UID:$DEV_GID" /var/www/html/node_modules /tmp/npm-cache /tmp/composer'
+          docker compose run --rm --no-deps --user 0:0 composer sh -ec 'chown "$DEV_UID:$DEV_GID" /var/www/html/vendor /var/www/html/node_modules /tmp/npm-cache /tmp/composer'
           docker compose run --rm --no-deps composer sh -ec 'php -v && composer --version && node --version && npm --version && touch /var/www/html/node_modules/.cache-write-test && touch /tmp/npm-cache/.cache-write-test && touch /tmp/composer/.cache-write-test'
       - name: Forbid attribute-preserving copy onto Docker Desktop bind mounts
         run: |
@@ -301,7 +301,7 @@ jobs:
         run: |
           $source = Get-Content scripts/preflight.ps1 -Raw
           if (($source.Split(@('$owned = @{}'), [System.StringSplitOptions]::None).Count - 1) -ne 1) { throw 'Duplicate Docker ownership block' }
-          if (($source.Split(@("Write-Host '[OK] Configuracion y puertos locales comprobados."), [System.StringSplitOptions]::None).Count - 1) -ne 1) { throw 'Duplicate preflight completion block' }
+          if (($source.Split(@("Write-Host '[OK] Configuration and local ports validated."), [System.StringSplitOptions]::None).Count - 1) -ne 1) { throw 'Duplicate preflight completion block' }
       - name: Exercise preflight validation in Windows PowerShell 5.1
         shell: powershell
         run: ./tests/preflight.ps1
