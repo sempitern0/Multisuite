@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Concerns\PasswordValidationRules;
+use App\Concerns\ProfileValidationRules;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Notifications\PortalInvitation;
@@ -20,7 +21,7 @@ use Illuminate\View\View;
 
 class InvitationController extends Controller
 {
-    use PasswordValidationRules;
+    use PasswordValidationRules, ProfileValidationRules;
 
     public function index(Request $request): View
     {
@@ -45,10 +46,10 @@ class InvitationController extends Controller
         $invitation = DB::transaction(function () use ($data, $request, $token): Invitation {
             $invitation = Invitation::where('email', $data['email'])->lockForUpdate()->first() ?? new Invitation;
             // Administrators cannot overwrite an owner's administrator invitation.
-            abort_if($invitation->exists && ! $request->user()?->canInviteRole($invitation->role), 403);
+            abort_if($invitation->exists && ! $request->user()->canInviteRole($invitation->role), 403);
             $invitation->email = $data['email'];
             $invitation->role = $data['role'];
-            $invitation->invited_by = $request->user()?->id;
+            $invitation->invited_by = $request->user()->id;
             $invitation->token_hash = hash('sha256', $token);
             $invitation->expires_at = now()->addDays(7);
             $invitation->used_at = null;
@@ -84,7 +85,7 @@ class InvitationController extends Controller
     public function accept(Request $request, string $token): RedirectResponse
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => $this->nameRules(),
             'password' => $this->passwordRules(),
             'email' => ['prohibited'],
             'role' => ['prohibited'],

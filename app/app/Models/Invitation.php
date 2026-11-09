@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -11,8 +11,8 @@ use Illuminate\Support\Carbon;
  * @property string $role
  * @property string $token_hash
  * @property int|null $invited_by
- * @property Carbon $expires_at
- * @property Carbon|null $used_at
+ * @property CarbonInterface $expires_at
+ * @property CarbonInterface|null $used_at
  */
 class Invitation extends Model
 {
