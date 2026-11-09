@@ -42,3 +42,11 @@ Se activa CI Laravel desde la raíz: PHP 8.4 compatible con el lockfile, depende
 Infraestructura conserva sus controles, corrige YAML de env_file en producción, aislamiento del checkout de prueba, extracción de secciones y el código de salida residual de PowerShell. app/ debe estar versionada.
 Validación runtime pendiente de GitHub Actions: este entorno no dispone de PHP, Docker ni PowerShell. P02-06 sigue abierto hasta superar CI y QA visual. La plantilla de workflow bajo app/.github es inactiva; el workflow autoritativo es .github/workflows/application.yml.
 Siguiente acción: revisar CI de esta PR y corregir fallos; después QA visual de P02-03/P02-06 y nueva PR para P02-05 (registro cerrado/invitaciones). Cada incremento nuevo requiere PR; no fusionar automáticamente.
+
+## Iteración P02-05 — Invitaciones
+2026-11-09. Rama `feat/p02-invitations`; PR independiente de la validación P02-06.
+Implementado: invitación por consola, hash del código, caducidad, reemisión/revocación y consumo atómico al registrar. Formulario requiere código y el servidor rechaza altas libres. No envía mensajes ni modifica cuentas de Navidrome. Operación y QA: docs/INVITATIONS.md.
+Pruebas añadidas: registro sin código, incorrecto/caducado/usado/correo distinto, consumo único y comandos del operador. Ejecución local de PHP no disponible; validar en CI antes de fusionar. QA visual y simultaneidad en motor de producción pendientes.
+Siguiente paso: completar QA del portal y acceso desde segundo dispositivo (P03), con cuentas independientes y VPN. P02-05 permanece en revisión hasta aceptación.
+
+PR #1 fusionada en main 6a120319: Application CI y ambos jobs de Infrastructure CI superados tras corregir permisos del volumen vendor y la aserción del mensaje preflight. QA visual P02-06 sigue pendiente.

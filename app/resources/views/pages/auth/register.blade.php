@@ -1,12 +1,21 @@
 <x-layouts::auth :title="__('Register')">
     <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Create an account')" :description="__('Enter your details below to create your account')" />
+        <x-auth-header :title="__('Create an account')" :description="__('An invitation from the owner is required to create an account.')" />
 
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
 
         <form method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-6">
             @csrf
+            <flux:input
+                name="invitation"
+                :label="__('Invitation code')"
+                type="password"
+                required
+                maxlength="64"
+                autocomplete="off"
+                viewable
+            />
             <!-- Name -->
             <flux:input
                 name="name"
