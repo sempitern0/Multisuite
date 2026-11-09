@@ -50,3 +50,8 @@ Pruebas añadidas: registro sin código, incorrecto/caducado/usado/correo distin
 Siguiente paso: completar QA del portal y acceso desde segundo dispositivo (P03), con cuentas independientes y VPN. P02-05 permanece en revisión hasta aceptación.
 
 PR #1 fusionada en main 6a120319: Application CI y ambos jobs de Infrastructure CI superados tras corregir permisos del volumen vendor y la aserción del mensaje preflight. QA visual P02-06 sigue pendiente.
+
+## Revisión P02-05 — Flujo exclusivo y roles (PR #2)
+Sustituye el alta con código manual: retirados /register, su vista, enlaces, acción Fortify de alta y portal:invite. Añadidos owner/admin/member, gestión autorizada con correo y rol, correo de invitación y enlace firmado de un solo uso. Rol/correo/emisor solo proceden de DB; se rechazan campos inyectados y se revalidan permisos del emisor al aceptar.
+Migración incremental invalida invitaciones antiguas y mantiene usuarios previos como miembros. Bootstrap explícito del primer propietario por consola; docs/INVITATIONS.md contiene pasos y límites. Sin mensajes reales ni cambios en usuarios del servidor durante desarrollo.
+Pruebas cubren endpoints eliminados, permisos, firma manipulada, rol inyectado, revocación, reemisión y uso único. Validación runtime pendiente de CI de esta revisión; QA visual/SMTP y concurrencia PostgreSQL pendientes. Continuar en la misma PR #2 hasta aceptar P02-05.

@@ -17,6 +17,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 
 /**
  * @property int $id
+ * @property string $role
  * @property string $name
  * @property string $email
  * @property Carbon|null $email_verified_at
@@ -34,6 +35,12 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+
+    public function canInviteRole(string $role): bool
+    {
+        return ($this->role === 'owner' && in_array($role, ['admin', 'member'], true))
+            || ($this->role === 'admin' && $role === 'member');
+    }
 
     /**
      * Get the attributes that should be cast.
