@@ -9,6 +9,7 @@ PREFLIGHT_SCRIPT := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scri
 HOST_PREPARE := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/environment.ps1 -Mode Apply
 HOST_DOCTOR := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/environment.ps1 -Mode Doctor
 HTTP_CHECK := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/check-http.ps1
+ACCOUNTS_NETWORK := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/accounts-network.ps1
 TENANCY_CHECK_SCRIPT := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/tenancy-check.ps1
 else
 SHELL := /bin/sh
@@ -21,6 +22,7 @@ PREFLIGHT_SCRIPT := sh scripts/preflight.sh
 HOST_PREPARE := sh scripts/environment.sh apply
 HOST_DOCTOR := sh scripts/environment.sh doctor
 HTTP_CHECK := sh scripts/check-http.sh
+ACCOUNTS_NETWORK := sh scripts/accounts-network.sh
 TENANCY_CHECK_SCRIPT := sh scripts/tenancy-check.sh
 endif
 
@@ -30,6 +32,11 @@ DC := docker compose
 # Override with MUSIC_AUTO=0 for Laravel-only operation.
 MUSIC_AUTO ?= $(if $(wildcard music.env),1,0)
 MUSIC_DC := docker compose --env-file music.env -f compose.music.yaml
+ifeq ($(MUSIC_AUTO),1)
+# Keep host-generated overrides; append service connectivity without rewriting them.
+DC := docker compose -f compose.yaml $(if $(wildcard compose.override.yaml),-f compose.override.yaml) -f deploy/compose.portal-accounts.example.yaml --profile scheduler
+MUSIC_DC += -f deploy/compose.music-accounts.example.yaml
+endif
 STARTER ?=
 # Explicit all-profiles stop also removes containers started manually through a
 # profile not included in the current .env.
@@ -54,7 +61,7 @@ help:
 	@echo ""
 	@echo "WARNING: reset-project removes generated app files and Docker volumes."
 
-setup:
+setup: accounts-network
 	@$(HOST_PREPARE)
 	@$(SETUP_SCRIPT) $(if $(strip $(STARTER)),$(if $(filter Windows_NT,$(OS)),-Starter "$(STARTER)","$(STARTER)"),)
 
@@ -67,7 +74,7 @@ else
 endif
 
 # Detached startup is the default. Readiness is optional and explicit.
-up:
+up: accounts-network
 	@$(HOST_PREPARE)
 	@$(PREFLIGHT_SCRIPT)
 	@$(DC) up -d
@@ -78,7 +85,7 @@ endif
 
 up-detached: up
 
-up-wait:
+up-wait: accounts-network
 	@$(HOST_PREPARE)
 	@$(PREFLIGHT_SCRIPT)
 	@$(DC) up -d --wait --wait-timeout 120
@@ -88,7 +95,7 @@ endif
 	-$(HTTP_CHECK)
 	-@$(STATUS_SCRIPT)
 
-up-logs:
+up-logs: accounts-network
 	@$(HOST_PREPARE)
 ifeq ($(MUSIC_AUTO),1)
 	@$(MUSIC_DC) up -d
@@ -96,10 +103,14 @@ endif
 	@$(DC) up
 
 # Retain containers/networks for fast daily resume; no destructive operations.
-start:
+start: accounts-network
 	@$(HOST_PREPARE)
 	@$(PREFLIGHT_SCRIPT)
+ifeq ($(MUSIC_AUTO),1)
+	@$(DC) up -d
+else
 	@$(DC) start
+endif
 ifeq ($(MUSIC_AUTO),1)
 	@$(MUSIC_DC) up -d
 endif
@@ -126,7 +137,7 @@ images:
 	@$(HOST_PREPARE)
 	@$(DC) build app composer node
 
-rebuild: build
+rebuild: build accounts-network
 	@$(DC) up -d --wait --wait-timeout 120 --force-recreate
 
 doctor:
@@ -198,7 +209,7 @@ tenancy-check:
 	$(TENANCY_CHECK_SCRIPT)
 
 # Independent commands deliberately fail if music.env is absent or invalid.
-music-up:
+music-up: accounts-network
 	@$(MUSIC_DC) up -d
 
 music-stop:
@@ -212,3 +223,10 @@ music-logs:
 
 music-config:
 	@$(MUSIC_DC) config --quiet
+
+# Shared external network survives either stack's down/recreation.
+.PHONY: accounts-network
+accounts-network:
+ifeq ($(MUSIC_AUTO),1)
+	@$(ACCOUNTS_NETWORK)
+endif

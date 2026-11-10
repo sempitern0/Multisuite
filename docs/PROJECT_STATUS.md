@@ -65,3 +65,10 @@ PR #3 abierta. CI 42676163302: build, PHPStan, 50 tests/164 assertions e integra
 
 ### Corrección de acceso durante aprovisionamiento
 Usuario reporta spinner y vuelta a portada: /services/music bloqueaba cuentas pendientes pero la tarjeta ofrecía Abrir. Se desactiva el botón hasta ready, se añade Actualizar estado y diagnóstico de solo lectura portal:accounts-status {email}. Test cubre cuenta ausente, pendiente, configuración, conflicto, caducada y preparada. La causa operativa en el equipo del usuario sigue pendiente de diagnóstico de red/configuración; este cambio corrige la interfaz, no presupone haber reparado su instancia.
+
+
+### Corrección de arranque de cuentas — 2026-11-10
+- Make aplica automáticamente los overlays de cuentas con music.env, crea/reutiliza la red compartida y activa scheduler.
+- start reconcilia contenedores existentes; music-up conserva la conexión al recrear. Overrides del host preservados; MUSIC_AUTO=0 mantiene modo independiente.
+- Validación: pruebas de despacho Make con Docker simulado; ejecución real Windows/Linux pendiente de CI y QA del operador. No se han tocado cuentas ni datos reales.
+- Siguiente comprobación: actualizar rama, make up, config:clear y accounts-status; restablecer contraseña si la credencial pendiente caducó.

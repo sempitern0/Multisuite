@@ -1,4 +1,4 @@
-# Copy/merge into compose.override.yaml after creating multisuite-accounts.
+# Applied automatically by Make when music.env exists; preserves host overrides.
 services:
   app:
     networks: [internal, accounts]

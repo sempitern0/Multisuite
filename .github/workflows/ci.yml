@@ -5,6 +5,7 @@ on:
     paths: &infrastructure-paths
       - '.github/workflows/ci.yml'
       - 'compose*.yaml'
+      - 'deploy/compose.*-accounts.example.yaml'
       - 'docker/**'
       - 'scripts/**'
       - 'tests/**'
@@ -28,6 +29,8 @@ jobs:
         run: |
           python3 tests/music-lifecycle.py
           docker compose --env-file music.env.example -f compose.music.yaml config --quiet
+          docker compose --env-file music.env.example -f compose.music.yaml -f deploy/compose.music-accounts.example.yaml config --quiet
+          docker compose -f compose.yaml -f deploy/compose.portal-accounts.example.yaml --profile scheduler config --quiet
       - name: Validate POSIX scripts
         run: |
           for script in scripts/*.sh tests/*.sh; do

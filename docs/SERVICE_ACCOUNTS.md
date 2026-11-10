@@ -8,8 +8,8 @@ Los servicios futuros requieren adaptador y pruebas propias. La sesión web de N
 ## Configuración local
 1. Aplicar `make artisan CMD="migrate"`.
 2. Configurar `app/.env`: `PORTAL_MUSIC_ENABLED=true`, URL pública para navegador, `NAVIDROME_PROVISIONING_ENABLED=true`, `NAVIDROME_INTERNAL_URL` alcanzable desde PHP, `NAVIDROME_ADMIN_USERNAME` y `NAVIDROME_ADMIN_PASSWORD`. Crear antes el administrador de Navidrome con su interfaz. Usar credenciales del operador, nunca las del invitado. No versionar secretos.
-3. Para comunicar ambos stacks localmente, crear `docker network create multisuite-accounts`. Combinar deploy/compose.portal-accounts.example.yaml con el compose.override.yaml local (conservar otros ajustes). Ejecutar el stack musical con `docker compose --env-file music.env -f compose.music.yaml -f deploy/compose.music-accounts.example.yaml up -d` y el portal con `make up MUSIC_AUTO=0`. Usar `NAVIDROME_INTERNAL_URL=http://navidrome:4533`. Este es el endpoint interno, distinto del enlace del navegador. Mantener ambos archivos al recrear los contenedores musicales.
-4. `make artisan CMD="config:clear"`. Mantener activo el scheduler (`php artisan schedule:work` dentro del contenedor, o servicio scheduler del despliegue). Para probar un ciclo manual: `make artisan CMD="portal:sync-accounts"`.
+3. Con `music.env` presente, ejecutar `make up`. Make crea/reutiliza la red `multisuite-accounts`, aplica los overlays de conexión a ambos stacks y activa el scheduler. Conserva `compose.override.yaml` sin editarlo. No hay que copiar los ejemplos ni conectar contenedores manualmente. Usar `NAVIDROME_INTERNAL_URL=http://navidrome:4533`; es distinto del enlace del navegador. `make start` también reconcilia la configuración para actualizar contenedores antiguos.
+4. Tras cambiar `app/.env`, ejecutar `make artisan CMD="config:clear"`. Los reintentos son automáticos; para probar un ciclo: `make artisan CMD="portal:sync-accounts"`. Si la credencial ya caducó, actualizar/restablecer la contraseña del usuario para iniciar otro intento.
 5. Desde Invitaciones, seleccionar Música y aceptar el correo de Mailpit. Entrar a Navidrome con el correo completo y la contraseña elegida. Cambios y olvidos de contraseña se realizan en el portal. El override musical deshabilita edición directa para evitar divergencias de usuarios normales.
 
 Producción exige endpoint HTTPS con certificado válido y acceso privado. Configurar hostname/CA, red, secretos del operador y scheduler antes de habilitar. Navidrome almacena contraseñas reversibles por compatibilidad Subsonic; configurar su PasswordEncryptionKey propia siguiendo su procedimiento de migración y conservarla en backups seguros. No se deshabilita verificación TLS ni se siguen redirecciones HTTP. BaseUrl se incluye en NAVIDROME_INTERNAL_URL si existe.
@@ -29,3 +29,10 @@ Tests Laravel con transporte simulado: aceptación, credencial cifrada/oculta, f
 Contrato revisado en código upstream v0.64.2: server/auth.go, server/nativeapi/native_api.go, model/user.go y persistence/user_repository.go. API nativa /auth/login, /api/user y cabecera X-ND-Authorization. Adaptador versionado; verificar de nuevo antes de actualizar Navidrome. No usa createUser de Subsonic.
 
 Pendiente antes del piloto: QA Windows/Linux con Docker real, sincronización con PostgreSQL bajo concurrencia, fallos de red durante commits remotos, entrega de correo y permisos de bibliotecas.
+
+## Ciclo de vida local
+Usar Make también para recrear Navidrome: `make music-up` conserva la conexión.
+`make stop`, `make start`, `make restart`, `make up-wait` y `make down` usan los mismos overlays cuando existe music.env. La red externa se conserva al bajar ambos stacks; no se borran datos.
+`MUSIC_AUTO=0` opta por el portal sin integración automática. El Compose musical base sigue siendo autónomo.
+No definir COMPOSE_FILE para el modo integrado: Make selecciona explícitamente compose.yaml, compose.override.yaml si existe y el overlay de cuentas.
+Las credenciales administrativas iniciales siguen siendo configuración necesaria: no se inventan ni se sustituyen cuentas existentes.
