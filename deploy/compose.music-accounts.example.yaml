@@ -1,9 +1,40 @@
 # Use alongside compose.music.yaml, never as the only Compose file.
 services:
   navidrome:
+    ports: !reset []
     networks: [default, accounts]
     environment:
       ND_ENABLEUSEREDITING: 'false'
+  music-gateway:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      navidrome:
+        condition: service_started
+    ports:
+      - "127.0.0.1:${NAVIDROME_PORT:-4533}:8080"
+    volumes:
+      - ./docker/music-proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/music-proxy/public:/usr/share/nginx/html:ro
+    networks: [default, accounts]
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    user: "101:101"
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/_multisuite/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 networks:
   default: {}
   accounts:

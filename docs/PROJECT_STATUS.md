@@ -98,3 +98,10 @@ Usuario reporta spinner y vuelta a portada: /services/music bloqueaba cuentas pe
 - Autenticación con contenedor más ancho, campos de 52 px, botones de 48 px y texto mayor. Textos más breves; cambio inicial usa «Contraseña actual».
 - Selector de recuperación 2FA accesible con teclado. Sin cambios en autenticación, autorización ni sincronización.
 - QA pendiente: móvil 320/375 px, escritorio, zoom 200 %, tabulación, errores de formulario y estados de Música dentro de la tarjeta.
+
+
+## Hito activo P03-06e.1 — Sesión musical en navegador compartido
+Base main d753c944, PR #3/#4 fusionadas con CI verde y QA funcional/visual aceptada por el usuario. Se prioriza el proxy/puente antes de continuar vinculación/bajas.
+Implementado: gateway sobre el mismo origen/puerto, pase cifrado de 60 s, verificación sin cookies ni credenciales musicales, limpieza local solo cuando no coincide cuenta, arranque integrado y fallback explícito para instalaciones externas. Sin nuevas librerías ni migraciones.
+Validación local: 6 tests Node de reconciliación, destino/origen, flujo de verificación y fallos; pruebas de ciclo Make. Docker/PHP no disponibles aquí: validación real en CI de PHP, gateway, Range y Navidrome.
+QA del operador y límites: ver docs/MUSIC_SESSION_BRIDGE.md. No hay SSO ni revocación de otros dispositivos/pestañas ya abiertas. No se ha desplegado ni modificado ninguna cuenta real.

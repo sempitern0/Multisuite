@@ -30,3 +30,17 @@ with tempfile.TemporaryDirectory() as directory:
     overridden = services("postgres,https", "redis")
     assert overridden == {"app", "web", "scheduler", "redis"}, overridden
 print("Compose preserves dotenv/environment profiles and always starts integrated scheduler.")
+
+# Integrated music exposes only the gateway; standalone Navidrome remains usable.
+import json
+def music_config(integrated):
+    args = ["docker", "compose", "--env-file", "music.env.example", "-f", "compose.music.yaml"]
+    if integrated:
+        args += ["-f", "deploy/compose.music-accounts.example.yaml"]
+    return json.loads(subprocess.check_output(args + ["config", "--format", "json"], cwd=root, env=env, text=True))
+integrated = music_config(True)["services"]
+assert not integrated["navidrome"].get("ports"), integrated["navidrome"]
+assert integrated["music-gateway"]["ports"][0]["host_ip"] == "127.0.0.1"
+assert integrated["music-gateway"]["ports"][0]["target"] == 8080
+assert "music-gateway" not in music_config(False)["services"]
+print("Integrated music publishes only the gateway; standalone stack is preserved.")

@@ -29,3 +29,7 @@ La portada autenticada está en /dashboard; /services/music es una redirección 
 Producción exige VPN/TLS, cuentas por servicio y backups/restauración verificados; todavía no está desplegada. Ver [guía heredada](docs/DEPLOYMENT.md) y contrato de entornos vigente.
 Librerías PHP/JS/CSS permitidas si estables, mantenidas y útiles; documentar compatibilidad/licencia.
 Licencia del repositorio: [LICENSE](LICENSE). Los servicios conservan sus licencias.
+
+
+### Sesión de Música en dispositivos compartidos
+El modo integrado usa un gateway para comprobar la cuenta del navegador al abrir Música. Conserva una sesión coincidente y pide login si pertenece a otra persona. Guía y QA: [MUSIC_SESSION_BRIDGE.md](docs/MUSIC_SESSION_BRIDGE.md).
