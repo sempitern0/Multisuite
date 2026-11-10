@@ -91,3 +91,10 @@ Usuario reporta spinner y vuelta a portada: /services/music bloqueaba cuentas pe
 - Multisuite admite usuario o correo, conserva 2FA y comparte límite de intentos entre alias. Recuperación sigue por correo. Navidrome usa solo su userName; decisión del usuario confirmada.
 - Renombrado remoto por UUID con verificación de identidad, conservación de ajustes y reintentos tras respuesta perdida; nunca apropiación de cuentas por coincidencia de nombre.
 - QA: migrar, alta manual member/admin, primer cambio, invitación con usuario, login por ambos en portal, renombrado de cuenta existente y login musical. Validación PHP/real Navidrome en CI; no disponibles localmente.
+
+
+### Ajuste visual de autenticación y tarjetas
+- El estado de Música y su usuario aparecen dentro de la tarjeta; se elimina el aviso separado de la portada.
+- Autenticación con contenedor más ancho, campos de 52 px, botones de 48 px y texto mayor. Textos más breves; cambio inicial usa «Contraseña actual».
+- Selector de recuperación 2FA accesible con teclado. Sin cambios en autenticación, autorización ni sincronización.
+- QA pendiente: móvil 320/375 px, escritorio, zoom 200 %, tabulación, errores de formulario y estados de Música dentro de la tarjeta.

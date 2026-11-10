@@ -6,24 +6,24 @@
             <p class="max-w-xl text-zinc-600 dark:text-zinc-300">Abre tus aplicaciones y disfruta de tu biblioteca.</p>
         </header>
         @php($accounts = \App\Models\ServiceAccount::where('user_id', auth()->id())->get()->keyBy('service'))
-        @foreach ($accounts as $account)
-            <p role="status" class="rounded-lg border p-4">
-                {{ config('portal.services.'.$account->service.'.name', $account->service) }} · Usuario {{ $account->username }} ·
-                @if ($account->status === 'ready') Cuenta preparada.
-                @elseif ($account->status === 'pending') La cuenta de música todavía no está preparada. El administrador debe comprobar la conexión y la sincronización.
-                @elseif ($account->status === 'expired') La preparación ha caducado. Actualiza tu contraseña en Ajustes para reintentar.
-                @elseif ($account->status === 'configuration') El administrador debe revisar la configuración de acceso al servicio.
-                @elseif ($account->status === 'conflict') Existe un conflicto con una cuenta del servicio. Contacta con el administrador.
-                @else La preparación necesita revisión del administrador.
-                @endif
-            </p>
-        @endforeach
         <section aria-label="Aplicaciones" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             @forelse (config('portal.services', []) as $id => $service)
                 <article class="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
                     <p class="text-sm text-teal-700 dark:text-teal-300">{{ $service['category'] }}</p>
                     <h2 class="text-xl font-semibold">{{ $service['name'] }}</h2>
                     <p class="flex-1 text-sm leading-6 text-zinc-600 dark:text-zinc-300">{{ $service['description'] }}</p>
+                    @if ($account = $accounts->get($id))
+                        <div class="space-y-1 text-base leading-6">
+                            <p role="status" class="text-zinc-700 dark:text-zinc-200">
+                                @if ($account->status === 'ready') Disponible
+                                @elseif ($account->status === 'pending') Preparando tu cuenta.
+                                @elseif ($account->status === 'expired') Actualiza tu contraseña en Ajustes para reintentar.
+                                @else Contacta con el administrador para activar el acceso.
+                                @endif
+                            </p>
+                            <p class="break-all text-zinc-600 dark:text-zinc-400">Usuario: {{ $account->username }}</p>
+                        </div>
+                    @endif
                     @if (auth()->user()->service_access !== null && config('provisioning.'.$id.'.enabled') && ! in_array($id, auth()->user()->service_access, true))
                         <p class="text-sm">Este servicio no está incluido en tu invitación.</p>
                     @elseif (auth()->user()->service_access !== null && config('provisioning.'.$id.'.enabled') && $accounts->get($id)?->status !== 'ready')

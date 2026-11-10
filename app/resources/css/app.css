@@ -64,3 +64,32 @@ select:focus[data-flux-control] {
 /* \[:where(&)\]:size-4 {
     @apply size-4;
 } */
+
+/* Comfortable authentication controls, scoped away from the application UI. */
+.auth-surface {
+    font-size: 1.0625rem;
+    line-height: 1.6;
+}
+
+.auth-surface h1 {
+    font-size: 1.875rem;
+    line-height: 1.25;
+}
+
+.auth-surface [data-flux-label],
+.auth-surface [data-flux-subheading],
+.auth-surface [data-flux-text],
+.auth-surface [data-flux-link] {
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.auth-surface input:not([type="checkbox"], [type="radio"], [type="hidden"]) {
+    min-height: 3.25rem;
+    font-size: 1.125rem;
+}
+
+.auth-surface [data-flux-button] {
+    min-height: 3rem;
+    font-size: 1rem;
+}
