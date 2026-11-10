@@ -30,7 +30,8 @@ jobs:
           python3 tests/music-lifecycle.py
           docker compose --env-file music.env.example -f compose.music.yaml config --quiet
           docker compose --env-file music.env.example -f compose.music.yaml -f deploy/compose.music-accounts.example.yaml config --quiet
-          docker compose -f compose.yaml -f deploy/compose.portal-accounts.example.yaml --profile scheduler config --quiet
+          docker compose -f compose.yaml -f deploy/compose.portal-accounts.example.yaml config --quiet
+          python3 tests/accounts-profiles.py
       - name: Validate POSIX scripts
         run: |
           for script in scripts/*.sh tests/*.sh; do

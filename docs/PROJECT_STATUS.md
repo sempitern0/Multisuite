@@ -77,3 +77,9 @@ Usuario reporta spinner y vuelta a portada: /services/music bloqueaba cuentas pe
 ### Corrección Windows PowerShell 5.1
 - La inspección de una red ausente captura stderr nativo sin abortar antes de crearla. Se comprueban códigos de salida y se conserva el fallo si Docker no permite crear ni consultar la red.
 - Regresión Windows añadida: red existente, ausente, creación concurrente y fallo de daemon. Ejecución en CI; PowerShell no está disponible en el entorno local del agente.
+
+
+### Conservación de perfiles de Compose
+- Se elimina --profile scheduler del comando global: reemplazaba COMPOSE_PROFILES e impedía arrancar DB, HTTPS y otros servicios configurados.
+- El overlay integrado activa scheduler mediante profiles: !reset []; Compose sigue leyendo los perfiles del .env o del entorno.
+- Prueba CI con Compose real: perfiles del .env, prioridad del entorno, scheduler sin perfiles y servicios opcionales excluidos. Despacho Make validado localmente; renderizado real pendiente de CI.

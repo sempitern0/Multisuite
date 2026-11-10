@@ -30,10 +30,11 @@ with tempfile.TemporaryDirectory(prefix="multisuite-music-") as directory:
         assert all("-v" not in call.split() for call in calls), calls
     calls = run("up")
     assert calls[0] == "network inspect multisuite-accounts", calls
-    assert any("compose.portal-accounts.example.yaml --profile scheduler up -d" in c for c in calls), calls
+    assert any("compose.portal-accounts.example.yaml up -d" in c for c in calls), calls
     (work / "compose.override.yaml").write_text("# host override")
     assert any("-f compose.override.yaml -f deploy/compose.portal-accounts.example.yaml" in c for c in run("up"))
-    assert any("--profile scheduler up -d" in c for c in run("start"))
+    assert any("compose.portal-accounts.example.yaml up -d" in c for c in run("start"))
+    assert all("--profile" not in c for c in run("up"))
     assert all("network" not in c for c in run("up", "MUSIC_AUTO=0"))
     calls = run("restart")
     assert sum("compose.music.yaml" in call for call in calls) == 2, calls

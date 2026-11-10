@@ -34,7 +34,7 @@ MUSIC_AUTO ?= $(if $(wildcard music.env),1,0)
 MUSIC_DC := docker compose --env-file music.env -f compose.music.yaml
 ifeq ($(MUSIC_AUTO),1)
 # Keep host-generated overrides; append service connectivity without rewriting them.
-DC := docker compose -f compose.yaml $(if $(wildcard compose.override.yaml),-f compose.override.yaml) -f deploy/compose.portal-accounts.example.yaml --profile scheduler
+DC := docker compose -f compose.yaml $(if $(wildcard compose.override.yaml),-f compose.override.yaml) -f deploy/compose.portal-accounts.example.yaml
 MUSIC_DC += -f deploy/compose.music-accounts.example.yaml
 endif
 STARTER ?=

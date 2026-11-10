@@ -5,6 +5,8 @@ services:
   composer:
     networks: [internal, devtools, accounts]
   scheduler:
+    # Always active in integrated mode without overriding COMPOSE_PROFILES.
+    profiles: !reset []
     networks: [internal, accounts]
 networks:
   accounts:
