@@ -83,3 +83,11 @@ Usuario reporta spinner y vuelta a portada: /services/music bloqueaba cuentas pe
 - Se elimina --profile scheduler del comando global: reemplazaba COMPOSE_PROFILES e impedía arrancar DB, HTTPS y otros servicios configurados.
 - El overlay integrado activa scheduler mediante profiles: !reset []; Compose sigue leyendo los perfiles del .env o del entorno.
 - Prueba CI con Compose real: perfiles del .env, prioridad del entorno, scheduler sin perfiles y servicios opcionales excluidos. Despacho Make validado localmente; renderizado real pendiente de CI.
+
+
+### Alta manual y nombres de usuario
+- Se integra el contenido de PR #4 en PR #3: alta owner/admin, jerarquía de roles, contraseña temporal obligatoria y aprovisionamiento solo con contraseña personal.
+- Usuario opcional en altas/invitaciones; cuentas previas lo eligen una vez en Perfil con contraseña actual. Migraciones incrementales conservan cuentas existentes.
+- Multisuite admite usuario o correo, conserva 2FA y comparte límite de intentos entre alias. Recuperación sigue por correo. Navidrome usa solo su userName; decisión del usuario confirmada.
+- Renombrado remoto por UUID con verificación de identidad, conservación de ajustes y reintentos tras respuesta perdida; nunca apropiación de cuentas por coincidencia de nombre.
+- QA: migrar, alta manual member/admin, primer cambio, invitación con usuario, login por ambos en portal, renombrado de cuenta existente y login musical. Validación PHP/real Navidrome en CI; no disponibles localmente.

@@ -117,6 +117,24 @@ new #[Title('Profile settings')] class extends Component {
             </div>
         </form>
 
+        <div class="my-6 space-y-4">
+            <flux:heading>Nombre de usuario</flux:heading>
+            @if (session('status'))
+                <p role="status">{{ session('status') }}</p>
+            @endif
+            @if (auth()->user()->username)
+                <flux:text>{{ auth()->user()->username }} · Puedes entrar a Multisuite con este usuario o con tu correo.</flux:text>
+            @else
+                <form method="POST" action="{{ route('username.update') }}" class="space-y-4">
+                    @csrf
+                    <flux:input name="username" label="Nombre de usuario" :value="old('username')" required minlength="3" maxlength="32" autocomplete="username" />
+                    <flux:text>Minúsculas, números, punto, guion o guion bajo. Se elige una sola vez. Tu cuenta de Música conservará sus datos y pasará a utilizar este usuario cuando termine la sincronización.</flux:text>
+                    <flux:input name="current_password" type="password" label="Contraseña actual" required autocomplete="current-password" />
+                    <flux:button type="submit" variant="primary">Guardar usuario</flux:button>
+                </form>
+            @endif
+        </div>
+
         @if ($this->showDeleteUser)
             <livewire:pages::settings.delete-user-form />
         @endif

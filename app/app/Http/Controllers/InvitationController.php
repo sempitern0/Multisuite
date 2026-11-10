@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
+use App\Concerns\UsernameValidationRules;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Notifications\PortalInvitation;
@@ -22,7 +23,7 @@ use Illuminate\View\View;
 
 class InvitationController extends Controller
 {
-    use PasswordValidationRules, ProfileValidationRules;
+    use PasswordValidationRules, ProfileValidationRules, UsernameValidationRules;
 
     public function index(Request $request): View
     {
@@ -91,6 +92,7 @@ class InvitationController extends Controller
     {
         $data = $request->validate([
             'name' => $this->nameRules(),
+            'username' => $this->usernameRules(),
             'password' => $this->passwordRules(),
             'email' => ['prohibited'],
             'role' => ['prohibited'],
@@ -106,6 +108,7 @@ class InvitationController extends Controller
             abort_unless($consumed === 1, 410);
             $user = new User;
             $user->name = $data['name'];
+            $user->username = $data['username'] ?? null;
             $user->email = $invitation->email;
             $user->password = $data['password'];
             $user->role = $invitation->role;

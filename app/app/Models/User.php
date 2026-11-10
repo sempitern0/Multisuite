@@ -20,8 +20,11 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property int $id
  * @property string $role
  * @property string $name
+ * @property string|null $username
  * @property string $email
  * @property CarbonInterface|null $email_verified_at
+ * @property bool $must_change_password
+ * @property int|null $created_by_admin_id
  * @property string $password
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
@@ -54,6 +57,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'service_access' => 'array',
+            'must_change_password' => 'boolean',
         ];
     }
 

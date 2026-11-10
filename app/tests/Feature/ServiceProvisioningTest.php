@@ -128,6 +128,27 @@ class ServiceProvisioningTest extends TestCase
         $this->assertSame('ready', $account->fresh()?->status);
     }
 
+    public function test_rename_retry_preserves_reserved_identity_and_remote_settings(): void
+    {
+        $user = User::factory()->create();
+        app(ServiceAccounts::class)->enroll($user, ['music'], 'password');
+        $account = ServiceAccount::firstOrFail();
+        $user->username = 'new-handle';
+        $user->save();
+        // The remote rename already succeeded, but its response was lost.
+        $remote = ['id' => $account->remote_id, 'userName' => 'new-handle', 'isAdmin' => false, 'scrobbleFilter' => '{"genre":"rock"}'];
+        Http::fake([
+            'music.test/auth/login' => Http::response(['token' => 'token', 'isAdmin' => true]),
+            'music.test/api/user/'.$account->remote_id => Http::response($remote),
+        ]);
+        app(ServiceAccounts::class)->synchronize($account->id);
+        $this->assertSame('ready', $account->fresh()->status);
+        $this->assertSame('new-handle', $account->fresh()->username);
+        Http::assertSent(fn ($request) => $request->method() === 'PUT'
+            && $request['scrobbleFilter'] === $remote['scrobbleFilter']);
+        Http::assertNotSent(fn ($request) => $request->method() === 'POST' && str_ends_with($request->url(), '/api/user'));
+    }
+
     public function test_service_entitlement_cannot_be_forged_at_navigation(): void
     {
         $user = User::factory()->create();

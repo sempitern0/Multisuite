@@ -36,9 +36,22 @@ class NavidromeAccountsTest extends TestCase
         $login = Http::post($url.'/auth/login', ['username' => $user->email, 'password' => 'first-password']);
         $this->assertTrue($login->successful());
         $this->assertFalse($login->json('isAdmin'));
+        $remoteId = ServiceAccount::firstOrFail()->remote_id;
+        $user->username = 'suite-user';
+        $user->save();
         $accounts->changePassword($user, 'second-password');
         $this->assertSame('ready', ServiceAccount::firstOrFail()->status);
-        $this->assertTrue(Http::post($url.'/auth/login', ['username' => $user->email, 'password' => 'second-password'])->successful());
-        $this->assertSame(401, Http::post($url.'/auth/login', ['username' => $user->email, 'password' => 'first-password'])->status());
+        $this->assertTrue(Http::post($url.'/auth/login', ['username' => 'suite-user', 'password' => 'second-password'])->successful());
+        $this->assertSame($remoteId, ServiceAccount::firstOrFail()->remote_id);
+        $this->assertSame('suite-user', ServiceAccount::firstOrFail()->username);
+        $this->assertSame(401, Http::post($url.'/auth/login', ['username' => $user->email, 'password' => 'second-password'])->status());
+        $this->assertSame(401, Http::post($url.'/auth/login', ['username' => 'suite-user', 'password' => 'first-password'])->status());
+        $newUser = User::factory()->create(['email' => 'another@example.com']);
+        $newUser->username = 'another-user';
+        $newUser->save();
+        $accounts->enroll($newUser, ['music'], 'another-password');
+        $accounts->syncUser($newUser);
+        $this->assertTrue(Http::post($url.'/auth/login', ['username' => 'another-user', 'password' => 'another-password'])->successful());
+
     }
 }

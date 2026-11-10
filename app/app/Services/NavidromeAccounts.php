@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ServiceAccount;
+use App\Models\User;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
@@ -12,6 +13,8 @@ class NavidromeAccounts
 {
     public function synchronize(ServiceAccount $account, #[\SensitiveParameter] string $password): void
     {
+        $user = User::findOrFail($account->user_id);
+        $targetUsername = $user->username ?? $account->username;
         $url = rtrim((string) config('provisioning.music.url'), '/');
         $parts = parse_url($url);
         if (! is_array($parts) || empty($parts['host'])
@@ -39,9 +42,9 @@ class NavidromeAccounts
             if ($remote->status() === 404) {
                 $created = $client->post('/api/user', [
                     'id' => $account->remote_id,
-                    'userName' => $account->username,
-                    'email' => $account->username,
-                    'name' => $account->username,
+                    'userName' => $targetUsername,
+                    'email' => $user->email,
+                    'name' => $user->name,
                     'isAdmin' => false,
                     'password' => $password,
                 ]);
@@ -51,42 +54,50 @@ class NavidromeAccounts
                 if (! $created->successful()) {
                     throw new RuntimeException('unavailable');
                 }
-                $this->verify($client, $account);
+                $this->verify($client, $account, $targetUsername);
+                $account->username = $targetUsername;
 
                 return;
             }
             if (! $remote->successful()) {
                 throw new RuntimeException('unavailable');
             }
-            $this->assertIdentity($remote->json(), $account);
+            // A previous rename may have succeeded remotely before its response was lost.
+            $this->assertIdentity($remote->json(), $account, [$account->username, $targetUsername]);
             // Preserve remote settings, including scrobbleFilter, when updating credentials.
             $updated = $client->put('/api/user/'.$account->remote_id, [
                 ...$remote->json(),
                 'password' => $password,
+                'userName' => $targetUsername,
             ]);
+            if (in_array($updated->status(), [409, 422], true)) {
+                throw new RuntimeException('conflict');
+            }
             if (! $updated->successful()) {
                 throw new RuntimeException('unavailable');
             }
-            $this->verify($client, $account);
+            $this->verify($client, $account, $targetUsername);
+            $account->username = $targetUsername;
         } catch (ConnectionException) {
             // Never propagate HTTP exceptions containing credential-bearing requests.
             throw new RuntimeException('unavailable');
         }
     }
 
-    private function verify(PendingRequest $client, ServiceAccount $account): void
+    private function verify(PendingRequest $client, ServiceAccount $account, string $username): void
     {
         $response = $client->get('/api/user/'.$account->remote_id);
         if (! $response->successful()) {
             throw new RuntimeException('unavailable');
         }
-        $this->assertIdentity($response->json(), $account);
+        $this->assertIdentity($response->json(), $account, [$username]);
     }
 
-    private function assertIdentity(mixed $remote, ServiceAccount $account): void
+    /** @param list<string> $usernames */
+    private function assertIdentity(mixed $remote, ServiceAccount $account, array $usernames): void
     {
         if (! is_array($remote) || ($remote['id'] ?? null) !== $account->remote_id
-            || ($remote['userName'] ?? null) !== $account->username || ($remote['isAdmin'] ?? null) !== false) {
+            || ! in_array($remote['userName'] ?? null, $usernames, true) || ($remote['isAdmin'] ?? null) !== false) {
             throw new RuntimeException('conflict');
         }
     }
