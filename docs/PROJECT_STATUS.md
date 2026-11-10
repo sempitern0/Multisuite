@@ -72,3 +72,8 @@ Usuario reporta spinner y vuelta a portada: /services/music bloqueaba cuentas pe
 - start reconcilia contenedores existentes; music-up conserva la conexión al recrear. Overrides del host preservados; MUSIC_AUTO=0 mantiene modo independiente.
 - Validación: pruebas de despacho Make con Docker simulado; ejecución real Windows/Linux pendiente de CI y QA del operador. No se han tocado cuentas ni datos reales.
 - Siguiente comprobación: actualizar rama, make up, config:clear y accounts-status; restablecer contraseña si la credencial pendiente caducó.
+
+
+### Corrección Windows PowerShell 5.1
+- La inspección de una red ausente captura stderr nativo sin abortar antes de crearla. Se comprueban códigos de salida y se conserva el fallo si Docker no permite crear ni consultar la red.
+- Regresión Windows añadida: red existente, ausente, creación concurrente y fallo de daemon. Ejecución en CI; PowerShell no está disponible en el entorno local del agente.

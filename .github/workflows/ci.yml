@@ -287,6 +287,9 @@ jobs:
             }
             Write-Host "Parsed: $($script.Name)"
           }
+      - name: Test automatic network creation on Windows PowerShell 5.1
+        shell: powershell
+        run: ./tests/accounts-network.ps1
       - name: Test native Compose output and exit codes on Windows PowerShell 5.1
         shell: powershell
         run: ./tests/https-compose.ps1
