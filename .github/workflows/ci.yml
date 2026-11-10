@@ -5,6 +5,7 @@ on:
     paths: &infrastructure-paths
       - '.github/workflows/ci.yml'
       - 'compose*.yaml'
+      - 'deploy/compose.*-accounts.example.yaml'
       - 'docker/**'
       - 'scripts/**'
       - 'tests/**'
@@ -28,6 +29,9 @@ jobs:
         run: |
           python3 tests/music-lifecycle.py
           docker compose --env-file music.env.example -f compose.music.yaml config --quiet
+          docker compose --env-file music.env.example -f compose.music.yaml -f deploy/compose.music-accounts.example.yaml config --quiet
+          docker compose -f compose.yaml -f deploy/compose.portal-accounts.example.yaml config --quiet
+          python3 tests/accounts-profiles.py
       - name: Validate POSIX scripts
         run: |
           for script in scripts/*.sh tests/*.sh; do
@@ -284,6 +288,9 @@ jobs:
             }
             Write-Host "Parsed: $($script.Name)"
           }
+      - name: Test automatic network creation on Windows PowerShell 5.1
+        shell: powershell
+        run: ./tests/accounts-network.ps1
       - name: Test native Compose output and exit codes on Windows PowerShell 5.1
         shell: powershell
         run: ./tests/https-compose.ps1

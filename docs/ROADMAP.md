@@ -3,7 +3,7 @@ Revisión 2026-11-08. Sustituye el plan H00–H09 del commit 614ab0f: el usuario
 Contexto: [rescate de private-nas](PRIVATE_NAS_REVIEW.md). Estado: [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 ## Contrato
-Laravel + Livewire solo para índice de servicios y navegación. Cada servicio es dueño de usuarios, contenido, progreso y permisos. No hay SSO implícito. Se empieza por enlaces y se añaden subrutas proxy cuando el servicio lo soporte.
+Laravel + Livewire gestiona índice, invitaciones y aprovisionamiento de identidad en servicios compatibles. Cada servicio conserva contenido, progreso y permisos propios. No hay SSO implícito. Se empieza por enlaces y se añaden subrutas proxy cuando el servicio lo soporte.
 Mantener cuentas individuales, formatos exportables, backups y acceso privado. El portal no necesita montar bibliotecas ni socket Docker.
 
 | Hito | Dependencia | Salida |
@@ -38,11 +38,11 @@ Salida: checklist de NAVIDROME.md ejecutado con muestras propias. YAML validado 
 - [ ] Confirmar make up y stop/start en Docker Desktop con la biblioteca del usuario.
 
 ## P02 — Índice Laravel/Livewire
-- [ ] P02-01 Auditar Foundry y generar starter Livewire en app/; versionar código y lockfiles.
+- [x] P02-01 Auditar Foundry y generar starter Livewire en app/; versionar código y lockfiles.
 - [x] P02-02 Configuración de servicios: id, título, descripción, icono, categoría, URL por entorno y enabled. Sin credenciales.
 - [ ] P02-03 Portada responsive con tarjetas y navegación por teclado; estados vacíos y servicios aún no configurados.
 - [x] P02-04 Ruta /services/{id}: solo IDs del registro y destinos HTTP(S) administrados; 404 para desconocidos, sin redirect arbitrario.
-- [ ] P02-05 Autenticación del portal por invitación si se necesita; registro público cerrado. No replicar cuentas de motores.
+- [x] P02-05 Invitaciones firmadas, roles y registro público cerrado (PR #2). Usuario confirma flujo funcional.
 - [ ] P02-06 Tests de navegación, validación URL y acceso; comprobar 360/768/1440px, foco, contraste, zoom y reduced-motion.
 Salida: abrir Música conduce a Navidrome. La portada funciona aunque Navidrome esté caído y no importa su catálogo.
 
@@ -50,7 +50,7 @@ Salida: abrir Música conduce a Navidrome. La portada funciona aunque Navidrome 
 - [x] P03-01 Elegir enlace directo, subdominio o subruta por servicio. Empezar con enlace para evitar reescrituras.
 - [ ] P03-02 Para /music/: BaseUrl correcto y proxy conserva prefijo; probar login, assets, Range y cliente móvil.
 - [ ] P03-03 Tailscale o alternativa elegida; permisos mínimos, TLS y revocación. No confiar solo en ocultar enlaces.
-- [ ] P03-04 Cuentas propias en cada servicio; documentar login/logout independientes y baja en todos los servicios.
+- [ ] P03-04 Aprovisionamiento y credenciales comunes, permisos por servicio, reconciliación y baja integral. Ver P03-06.
 - [ ] P03-05 Probar desde un segundo dispositivo; localhost nunca representa el servidor remoto.
 Salida: acceso privado funciona, puertos admin/DB no expuestos y URLs directas requieren permisos propios.
 
@@ -74,3 +74,18 @@ Salida: configuración reproducible, TLS/VPN probado, backups recuperables y res
 
 ## Evidencia por tarea
 Registrar commit/PR, comando, resultado, entorno, pruebas pendientes y siguiente acción. Preservar cambios de otras sesiones. No reabrir Hxx salvo nueva decisión explícita.
+
+## P03-06 — Identidad y aprovisionamiento (nuevo alcance autorizado)
+- [ ] P03-06a Seleccionar servicios en invitaciones y crear cuentas Navidrome normales con correo como usuario y contraseña elegida una vez. PR feat/p03-service-accounts.
+- [ ] P03-06b Sincronizar cambios/reset, reintentar fallos con credencial cifrada efímera, mostrar estados y probar API real de versión fijada.
+- [ ] P03-06c Vinculación segura de cuentas preexistentes y alta en servicios añadidos posteriormente. Pedir prueba de titularidad o procedimiento del operador; nunca adoptar por coincidencia de email.
+- [ ] P03-06d Baja integral, revocación de accesos, cambios de permisos/bibliotecas y auditoría administrativa.
+- [ ] P03-06e Entrada web sin segundo login mediante proxy/identidad central, conservando clientes móviles compatibles. Validar confianza de cabeceras y bypass.
+
+## Orden de los siguientes hitos
+1. Aceptar P03-06a/b con QA local, Mailpit, scheduler y Navidrome. Cerrar QA visual P02-03/06.
+2. P03-06c/d — cuentas existentes, incorporación de nuevos servicios a usuarios y bajas/permisos.
+3. P03-03/05 y P03-06e — VPN, TLS, segundo dispositivo y sesión web unificada.
+4. Completar persistencia y restore P01-05 antes del piloto.
+5. P04 — lectura, vídeo y documentación, un servicio y adaptador por PR; offline con sus clientes.
+6. P05 — despliegue reproducible, backups restaurables, piloto familiar y costes.

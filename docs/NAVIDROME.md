@@ -4,7 +4,7 @@ Adaptado de private-nas, rama feat/music-library-player, commit a97d48ee8872dfcd
 ## Qué incluye
 compose.music.yaml es un Compose autónomo con proyecto propio: no combinarlo con compose.yaml. Publica solo 127.0.0.1:4533, conserva /data y monta música en solo lectura. La app de Navidrome es la interfaz de música.
 Se fija navidrome/navidrome:0.64.2, versión estable publicada consultada el 2026-11-08; revisar actualizaciones y fijar digest tras probar la imagen. No reutiliza datos ni migra el antiguo 0.55.2 automáticamente.
-No se crean usuarios/passwords en Git ni se guardan credenciales de Navidrome en Laravel.
+No se crean usuarios/passwords en Git. El aprovisionamiento opcional desde invitaciones se configura en [SERVICE_ACCOUNTS.md](SERVICE_ACCOUNTS.md).
 
 ## Arranque integrado con Make
 Una vez creado music.env y preparadas las carpetas, make up levanta también Navidrome. No copia ni reemplaza configuración o datos. Si music.env no existe, solo arranca Laravel.

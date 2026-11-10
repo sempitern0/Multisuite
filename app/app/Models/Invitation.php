@@ -6,6 +6,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 
 /**
+ * @property list<string>|null $services
  * @property int $id
  * @property string $email
  * @property string $role
@@ -19,7 +20,7 @@ class Invitation extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['expires_at' => 'datetime', 'used_at' => 'datetime'];
+        return ['services' => 'array', 'expires_at' => 'datetime', 'used_at' => 'datetime'];
     }
 
     public function isAcceptable(): bool

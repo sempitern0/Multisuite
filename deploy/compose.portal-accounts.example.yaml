@@ -1,0 +1,14 @@
+# Applied automatically by Make when music.env exists; preserves host overrides.
+services:
+  app:
+    networks: [internal, accounts]
+  composer:
+    networks: [internal, devtools, accounts]
+  scheduler:
+    # Always active in integrated mode without overriding COMPOSE_PROFILES.
+    profiles: !reset []
+    networks: [internal, accounts]
+networks:
+  accounts:
+    external: true
+    name: multisuite-accounts

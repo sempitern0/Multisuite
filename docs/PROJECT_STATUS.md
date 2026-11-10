@@ -55,3 +55,46 @@ PR #1 fusionada en main 6a120319: Application CI y ambos jobs de Infrastructure 
 Sustituye el alta con código manual: retirados /register, su vista, enlaces, acción Fortify de alta y portal:invite. Añadidos owner/admin/member, gestión autorizada con correo y rol, correo de invitación y enlace firmado de un solo uso. Rol/correo/emisor solo proceden de DB; se rechazan campos inyectados y se revalidan permisos del emisor al aceptar.
 Migración incremental invalida invitaciones antiguas y mantiene usuarios previos como miembros. Bootstrap explícito del primer propietario por consola; docs/INVITATIONS.md contiene pasos y límites. Sin mensajes reales ni cambios en usuarios del servidor durante desarrollo.
 Pruebas cubren endpoints eliminados, permisos, firma manipulada, rol inyectado, revocación, reemisión y uso único. Validación runtime pendiente de CI de esta revisión; QA visual/SMTP y concurrencia PostgreSQL pendientes. Continuar en la misma PR #2 hasta aceptar P02-05.
+
+## Iteración P03-06a/b — Cuentas de servicios
+Usuario confirma invitaciones y recuperación operativas. PR #2 fusionada en main 14106fa; 45 tests/142 assertions y CI verde. Nueva decisión autorizada: eliminar altas manuales en servicios mediante aprovisionamiento de identidad.
+Rama feat/p03-service-accounts desde main. Navidrome 0.64.2 mediante API nativa, selección de servicios en invitación, cuenta normal, identificador remoto reservado, cambios/reset de contraseña y reintentos con secreto cifrado efímero. Documentación y configuración: SERVICE_ACCOUNTS.md. No se han enviado mensajes ni modificado cuentas reales.
+Validación de esta iteración pendiente de CI (sin PHP/Docker local). Integración real añadida al job app, un contenedor efímero. Próximos hitos y límites en ROADMAP P03-06. No marcar completo hasta QA de entorno/SMTP/scheduler. Cuentas existentes, SSO y revocación integral pendientes.
+
+PR #3 abierta. CI 42676163302: build, PHPStan, 50 tests/164 assertions e integración real Navidrome (7 assertions) superados; solo formato pendiente en ese commit. El adaptador crea y actualiza credenciales válidas en contenedor 0.64.2. Última revisión añade rechazo de servicios inyectados y diferencia fallos transitorios del login administrativo. Validación final en la PR.
+
+### Corrección de acceso durante aprovisionamiento
+Usuario reporta spinner y vuelta a portada: /services/music bloqueaba cuentas pendientes pero la tarjeta ofrecía Abrir. Se desactiva el botón hasta ready, se añade Actualizar estado y diagnóstico de solo lectura portal:accounts-status {email}. Test cubre cuenta ausente, pendiente, configuración, conflicto, caducada y preparada. La causa operativa en el equipo del usuario sigue pendiente de diagnóstico de red/configuración; este cambio corrige la interfaz, no presupone haber reparado su instancia.
+
+
+### Corrección de arranque de cuentas — 2026-11-10
+- Make aplica automáticamente los overlays de cuentas con music.env, crea/reutiliza la red compartida y activa scheduler.
+- start reconcilia contenedores existentes; music-up conserva la conexión al recrear. Overrides del host preservados; MUSIC_AUTO=0 mantiene modo independiente.
+- Validación: pruebas de despacho Make con Docker simulado; ejecución real Windows/Linux pendiente de CI y QA del operador. No se han tocado cuentas ni datos reales.
+- Siguiente comprobación: actualizar rama, make up, config:clear y accounts-status; restablecer contraseña si la credencial pendiente caducó.
+
+
+### Corrección Windows PowerShell 5.1
+- La inspección de una red ausente captura stderr nativo sin abortar antes de crearla. Se comprueban códigos de salida y se conserva el fallo si Docker no permite crear ni consultar la red.
+- Regresión Windows añadida: red existente, ausente, creación concurrente y fallo de daemon. Ejecución en CI; PowerShell no está disponible en el entorno local del agente.
+
+
+### Conservación de perfiles de Compose
+- Se elimina --profile scheduler del comando global: reemplazaba COMPOSE_PROFILES e impedía arrancar DB, HTTPS y otros servicios configurados.
+- El overlay integrado activa scheduler mediante profiles: !reset []; Compose sigue leyendo los perfiles del .env o del entorno.
+- Prueba CI con Compose real: perfiles del .env, prioridad del entorno, scheduler sin perfiles y servicios opcionales excluidos. Despacho Make validado localmente; renderizado real pendiente de CI.
+
+
+### Alta manual y nombres de usuario
+- Se integra el contenido de PR #4 en PR #3: alta owner/admin, jerarquía de roles, contraseña temporal obligatoria y aprovisionamiento solo con contraseña personal.
+- Usuario opcional en altas/invitaciones; cuentas previas lo eligen una vez en Perfil con contraseña actual. Migraciones incrementales conservan cuentas existentes.
+- Multisuite admite usuario o correo, conserva 2FA y comparte límite de intentos entre alias. Recuperación sigue por correo. Navidrome usa solo su userName; decisión del usuario confirmada.
+- Renombrado remoto por UUID con verificación de identidad, conservación de ajustes y reintentos tras respuesta perdida; nunca apropiación de cuentas por coincidencia de nombre.
+- QA: migrar, alta manual member/admin, primer cambio, invitación con usuario, login por ambos en portal, renombrado de cuenta existente y login musical. Validación PHP/real Navidrome en CI; no disponibles localmente.
+
+
+### Ajuste visual de autenticación y tarjetas
+- El estado de Música y su usuario aparecen dentro de la tarjeta; se elimina el aviso separado de la portada.
+- Autenticación con contenedor más ancho, campos de 52 px, botones de 48 px y texto mayor. Textos más breves; cambio inicial usa «Contraseña actual».
+- Selector de recuperación 2FA accesible con teclado. Sin cambios en autenticación, autorización ni sincronización.
+- QA pendiente: móvil 320/375 px, escritorio, zoom 200 %, tabulación, errores de formulario y estados de Música dentro de la tarjeta.

@@ -79,9 +79,7 @@ new #[Title('Security settings')] class extends Component {
             throw $e;
         }
 
-        Auth::user()->update([
-            'password' => $validated['password'],
-        ]);
+        app(\App\Services\ServiceAccounts::class)->changePassword(Auth::user(), $validated['password']);
 
         $this->reset('current_password', 'password', 'password_confirmation');
 

@@ -42,6 +42,13 @@ class InvitationTest extends TestCase
         return ['name' => 'Guest', 'password' => 'password', 'password_confirmation' => 'password'];
     }
 
+    public function test_invited_user_can_select_a_username(): void
+    {
+        $url = $this->invitation($this->actor('owner'));
+        $this->post($url, [...$this->details(), 'username' => 'guest-user'])->assertRedirect(route('dashboard'));
+        $this->assertDatabaseHas('users', ['email' => 'guest@example.com', 'username' => 'guest-user']);
+    }
+
     public function test_only_authorized_roles_can_send_and_assign_invitations(): void
     {
         Notification::fake();

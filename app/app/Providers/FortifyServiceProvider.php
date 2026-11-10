@@ -3,9 +3,11 @@
 namespace App\Providers;
 
 use App\Actions\Fortify\ResetUserPassword;
+use App\Models\User;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -49,6 +51,12 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureActions(): void
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
+        Fortify::authenticateUsing(function (Request $request): ?User {
+            $identifier = Str::lower(trim((string) $request->input('email')));
+            $user = User::where(str_contains($identifier, '@') ? 'email' : 'username', $identifier)->first();
+
+            return $user && Hash::check((string) $request->input('password'), $user->password) ? $user : null;
+        });
     }
 
     /**
@@ -74,7 +82,9 @@ class FortifyServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('login', function (Request $request) {
-            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
+            $identifier = Str::lower(trim((string) $request->input(Fortify::username())));
+            $user = User::where(str_contains($identifier, '@') ? 'email' : 'username', $identifier)->first();
+            $throttleKey = ($user ? 'user:'.$user->id : 'login:'.$identifier).'|'.$request->ip();
 
             return Limit::perMinute(5)->by($throttleKey);
         });

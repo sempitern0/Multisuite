@@ -1,0 +1,11 @@
+# Use alongside compose.music.yaml, never as the only Compose file.
+services:
+  navidrome:
+    networks: [default, accounts]
+    environment:
+      ND_ENABLEUSEREDITING: 'false'
+networks:
+  default: {}
+  accounts:
+    external: true
+    name: multisuite-accounts
