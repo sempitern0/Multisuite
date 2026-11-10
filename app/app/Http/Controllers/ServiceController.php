@@ -27,6 +27,7 @@ class ServiceController extends Controller
         abort_unless(is_string($url)
             && filter_var($url, FILTER_VALIDATE_URL)
             && is_array($parts)
+            && isset($parts['host'])
             && in_array($parts['scheme'] ?? '', ['http', 'https'], true)
             && ! isset($parts['user']) && ! isset($parts['pass'])
             && ! preg_match('/[\x00-\x20\x7f]/', $url), 404);
