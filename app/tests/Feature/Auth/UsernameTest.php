@@ -64,8 +64,9 @@ class UsernameTest extends TestCase
             $this->post(route('username.update'), ['username' => $invalid, 'current_password' => 'password'])
                 ->assertSessionHasErrors('username');
         }
+        $this->travel(61)->seconds();
         $this->post(route('username.update'), ['username' => 'tony', 'current_password' => 'password'])
-            ->assertSessionHasNoErrors();
+            ->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('tony', $user->fresh()->username);
         $this->post(route('username.update'), ['username' => 'another', 'current_password' => 'password'])
             ->assertSessionHasErrors('username');
