@@ -107,3 +107,7 @@ Validación local: 6 tests Node de reconciliación, destino/origen, flujo de ver
 QA del operador y límites: ver docs/MUSIC_SESSION_BRIDGE.md. No hay SSO ni revocación de otros dispositivos/pestañas ya abiertas. No se ha desplegado ni modificado ninguna cuenta real.
 
 Evidencia inicial PR #5: CI 42902798649 confirma 68 tests/316 assertions, build/Pint e integración Navidrome real tras gateway (1 test/11 assertions). Análisis estático detectó host opcional en parse_url: se añade guard explícito antes de construir el origen. CI de infraestructura confirma pruebas nuevas de proxy real, Range y configuración; se valida el commit corregido antes de marcar lista. QA navegador sigue pendiente.
+
+## Administración básica de usuarios — ampliación de PR #5
+2026-11-10. El usuario confirma funcional el puente musical y solicita incorporar CRUD en esta misma PR. Menú Usuarios restringido a owner/admin; búsqueda, alta existente, edición de nombre/correo/rol y baja confirmada con limpieza de la cuenta musical vinculada. Policies y revalidación bajo bloqueo protegen jerarquía, propietario y propia cuenta. Sin migraciones ni dependencias nuevas. Detalle y QA: [USER_MANAGEMENT.md](USER_MANAGEMENT.md).
+Pruebas añadidas de autorización, recuperación, confirmación y fallo/reintento remoto; integración real Navidrome ampliada con baja. PHP/Docker no disponibles localmente: resultados definitivos en CI de esta revisión. Próximo paso: completar QA con usuarios desechables y revisar PR #5 antes de fusionar; no se ha desplegado ni eliminado ninguna cuenta real.

@@ -15,29 +15,8 @@ class NavidromeAccounts
     {
         $user = User::findOrFail($account->user_id);
         $targetUsername = $user->username ?? $account->username;
-        $url = rtrim((string) config('provisioning.music.url'), '/');
-        $parts = parse_url($url);
-        if (! is_array($parts) || empty($parts['host'])
-            || isset($parts['user']) || isset($parts['pass']) || isset($parts['query']) || isset($parts['fragment'])
-            || ! in_array($parts['scheme'] ?? '', ['https', 'http'], true)
-            || (app()->isProduction() && $parts['scheme'] !== 'https')) {
-            throw new RuntimeException('configuration');
-        }
-
         try {
-            $client = Http::baseUrl($url)->acceptJson()->asJson()->withoutRedirecting()->connectTimeout(3)->timeout(8);
-            $login = $client->post('/auth/login', [
-                'username' => config('provisioning.music.username'),
-                'password' => config('provisioning.music.password'),
-            ]);
-            if ($login->serverError() || $login->status() === 429) {
-                throw new RuntimeException('unavailable');
-            }
-            $token = $login->json('token');
-            if (! $login->successful() || ! is_string($token) || $token === '' || $login->json('isAdmin') !== true) {
-                throw new RuntimeException('configuration');
-            }
-            $client = $client->withHeaders(['X-ND-Authorization' => 'Bearer '.$token]);
+            $client = $this->client();
             $remote = $client->get('/api/user/'.$account->remote_id);
             if ($remote->status() === 404) {
                 $created = $client->post('/api/user', [
@@ -82,6 +61,58 @@ class NavidromeAccounts
             // Never propagate HTTP exceptions containing credential-bearing requests.
             throw new RuntimeException('unavailable');
         }
+    }
+
+    public function remove(ServiceAccount $account): void
+    {
+        try {
+            $client = $this->client();
+            $remote = $client->get('/api/user/'.$account->remote_id);
+            if ($remote->status() === 404) {
+                return;
+            }
+            if (! $remote->successful()) {
+                throw new RuntimeException('unavailable');
+            }
+            $user = User::findOrFail($account->user_id);
+            $this->assertIdentity($remote->json(), $account, [$account->username, $user->username ?? $account->username]);
+            $deleted = $client->delete('/api/user/'.$account->remote_id);
+            if (! $deleted->successful() && $deleted->status() !== 404) {
+                throw new RuntimeException('unavailable');
+            }
+            if ($client->get('/api/user/'.$account->remote_id)->status() !== 404) {
+                throw new RuntimeException('unavailable');
+            }
+        } catch (ConnectionException) {
+            throw new RuntimeException('unavailable');
+        }
+    }
+
+    private function client(): PendingRequest
+    {
+        $url = rtrim((string) config('provisioning.music.url'), '/');
+        $parts = parse_url($url);
+        if (! is_array($parts) || empty($parts['host'])
+            || isset($parts['user']) || isset($parts['pass']) || isset($parts['query']) || isset($parts['fragment'])
+            || ! in_array($parts['scheme'] ?? '', ['https', 'http'], true)
+            || (app()->isProduction() && $parts['scheme'] !== 'https')) {
+            throw new RuntimeException('configuration');
+        }
+
+        $client = Http::baseUrl($url)->acceptJson()->asJson()->withoutRedirecting()->connectTimeout(3)->timeout(8);
+        $login = $client->post('/auth/login', [
+            'username' => config('provisioning.music.username'),
+            'password' => config('provisioning.music.password'),
+        ]);
+        if ($login->serverError() || $login->status() === 429) {
+            throw new RuntimeException('unavailable');
+        }
+        $token = $login->json('token');
+        if (! $login->successful() || ! is_string($token) || $token === '' || $login->json('isAdmin') !== true) {
+            throw new RuntimeException('configuration');
+        }
+
+        return $client->withHeaders(['X-ND-Authorization' => 'Bearer '.$token]);
     }
 
     private function verify(PendingRequest $client, ServiceAccount $account, string $username): void

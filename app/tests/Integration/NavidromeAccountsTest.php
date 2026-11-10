@@ -4,6 +4,7 @@ namespace Tests\Integration;
 
 use App\Models\ServiceAccount;
 use App\Models\User;
+use App\Services\NavidromeAccounts;
 use App\Services\ServiceAccounts;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Response;
@@ -68,6 +69,10 @@ class NavidromeAccountsTest extends TestCase
         $accounts->enroll($newUser, ['music'], 'another-password');
         $accounts->syncUser($newUser);
         $this->assertTrue($this->login($url, ['username' => 'another-user', 'password' => 'another-password'])->successful());
-
+        $account = ServiceAccount::where('user_id', $newUser->id)->firstOrFail();
+        app(NavidromeAccounts::class)->remove($account);
+        $this->assertSame(401, $this->login($url, ['username' => 'another-user', 'password' => 'another-password'])->status());
+        // A retry after a lost response must be safe.
+        app(NavidromeAccounts::class)->remove($account);
     }
 }

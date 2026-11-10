@@ -99,3 +99,6 @@ Registrar commit/PR, comando, resultado, entorno, pruebas pendientes y siguiente
 - [ ] QA navegador real: A → B → A, misma cuenta, almacenamiento bloqueado y pestañas simultáneas.
 - [ ] QA cliente Subsonic y reproducción/seek con archivos de muestra.
 No es SSO ni cierre global: pestañas musicales ya abiertas pueden conservar estado en memoria; otros dispositivos y tokens del servidor no se revocan.
+
+### Ampliación P03: administración de usuarios (PR #5)
+CRUD básico administrativo implementado: listado/búsqueda, alta manual existente, edición limitada y baja coordinada de Música. Pendiente aceptación visual. Ver USER_MANAGEMENT.md. Suspensión, auditoría completa y gestión granular de servicios quedan fuera de este incremento.

@@ -19,8 +19,8 @@
                         <flux:sidebar.item icon="envelope" :href="route('invitations.index')" :current="request()->routeIs('invitations.*')">
                             Invitaciones
                         </flux:sidebar.item>
-                        <flux:sidebar.item icon="user-plus" :href="route('users.create')" :current="request()->routeIs('users.*')">
-                            Crear usuario
+                        <flux:sidebar.item icon="users" :href="route('users.index')" :current="request()->routeIs('users.*')">
+                            Usuarios
                         </flux:sidebar.item>
                     @endcan
                 </flux:sidebar.group>
