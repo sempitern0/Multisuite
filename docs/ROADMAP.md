@@ -107,3 +107,6 @@ CRUD básico administrativo implementado: listado/búsqueda, alta manual existen
 
 ### P03-06d.1 — Auditoría del CRUD administrativo
 Incremento posterior a PR #5: historial protegido de alta manual, edición y baja; persistencia tras eliminar usuarios, metadatos mínimos y escritura transaccional. Implementado en feat/p03-admin-audit, validación en PR. Ver ADMIN_AUDIT.md. No completa P03-06d: quedan permisos por servicio, revocación integral y cobertura de otros flujos. Se prioriza antes de P03-06c para que la próxima ampliación de gestión tenga trazabilidad.
+
+### S02.1 — Inventario observable (primer incremento)
+Comando de solo lectura portal:storage-status, configuración explícita de ubicaciones/grupos, marca de identidad y capacidad conservadora. Ver STORAGE_INVENTORY.md. No completa S02: consumo atribuible, reservas atómicas y cuotas siguen pendientes. Se avanza en esta parte independiente tras integrar el laboratorio S01; los límites de publicación por archivo y QA cliente siguen abiertos.
