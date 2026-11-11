@@ -23,6 +23,11 @@
                             Usuarios
                         </flux:sidebar.item>
                     @endcan
+                    @can('view-admin-audit')
+                        <flux:sidebar.item icon="clock" :href="route('audit.index')" :current="request()->routeIs('audit.*')">
+                            Actividad
+                        </flux:sidebar.item>
+                    @endcan
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 

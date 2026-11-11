@@ -114,3 +114,8 @@ Pruebas añadidas de autorización, recuperación, confirmación y fallo/reinten
 
 ### Revisión de CI — 2026-11-11
 PR #5: 77 tests / 377 aserciones, build, Pint y PHPStan correctos; infraestructura Linux/Windows correcta. La integración real confirmó baja y rechazo de login (12 aserciones), pero su reintento inmediato agotó el límite de autenticación. Se separa ese reintento 21 segundos respetando la protección existente. Resultado definitivo en los checks del nuevo commit. QA visual del CRUD pendiente; sin merge automático.
+
+## P03-06d.1 — Auditoría administrativa (2026-11-11)
+PR #5 fusionada en main 9384276 con CI verde: 77 tests/377 aserciones, integración Navidrome y Linux/Windows. Rama nueva feat/p03-admin-audit desde ese main.
+Se prioriza la trazabilidad del CRUD antes de ampliar permisos/vinculación: eventos de creación manual, modificación y baja, historial protegido/paginado con filtro. Migración incremental, datos mínimos, sin secretos, sin API de modificación del historial. Garantías y QA: ADMIN_AUDIT.md. No cubre todavía invitaciones, acciones de consola ni fallos remotos.
+Pruebas de privacidad, autorización, persistencia histórica, filtros y rollback añadidas; PHP/Docker no disponibles localmente, ejecución en CI de la nueva PR. Próximo paso: comprobar checks y QA; después P03-06c para servicios nuevos en cuentas existentes. No fusionar automáticamente.

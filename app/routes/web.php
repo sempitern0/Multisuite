@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminAuditController;
 use App\Http\Controllers\InitialPasswordController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\ManualUserController;
@@ -26,6 +27,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('services/{service}', ServiceController::class)->where('service', '[a-z0-9-]+')->name('services.open');
 
     Route::middleware(['can:manage-invitations', 'password.confirm', 'throttle:10,1'])->group(function () {
+        Route::get('admin/activity', AdminAuditController::class)->middleware('can:view-admin-audit')->name('audit.index');
         Route::get('users', [UserManagementController::class, 'index'])->name('users.index');
         Route::get('users/{user}/edit', [UserManagementController::class, 'edit'])->name('users.edit');
         Route::put('users/{user}', [UserManagementController::class, 'update'])->name('users.update');
