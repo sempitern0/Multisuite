@@ -33,7 +33,7 @@ class AdminAudit
 
         $event = new AdminAuditEvent;
         $event->actor_id = $actorId;
-        $event->actor_name = $actor?->name ?? 'Sistema';
+        $event->actor_name = $actor->name ?? 'Sistema';
         $event->subject_id = $subjectId;
         $event->subject_name = $subject->name;
         $event->service_id = $service;

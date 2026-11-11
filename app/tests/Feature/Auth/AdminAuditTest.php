@@ -96,6 +96,7 @@ class AdminAuditTest extends TestCase
         $this->assertSame($originalName, $member->fresh()->name);
         $this->assertDatabaseCount('admin_audit_events', 0);
     }
+
     public function test_service_contract_supports_background_actors_and_historical_filters(): void
     {
         $actor = $this->administrator();
@@ -127,5 +128,4 @@ class AdminAuditTest extends TestCase
             $this->assertDatabaseCount('admin_audit_events', 0);
         }
     }
-
 }
