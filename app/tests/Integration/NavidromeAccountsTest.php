@@ -72,7 +72,8 @@ class NavidromeAccountsTest extends TestCase
         $account = ServiceAccount::where('user_id', $newUser->id)->firstOrFail();
         app(NavidromeAccounts::class)->remove($account);
         $this->assertSame(401, $this->login($url, ['username' => 'another-user', 'password' => 'another-password'])->status());
-        // A retry after a lost response must be safe.
+        // Retry in a fresh rate-limit window, as an operator would after a failed response.
+        sleep(21);
         app(NavidromeAccounts::class)->remove($account);
     }
 }
