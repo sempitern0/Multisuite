@@ -32,6 +32,10 @@ jobs:
           docker compose --env-file music.env.example -f compose.music.yaml -f deploy/compose.music-accounts.example.yaml config --quiet
           docker compose -f compose.yaml -f deploy/compose.portal-accounts.example.yaml config --quiet
           python3 tests/accounts-profiles.py
+      - name: Test music session bridge and gateway
+        run: |
+          node --test tests/music-session.test.mjs
+          python3 tests/music-proxy.py
       - name: Validate POSIX scripts
         run: |
           for script in scripts/*.sh tests/*.sh; do

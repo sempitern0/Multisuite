@@ -76,16 +76,29 @@ Salida: configuración reproducible, TLS/VPN probado, backups recuperables y res
 Registrar commit/PR, comando, resultado, entorno, pruebas pendientes y siguiente acción. Preservar cambios de otras sesiones. No reabrir Hxx salvo nueva decisión explícita.
 
 ## P03-06 — Identidad y aprovisionamiento (nuevo alcance autorizado)
-- [ ] P03-06a Seleccionar servicios en invitaciones y crear cuentas Navidrome normales con correo como usuario y contraseña elegida una vez. PR feat/p03-service-accounts.
-- [ ] P03-06b Sincronizar cambios/reset, reintentar fallos con credencial cifrada efímera, mostrar estados y probar API real de versión fijada.
+- [x] P03-06a Seleccionar servicios en invitaciones y crear cuentas Navidrome normales con correo como usuario y contraseña elegida una vez. PR feat/p03-service-accounts.
+- [x] P03-06b Sincronizar cambios/reset, reintentar fallos con credencial cifrada efímera, mostrar estados y probar API real de versión fijada.
 - [ ] P03-06c Vinculación segura de cuentas preexistentes y alta en servicios añadidos posteriormente. Pedir prueba de titularidad o procedimiento del operador; nunca adoptar por coincidencia de email.
 - [ ] P03-06d Baja integral, revocación de accesos, cambios de permisos/bibliotecas y auditoría administrativa.
 - [ ] P03-06e Entrada web sin segundo login mediante proxy/identidad central, conservando clientes móviles compatibles. Validar confianza de cabeceras y bypass.
 
 ## Orden de los siguientes hitos
-1. Aceptar P03-06a/b con QA local, Mailpit, scheduler y Navidrome. Cerrar QA visual P02-03/06.
+1. P03-06e.1 — puente de sesión de navegador compartido, priorizado por el usuario tras aceptar y fusionar PR #3/#4. Validar gateway, identidad coincidente/diferente y clientes. SSO completo permanece pendiente.
 2. P03-06c/d — cuentas existentes, incorporación de nuevos servicios a usuarios y bajas/permisos.
 3. P03-03/05 y P03-06e — VPN, TLS, segundo dispositivo y sesión web unificada.
 4. Completar persistencia y restore P01-05 antes del piloto.
 5. P04 — lectura, vídeo y documentación, un servicio y adaptador por PR; offline con sus clientes.
 6. P05 — despliegue reproducible, backups restaurables, piloto familiar y costes.
+
+
+### P03-06e.1 — Puente de sesión musical (en revisión)
+- [x] Pase cifrado de 60 segundos emitido para la cuenta musical preparada del usuario autenticado.
+- [x] Gateway en el origen de Navidrome, mismo puerto local y activación mediante make up.
+- [x] Mantener sesión coincidente; limpiar credenciales y estado musical persistido si no coincide. Fallo cerrado si no se verifica.
+- [x] Pruebas JS, autorización/caducidad y proxy real/Range; integración API Navidrome pasa por gateway.
+- [ ] QA navegador real: A → B → A, misma cuenta, almacenamiento bloqueado y pestañas simultáneas.
+- [ ] QA cliente Subsonic y reproducción/seek con archivos de muestra.
+No es SSO ni cierre global: pestañas musicales ya abiertas pueden conservar estado en memoria; otros dispositivos y tokens del servidor no se revocan.
+
+### Ampliación P03: administración de usuarios (PR #5)
+CRUD básico administrativo implementado: listado/búsqueda, alta manual existente, edición limitada y baja coordinada de Música. Pendiente aceptación visual. Ver USER_MANAGEMENT.md. Suspensión, auditoría completa y gestión granular de servicios quedan fuera de este incremento.

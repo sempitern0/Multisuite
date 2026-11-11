@@ -1,6 +1,7 @@
 <x-layouts::app :title="__('Crear usuario')">
     <div class="mx-auto flex w-full max-w-2xl flex-col gap-6 py-6">
         <div class="space-y-2">
+            <flux:link :href="route('users.index')">Volver a usuarios</flux:link>
             <flux:heading size="xl">Crear cuenta manualmente</flux:heading>
             <flux:text>Para personas que no pueden recibir una invitación. El administrador facilita una contraseña temporal; la persona deberá cambiarla antes de utilizar Multisuite. No se envía correo.</flux:text>
         </div>

@@ -1,7 +1,14 @@
 # Applied automatically by Make when music.env exists; preserves host overrides.
 services:
   app:
+    environment:
+      NAVIDROME_SESSION_BRIDGE_ENABLED: "${NAVIDROME_SESSION_BRIDGE_ENABLED:-true}"
     networks: [internal, accounts]
+  web:
+    networks:
+      internal: {}
+      accounts:
+        aliases: [multisuite-portal-web]
   composer:
     networks: [internal, devtools, accounts]
   scheduler:
