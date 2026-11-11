@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Enums\ServiceAuditAction;
 use App\Models\AdminAuditEvent;
 use App\Models\User;
 use App\Services\AdminAudit;
@@ -63,7 +64,7 @@ class AdminAuditTest extends TestCase
         $this->delete('/users/'.$member->id, ['confirm_email' => $member->email])->assertRedirect();
         $this->assertModelMissing($member);
         $this->assertDatabaseCount('admin_audit_events', 2);
-        $this->get('/admin/activity?action=user.deleted')->assertOk()->assertSee('Usuario eliminado')->assertDontSee('Usuario modificado');
+        $this->get('/admin/activity?action=user.deleted')->assertOk()->assertSee('Usuario eliminado')->assertViewHas('events', fn ($events) => $events->count() === 1 && $events->first()->action === 'user.deleted');
         $this->get('/admin/activity?action=invalid')->assertSessionHasErrors('action');
     }
 
@@ -95,4 +96,36 @@ class AdminAuditTest extends TestCase
         $this->assertSame($originalName, $member->fresh()->name);
         $this->assertDatabaseCount('admin_audit_events', 0);
     }
+    public function test_service_contract_supports_background_actors_and_historical_filters(): void
+    {
+        $actor = $this->administrator();
+        $musicUser = User::factory()->create(['name' => 'Music subject']);
+        $reader = User::factory()->create(['name' => 'Reader subject']);
+        config(['portal.services.reading' => ['name' => 'Lectura', 'enabled' => false]]);
+        $audit = app(AdminAudit::class);
+        $audit->recordService($actor, $musicUser, 'music', ServiceAuditAction::AccessGranted);
+        $audit->recordService(null, $reader, 'reading', ServiceAuditAction::SyncSucceeded);
+        $event = AdminAuditEvent::where('service_id', 'reading')->firstOrFail();
+        $this->assertNull($event->actor_id);
+        $this->assertSame('Sistema', $event->actor_name);
+        $this->assertSame([], $event->details);
+        $this->assertSame(1, $event->schema_version);
+        // Removing a service from configuration must not hide its historical events.
+        config(['portal.services.reading' => null]);
+        $this->get('/admin/activity?service=reading&action=service.sync_succeeded')
+            ->assertOk()->assertSee('Reader subject')->assertDontSee('Music subject');
+        $this->assertDatabaseCount('admin_audit_events', 2);
+    }
+
+    public function test_unknown_services_are_rejected_without_an_event(): void
+    {
+        $actor = $this->administrator();
+        try {
+            app(AdminAudit::class)->recordService($actor, $actor, 'unknown', ServiceAuditAction::AccountCreated);
+            $this->fail('An unregistered service must be rejected.');
+        } catch (\LogicException) {
+            $this->assertDatabaseCount('admin_audit_events', 0);
+        }
+    }
+
 }

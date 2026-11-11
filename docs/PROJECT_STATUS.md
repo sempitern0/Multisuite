@@ -121,3 +121,6 @@ Se prioriza la trazabilidad del CRUD antes de ampliar permisos/vinculación: eve
 Pruebas de privacidad, autorización, persistencia histórica, filtros y rollback añadidas; PHP/Docker no disponibles localmente, ejecución en CI de la nueva PR. Próximo paso: comprobar checks y QA; después P03-06c para servicios nuevos en cuentas existentes. No fusionar automáticamente.
 
 Validación inicial PR #6: 82 tests/410 aserciones, build/Pint e integración Navidrome (12 aserciones) correctos. PHPStan detectó el contrato de IDs positivos de la tabla de auditoría; se añade comprobación explícita antes de escribir. Validación final en checks del commit corregido.
+
+### Preparación para servicios NAS — ampliación de PR #6
+Contrato tipado ServiceAuditAction y recordService, actor humano/sistema, identificador estable de servicio y versión de esquema. Historial filtrable por servicio y acción, conservado tras retirar el servicio del registro. Segunda migración incremental; sin payloads arbitrarios ni efectos remotos. Pruebas con música y servicio de lectura simulado. Contrato de transacciones/reintentos documentado en ADMIN_AUDIT.md; adaptadores futuros deben conectarlo explícitamente.
