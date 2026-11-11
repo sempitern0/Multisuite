@@ -133,3 +133,6 @@ Contrato tipado ServiceAuditAction y recordService, actor humano/sistema, identi
 
 ## Consolidación de PRs — 2026-11-11
 PR #6 de auditoría fusionada en main def9466 con CI de aplicación verde. PR #7 de planificación ya integrada. PR #8 es el único trabajo abierto: S01, validación del aislamiento de bibliotecas. Su rama incorpora main y conserva la evidencia histórica; las menciones previas a PR #6 pendiente quedan sustituidas por este estado. Investigación y laboratorio siguen pendientes.
+
+## Ejecución S01 — investigación y laboratorio
+Navidrome 0.64.2 contiene asignación por biblioteca, APIs administrativas y tests upstream de aislamiento. Se añaden laboratorio Python/Docker con audio/portadas sintéticos, usuarios A/B, biblioteca global, pruebas negativas y CI filtrado por rutas. Detalles/fuentes en S01_LIBRARY_ISOLATION.md. Validación local: compilación Python y diff --check; Docker no disponible en el entorno del agente. Resultado real pendiente del workflow Library isolation. No se afirma privacidad del despliegue actual ni publicación por archivo sin duplicar contenido.

@@ -41,3 +41,22 @@ Contenido ya descargado o reproducido no puede retirarse del dispositivo mediant
 
 ## Dependencias
 PR #6 de auditoría fusionada en main def9466 e incorporada a esta rama. El contrato de eventos se utilizará al implementar operaciones en hitos posteriores. S01 sigue centrado en investigar y probar el aislamiento.
+
+## Investigación inicial — Navidrome 0.64.2
+Fuentes oficiales leídas el 2026-11-11, fijadas a la versión del Compose:
+- [Modelo Library](https://github.com/navidrome/navidrome/blob/v0.64.2/model/library.go): bibliotecas con ruta y opción defaultNewUsers.
+- [Servicio Library](https://github.com/navidrome/navidrome/blob/v0.64.2/core/library.go): asignación por biblioteca; administradores con acceso total; usuarios normales requieren al menos una biblioteca. La creación valida ruta y dispara escaneo.
+- [API de asignaciones](https://github.com/navidrome/navidrome/blob/v0.64.2/server/nativeapi/library.go) y [router](https://github.com/navidrome/navidrome/blob/v0.64.2/server/nativeapi/native_api.go): CRUD de bibliotecas y asignaciones protegido por middleware administrativo.
+- [Pruebas upstream](https://github.com/navidrome/navidrome/blob/v0.64.2/server/subsonic/e2e/subsonic_multilibrary_test.go): filtrado de búsquedas, listas y bibliotecas.
+- [Stream/download](https://github.com/navidrome/navidrome/blob/v0.64.2/server/subsonic/stream.go): lectura a través de repositorios; requiere comprobación runtime de IDs ajenos.
+
+Conclusión de código: existe una base de autorización por biblioteca; no implica que el despliegue actual de Multisuite tenga contenido privado. El Compose habitual monta una biblioteca común. Publicar un archivo individual sin duplicar/moverlo, preservando referencias, NO queda demostrado por conceder una biblioteca completa. Tampoco se ha establecido una API de subida musical o cuotas por usuario; las opciones de subida de imágenes no equivalen a subida de audio. Administradores Navidrome acceden a todo: privado significa aislamiento entre miembros, no frente al operador.
+
+## Laboratorio implementado
+Requisitos: Python 3 y Docker en ejecución. Linux: `python3 tests/isolation/navidrome.py`; Windows: `py -3 tests/isolation/navidrome.py`. Descarga la imagen fijada si falta. No usa .env ni music.env y no admite URL de un servidor existente.
+
+Cada invocación crea tres WAV/portadas sintéticos, directorios temporales, un contenedor aleatorio, puerto efímero limitado a 127.0.0.1 y credenciales aleatorias solo en memoria. La biblioteca por defecto apunta a una carpeta vacía. Configura bibliotecas A/B/G por API, usuarios normales A+G y B+G, y prueba listado, búsqueda, IDs directos, descarga/stream/portadas, escalada, concesión/retirada usando JWT previo, playlists y reinicio. Los permisos por defecto de nuevos usuarios y su ventana de aprovisionamiento requieren diseño específico antes de producción.
+
+Elimina únicamente su propio contenedor al finalizar y borra sus fixtures temporales; no monta música real ni usa volúmenes compartidos. No imprimir logs completos ni tokens. Si se mata el proceso de forma abrupta, revisar exclusivamente contenedores con etiqueta `multisuite.lab=s01` antes de limpiar manualmente.
+
+Resultado sanitizado: `s01-report.json` (no versionar). CI específico Library isolation se activa únicamente por cambios del laboratorio/workflow o ejecución manual. Un caso negativo sin control positivo no demuestra aislamiento. Este laboratorio no sustituye QA navegador/cliente móvil, pruebas de streams abiertos ni publicación individual/movimientos. No modificar permisos del servicio habitual hasta completar la decisión.
