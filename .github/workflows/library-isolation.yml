@@ -1,0 +1,27 @@
+name: Library isolation
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'tests/isolation/**'
+      - '.github/workflows/library-isolation.yml'
+permissions:
+  contents: read
+concurrency:
+  group: isolation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  navidrome:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Disposable isolation laboratory
+        run: python3 tests/isolation/navidrome.py --report s01-report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: s01-report
+          path: s01-report.json

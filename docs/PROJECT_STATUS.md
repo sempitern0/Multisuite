@@ -119,6 +119,8 @@ Pruebas añadidas de autorización, recuperación, confirmación y fallo/reinten
 ### Revisión de CI — 2026-11-11
 PR #5: 77 tests / 377 aserciones, build, Pint y PHPStan correctos; infraestructura Linux/Windows correcta. La integración real confirmó baja y rechazo de login (12 aserciones), pero su reintento inmediato agotó el límite de autenticación. Se separa ese reintento 21 segundos respetando la protección existente. Resultado definitivo en los checks del nuevo commit. QA visual del CRUD pendiente; sin merge automático.
 
+## Preparación S01 — 2026-11-11
+PR #7 fusionada en main 808cfb3. Nueva rama feat/s01-library-isolation desde ese commit. Alcance, matriz de aceptación y orden de trabajo en S01_LIBRARY_ISOLATION.md. Investigación y laboratorio todavía pendientes; no hay evidencia nueva sobre capacidades de Navidrome. PR de preparación en borrador. Primera tarea: revisar documentación/código de la versión fijada y diseñar fixtures sintéticos aislados. PR #6 permanece abierta e independiente.
 ## P03-06d.1 — Auditoría administrativa (2026-11-11)
 PR #5 fusionada en main 9384276 con CI verde: 77 tests/377 aserciones, integración Navidrome y Linux/Windows. Rama nueva feat/p03-admin-audit desde ese main.
 Se prioriza la trazabilidad del CRUD antes de ampliar permisos/vinculación: eventos de creación manual, modificación y baja, historial protegido/paginado con filtro. Migración incremental, datos mínimos, sin secretos, sin API de modificación del historial. Garantías y QA: ADMIN_AUDIT.md. No cubre todavía invitaciones, acciones de consola ni fallos remotos.
@@ -128,3 +130,9 @@ Validación inicial PR #6: 82 tests/410 aserciones, build/Pint e integración Na
 
 ### Preparación para servicios NAS — ampliación de PR #6
 Contrato tipado ServiceAuditAction y recordService, actor humano/sistema, identificador estable de servicio y versión de esquema. Historial filtrable por servicio y acción, conservado tras retirar el servicio del registro. Segunda migración incremental; sin payloads arbitrarios ni efectos remotos. Pruebas con música y servicio de lectura simulado. Contrato de transacciones/reintentos documentado en ADMIN_AUDIT.md; adaptadores futuros deben conectarlo explícitamente.
+
+## Consolidación de PRs — 2026-11-11
+PR #6 de auditoría fusionada en main def9466 con CI de aplicación verde. PR #7 de planificación ya integrada. PR #8 es el único trabajo abierto: S01, validación del aislamiento de bibliotecas. Su rama incorpora main y conserva la evidencia histórica; las menciones previas a PR #6 pendiente quedan sustituidas por este estado. Investigación y laboratorio siguen pendientes.
+
+## Ejecución S01 — investigación y laboratorio
+Navidrome 0.64.2 contiene asignación por biblioteca, APIs administrativas y tests upstream de aislamiento. Se añaden laboratorio Python/Docker con audio/portadas sintéticos, usuarios A/B, biblioteca global, pruebas negativas y CI filtrado por rutas. Detalles/fuentes en S01_LIBRARY_ISOLATION.md. Validación local: compilación Python y diff --check; Docker no disponible en el entorno del agente. Resultado real pendiente del workflow Library isolation. No se afirma privacidad del despliegue actual ni publicación por archivo sin duplicar contenido.
