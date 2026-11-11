@@ -40,4 +40,4 @@ Contenido ya descargado o reproducido no puede retirarse del dispositivo mediant
 - No marcar S01 completo sin ejecución real. Si Docker no está disponible para el agente, preparar ejecución en CI y dejar cliente móvil/manual claramente pendiente.
 
 ## Dependencias
-PR #6 de auditoría permanece independiente y pendiente de merge. S01 no necesita fusionarla para investigar ni probar permisos. El contrato de eventos se utilizará al implementar operaciones en hitos posteriores.
+PR #6 de auditoría fusionada en main def9466 e incorporada a esta rama. El contrato de eventos se utilizará al implementar operaciones en hitos posteriores. S01 sigue centrado en investigar y probar el aislamiento.

@@ -121,3 +121,15 @@ PR #5: 77 tests / 377 aserciones, build, Pint y PHPStan correctos; infraestructu
 
 ## Preparación S01 — 2026-11-11
 PR #7 fusionada en main 808cfb3. Nueva rama feat/s01-library-isolation desde ese commit. Alcance, matriz de aceptación y orden de trabajo en S01_LIBRARY_ISOLATION.md. Investigación y laboratorio todavía pendientes; no hay evidencia nueva sobre capacidades de Navidrome. PR de preparación en borrador. Primera tarea: revisar documentación/código de la versión fijada y diseñar fixtures sintéticos aislados. PR #6 permanece abierta e independiente.
+## P03-06d.1 — Auditoría administrativa (2026-11-11)
+PR #5 fusionada en main 9384276 con CI verde: 77 tests/377 aserciones, integración Navidrome y Linux/Windows. Rama nueva feat/p03-admin-audit desde ese main.
+Se prioriza la trazabilidad del CRUD antes de ampliar permisos/vinculación: eventos de creación manual, modificación y baja, historial protegido/paginado con filtro. Migración incremental, datos mínimos, sin secretos, sin API de modificación del historial. Garantías y QA: ADMIN_AUDIT.md. No cubre todavía invitaciones, acciones de consola ni fallos remotos.
+Pruebas de privacidad, autorización, persistencia histórica, filtros y rollback añadidas; PHP/Docker no disponibles localmente, ejecución en CI de la nueva PR. Próximo paso: comprobar checks y QA; después P03-06c para servicios nuevos en cuentas existentes. No fusionar automáticamente.
+
+Validación inicial PR #6: 82 tests/410 aserciones, build/Pint e integración Navidrome (12 aserciones) correctos. PHPStan detectó el contrato de IDs positivos de la tabla de auditoría; se añade comprobación explícita antes de escribir. Validación final en checks del commit corregido.
+
+### Preparación para servicios NAS — ampliación de PR #6
+Contrato tipado ServiceAuditAction y recordService, actor humano/sistema, identificador estable de servicio y versión de esquema. Historial filtrable por servicio y acción, conservado tras retirar el servicio del registro. Segunda migración incremental; sin payloads arbitrarios ni efectos remotos. Pruebas con música y servicio de lectura simulado. Contrato de transacciones/reintentos documentado en ADMIN_AUDIT.md; adaptadores futuros deben conectarlo explícitamente.
+
+## Consolidación de PRs — 2026-11-11
+PR #6 de auditoría fusionada en main def9466 con CI de aplicación verde. PR #7 de planificación ya integrada. PR #8 es el único trabajo abierto: S01, validación del aislamiento de bibliotecas. Su rama incorpora main y conserva la evidencia histórica; las menciones previas a PR #6 pendiente quedan sustituidas por este estado. Investigación y laboratorio siguen pendientes.
