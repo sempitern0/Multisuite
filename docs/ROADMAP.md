@@ -4,7 +4,7 @@ Contexto: [rescate de private-nas](PRIVATE_NAS_REVIEW.md). Estado: [PROJECT_STAT
 
 ## Contrato
 Laravel + Livewire gestiona índice, invitaciones y aprovisionamiento de identidad en servicios compatibles. Cada servicio conserva contenido, progreso y permisos propios. No hay SSO implícito. Se empieza por enlaces y se añaden subrutas proxy cuando el servicio lo soporte.
-Mantener cuentas individuales, formatos exportables, backups y acceso privado. El portal no necesita montar bibliotecas ni socket Docker.
+Mantener cuentas individuales, formatos exportables, backups y acceso privado. El portal no recibe acceso al socket Docker. El eventual acceso restringido a bibliotecas para incorporar contenido debe diseñarse y validarse en S03; todavía no está habilitado.
 
 | Hito | Dependencia | Salida |
 | --- | --- | --- |
@@ -82,16 +82,18 @@ Registrar commit/PR, comando, resultado, entorno, pruebas pendientes y siguiente
 - [ ] P03-06d Baja integral, revocación de accesos, cambios de permisos/bibliotecas y auditoría administrativa.
 - [ ] P03-06e Entrada web sin segundo login mediante proxy/identidad central, conservando clientes móviles compatibles. Validar confianza de cabeceras y bypass.
 
-## Orden de los siguientes hitos
-1. P03-06e.1 — puente de sesión de navegador compartido, priorizado por el usuario tras aceptar y fusionar PR #3/#4. Validar gateway, identidad coincidente/diferente y clientes. SSO completo permanece pendiente.
-2. P03-06c/d — cuentas existentes, incorporación de nuevos servicios a usuarios y bajas/permisos.
-3. P03-03/05 y P03-06e — VPN, TLS, segundo dispositivo y sesión web unificada.
-4. Completar persistencia y restore P01-05 antes del piloto.
-5. P04 — lectura, vídeo y documentación, un servicio y adaptador por PR; offline con sus clientes.
-6. P05 — despliegue reproducible, backups restaurables, piloto familiar y costes.
+## Orden vigente de los siguientes hitos — 2026-11-11
+Decisión confirmada: contenido personal y publicación administrativa tienen prioridad sobre ampliar cuentas o servicios. Plan operativo: [CONTENT_STORAGE.md](CONTENT_STORAGE.md).
+1. S01 — comprobar aislamiento personal/global y capacidades reales de Navidrome.
+2. S02 — ubicaciones, capacidad compartida, cuotas y reservas para uno o varios discos/particiones.
+3. S03 — incorporación privada de contenido con límites y recuperación de fallos.
+4. S04 — publicación/retirada administrativa y permisos efectivos del servicio.
+5. S05 — movimientos entre volúmenes y backup/restore comprobado.
+6. Retomar P03-06c/d y P03-03/05: cuentas, revocación, VPN/TLS y segundo dispositivo.
+7. P04/P05: nuevos servicios uno por PR, despliegue reproducible y piloto familiar.
+La auditoría de PR #6 es una base transversal pendiente de merge; no se fusiona por aprobar este plan. El puente de sesión de PR #5 ya está integrado; SSO completo sigue pendiente.
 
-
-### P03-06e.1 — Puente de sesión musical (en revisión)
+### P03-06e.1 — Puente de sesión musical (integrado, QA ampliado pendiente)
 - [x] Pase cifrado de 60 segundos emitido para la cuenta musical preparada del usuario autenticado.
 - [x] Gateway en el origen de Navidrome, mismo puerto local y activación mediante make up.
 - [x] Mantener sesión coincidente; limpiar credenciales y estado musical persistido si no coincide. Fallo cerrado si no se verifica.
