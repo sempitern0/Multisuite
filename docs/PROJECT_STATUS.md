@@ -1,4 +1,8 @@
 # Estado de Multisuite
+
+## Prioridad vigente — 2026-11-11
+El usuario confirma contenido personal por defecto y publicación global decidida por administrador, con gestión de espacio para uno o varios discos/particiones. El siguiente hito es S01 de [CONTENT_STORAGE.md](CONTENT_STORAGE.md): validar capacidades e aislamiento real de Navidrome. Este orden sustituye las próximas acciones históricas que aparecen más abajo. PR #5 integrada; PR #6 de auditoría lista técnicamente y pendiente de merge. No se han modificado bibliotecas ni almacenamiento reales.
+
 2026-11-08. Decisión vigente: portal Laravel/Livewire de enlaces a servicios existentes. Sustituye Hxx; ver [ROADMAP.md](ROADMAP.md).
 
 | Hito | Estado | Evidencia |
