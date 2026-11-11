@@ -151,7 +151,6 @@ class Lab:
                 self.check(who + ': cross-library ' + endpoint + ' denied', self.denied(who, endpoint, id=tracks[other]['id'], format='raw'))
             status, audio = self.sub(who, 'download', id=tracks[own]['id'])
             self.check(who + ': own download positive control', status == 200 and audio.startswith(b'RIFF'))
-            cover = self.subjson(who, 'getSong', id=tracks[other]['id'])
             # Use the admin-visible cover ID, not a guessed URL.
             cover_id = self.subjson('admin', 'getSong', id=tracks[other]['id'])['song'].get('coverArt')
             if not cover_id:
@@ -172,6 +171,8 @@ class Lab:
         entries = self.subjson('bob', 'getPlaylist', id=playlist)['playlist'].get('entry', [])
         self.check('revoke: playlist cannot expose A', all(s['id'] != tracks['A']['id'] for s in entries))
         docker('restart', container)
+        # Docker may reassign an ephemeral published port after restart.
+        self.url = 'http://127.0.0.1:' + docker('port', container, '4533/tcp').split(':')[-1]
         wait_server(self)
         self.check('restart: IDs stable', {s['id'] for s in self.native('song')} == {s['id'] for s in songs})
         self.check('restart: permissions persist', tracks['A']['id'] not in {s['id'] for s in self.native('song', who='bob')})
@@ -216,6 +217,8 @@ def main():
         if lab:
             report['checks'] = lab.results
         pathlib.Path(args.report).write_text(json.dumps(report, indent=2) + '\n')
+        if 'setup_error' in report:
+            print('Setup error: ' + report['setup_error'])
     if not report['complete'] or not all(c['passed'] for c in report['checks']):
         print('S01 failed; see sanitized report.')
         return 1
