@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Concerns\ProfileValidationRules;
 use App\Models\Invitation;
 use App\Models\User;
+use App\Services\AdminAudit;
 use App\Services\NavidromeAccounts;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,6 +68,7 @@ class UserManagementController extends Controller
             [$actor, $target] = $this->lockedUsers($request->user()->id, $user->id);
             Gate::forUser($actor)->authorize('update', $target);
             abort_unless($actor->canInviteRole($data['role']), 403);
+            $previousRole = $target->role;
             if ($target->email !== $data['email']) {
                 if (! isset($data['email_confirmed'])) {
                     throw ValidationException::withMessages(['email_confirmed' => 'Confirma que has comprobado la titularidad del nuevo correo.']);
@@ -78,7 +80,11 @@ class UserManagementController extends Controller
             $target->name = $data['name'];
             $target->email = $data['email'];
             $target->role = $data['role'];
+            $changedFields = array_keys($target->getDirty());
             $target->save();
+            if (array_intersect($changedFields, ['name', 'email', 'role']) !== []) {
+                app(AdminAudit::class)->record($actor, $target, 'user.updated', $changedFields, $previousRole);
+            }
         });
 
         return redirect()->route('users.edit', $user)->with('status', 'Usuario actualizado.');
@@ -108,6 +114,7 @@ class UserManagementController extends Controller
             Password::broker()->deleteToken($target);
             Invitation::where('email', $target->email)->update(['expires_at' => now()]);
             $target->delete();
+            app(AdminAudit::class)->record($actor, $target, 'user.deleted');
         });
 
         return redirect()->route('users.index')->with('status', 'Usuario eliminado.');

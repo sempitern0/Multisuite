@@ -104,3 +104,6 @@ No es SSO ni cierre global: pestañas musicales ya abiertas pueden conservar est
 
 ### Ampliación P03: administración de usuarios (PR #5)
 CRUD básico administrativo implementado: listado/búsqueda, alta manual existente, edición limitada y baja coordinada de Música. Pendiente aceptación visual. Ver USER_MANAGEMENT.md. Suspensión, auditoría completa y gestión granular de servicios quedan fuera de este incremento.
+
+### P03-06d.1 — Auditoría del CRUD administrativo
+Incremento posterior a PR #5: historial protegido de alta manual, edición y baja; persistencia tras eliminar usuarios, metadatos mínimos y escritura transaccional. Implementado en feat/p03-admin-audit, validación en PR. Ver ADMIN_AUDIT.md. No completa P03-06d: quedan permisos por servicio, revocación integral y cobertura de otros flujos. Se prioriza antes de P03-06c para que la próxima ampliación de gestión tenga trazabilidad.

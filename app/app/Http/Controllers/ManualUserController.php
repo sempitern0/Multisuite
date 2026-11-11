@@ -7,6 +7,7 @@ use App\Concerns\ProfileValidationRules;
 use App\Concerns\UsernameValidationRules;
 use App\Models\Invitation;
 use App\Models\User;
+use App\Services\AdminAudit;
 use App\Services\ServiceAccounts;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -61,6 +62,7 @@ class ManualUserController extends Controller
             $user->must_change_password = true;
             $user->created_by_admin_id = $request->user()->id;
             $user->save();
+            app(AdminAudit::class)->record($request->user(), $user, 'user.created');
 
             if ($invitation) {
                 $invitation->expires_at = now();
