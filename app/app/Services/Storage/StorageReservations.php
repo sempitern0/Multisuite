@@ -20,7 +20,7 @@ class StorageReservations
 
     public function reserve(User $user, string $poolId, int $bytes, string $key): StorageReservation
     {
-        $this->validateBytes($bytes, false);
+        $bytes = $this->validateBytes($bytes, false);
         if (! Str::isUuid($key)) {
             throw new RuntimeException('La clave de operación debe ser un UUID.');
         }
@@ -45,13 +45,13 @@ class StorageReservations
                 || $bytes > $headroom - $pool->reserved_bytes) {
                 throw new RuntimeException('Cuota o espacio disponible insuficiente.');
             }
-            $pool->reserved_bytes += $bytes;
-            $quota->reserved_bytes += $bytes;
+            $pool->reserved_bytes = $this->nonnegative($pool->reserved_bytes + $bytes);
+            $quota->reserved_bytes = $this->nonnegative($quota->reserved_bytes + $bytes);
             $pool->save();
             $quota->save();
             $reservation = new StorageReservation;
             $reservation->id = $key;
-            $reservation->user_id = $user->id;
+            $reservation->user_id = $this->nonnegative($user->id);
             $reservation->pool_id = $poolId;
             $reservation->bytes = $bytes;
             $reservation->state = 'reserved';
@@ -65,7 +65,7 @@ class StorageReservations
     // Trusted finalizer only: caller must already have verified actual bytes on disk.
     public function commit(User $user, string $key, int $actualBytes): StorageReservation
     {
-        $this->validateBytes($actualBytes, true);
+        $actualBytes = $this->validateBytes($actualBytes, true);
 
         return $this->transition($user, $key, 'committed', $actualBytes);
     }
@@ -97,14 +97,14 @@ class StorageReservations
             if ($pool->reserved_bytes < $reservation->bytes || $quota->reserved_bytes < $reservation->bytes) {
                 throw new RuntimeException('Contabilidad inconsistente: requiere reconciliación.');
             }
-            $pool->reserved_bytes -= $reservation->bytes;
-            $quota->reserved_bytes -= $reservation->bytes;
-            $pool->used_bytes += $actual ?? 0;
-            $quota->used_bytes += $actual ?? 0;
+            $pool->reserved_bytes = $this->nonnegative($pool->reserved_bytes - $reservation->bytes);
+            $quota->reserved_bytes = $this->nonnegative($quota->reserved_bytes - $reservation->bytes);
+            $pool->used_bytes = $this->nonnegative($pool->used_bytes + ($actual ?? 0));
+            $quota->used_bytes = $this->nonnegative($quota->used_bytes + ($actual ?? 0));
             $pool->save();
             $quota->save();
             $reservation->state = $state;
-            $reservation->actual_bytes = $actual;
+            $reservation->actual_bytes = $actual === null ? null : $this->nonnegative($actual);
             $reservation->save();
 
             return $reservation;
@@ -113,14 +113,14 @@ class StorageReservations
 
     public function setUserQuota(User $user, int $bytes): void
     {
-        $this->validateBytes($bytes, true);
+        $bytes = $this->validateBytes($bytes, true);
         DB::transaction(function () use ($user, $bytes): void {
             User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             $quota = UserStorageQuota::whereKey($user->id)->lockForUpdate()->first() ?? new UserStorageQuota;
             if ($bytes < ($quota->used_bytes ?? 0) + ($quota->reserved_bytes ?? 0)) {
                 throw new RuntimeException('El límite no puede ser inferior al espacio contabilizado.');
             }
-            $quota->user_id = $user->id;
+            $quota->user_id = $this->nonnegative($user->id);
             $quota->limit_bytes = $bytes;
             $quota->save();
         });
@@ -128,7 +128,7 @@ class StorageReservations
 
     public function setPoolLimit(string $id, int $bytes): void
     {
-        $this->validateBytes($bytes, true);
+        $bytes = $this->validateBytes($bytes, true);
         $this->headroom($id);
         DB::transaction(function () use ($id, $bytes): void {
             // A stable configured pool is provisioned by the operator, not by uploads.
@@ -173,10 +173,23 @@ class StorageReservations
         }
     }
 
-    private function validateBytes(int $bytes, bool $zeroAllowed): void
+    /** @return int<0, max> */
+    private function validateBytes(int $bytes, bool $zeroAllowed): int
     {
         if ($bytes < ($zeroAllowed ? 0 : 1) || $bytes > self::MAX_BYTES) {
             throw new RuntimeException('Tamaño fuera de los límites admitidos.');
         }
+
+        return $this->nonnegative($bytes);
+    }
+
+    /** @return int<0, max> */
+    private function nonnegative(int $value): int
+    {
+        if ($value < 0) {
+            throw new RuntimeException('Contabilidad negativa: requiere reconciliación.');
+        }
+
+        return $value;
     }
 }

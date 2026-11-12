@@ -60,7 +60,7 @@ jobs:
         run: npm run build
       - name: Check formatting
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
-        run: composer lint:check
+        run: vendor/bin/pint --test -v
       - name: Static analysis
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: composer types:check

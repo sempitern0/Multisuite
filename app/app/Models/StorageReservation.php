@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/** @property \Carbon\CarbonImmutable $expires_at */
 class StorageReservation extends Model
 {
     public $incrementing = false;
