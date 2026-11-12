@@ -45,9 +45,7 @@ class PrivateUploadController extends Controller
             // owns deletion. Never release from an uncertain database commit outcome.
             throw ValidationException::withMessages(['upload' => 'Operación no completada. Comprueba el estado, los límites y la ubicación; cancela los intentos incompletos.']);
         } finally {
-            if (is_resource($input)) {
-                fclose($input);
-            }
+            fclose($input);
         }
 
         return response()->json(['id' => $upload->id, 'state' => $upload->state]);
