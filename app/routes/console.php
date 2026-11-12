@@ -9,3 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('portal:sync-accounts')->everyMinute()->withoutOverlapping();
+
+Schedule::command('portal:uploads-cleanup')->everyTenMinutes()->withoutOverlapping();

@@ -39,7 +39,7 @@ class StorageQuota extends Command
 
             return self::FAILURE;
         }
-        $this->info('Límite actualizado. Las subidas siguen deshabilitadas.');
+        $this->info('Límite actualizado. La recepción depende de NAS_UPLOADS_ENABLED y de la ubicación privada configurada.');
 
         return self::SUCCESS;
     }
