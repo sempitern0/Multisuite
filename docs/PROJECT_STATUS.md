@@ -143,3 +143,5 @@ Nueva rama feat/s02-storage-inventory: inventario de solo lectura por consola, u
 
 ## S02.2 — Reservas y cuotas (2026-11-12)
 Nueva rama feat/s02-storage-reservations basada en PR #9 abierta, sin fusionarla. Registro transaccional con cuotas usuario/grupo, UUID idempotente, confirmación/liberación y caducidad conservadora. Comando del operador para límites; protección de baja con espacio contabilizado. Migración incremental. Sin endpoints de subida ni escrituras de contenido. Pruebas funcionales y carrera real PostgreSQL añadidas; ejecución en CI. Contrato en STORAGE_RESERVATIONS.md. Sigue pendiente integrar escritores/limpieza/reconciliación y política global antes de S03.
+
+Validación inicial S02.2 (PR #10): 97 tests/459 aserciones, integración real Navidrome y prueba multiproceso PostgreSQL superadas. PHPStan verde tras precisar tipos de contadores no negativos; se corrige formato final. No habilita escrituras y permanece dependiente de PR #9.

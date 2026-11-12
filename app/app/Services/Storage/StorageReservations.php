@@ -36,6 +36,7 @@ class StorageReservations
                 if ($existing->pool_id !== $poolId || $existing->bytes !== $bytes) {
                     throw new RuntimeException('La clave ya corresponde a otra operación.');
                 }
+
                 // Return the same lifecycle, never allocate again for a terminal/expired key.
                 return $existing;
             }
