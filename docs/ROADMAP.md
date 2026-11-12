@@ -110,3 +110,6 @@ Incremento posterior a PR #5: historial protegido de alta manual, edición y baj
 
 ### S02.1 — Inventario observable (primer incremento)
 Comando de solo lectura portal:storage-status, configuración explícita de ubicaciones/grupos, marca de identidad y capacidad conservadora. Ver STORAGE_INVENTORY.md. No completa S02: consumo atribuible, reservas atómicas y cuotas siguen pendientes. Se avanza en esta parte independiente tras integrar el laboratorio S01; los límites de publicación por archivo y QA cliente siguen abiertos.
+
+### S02.2 — Reservas y cuotas transaccionales
+Implementación interna sobre S02.1 en PR dependiente: límites por usuario/grupo, reservas idempotentes y transición a consumo/liberación. Caducidad sin recuperar espacio antes de verificar limpieza. Prueba de concurrencia PostgreSQL. Ver STORAGE_RESERVATIONS.md. No habilita subidas; S02/S03 requieren reconciliación y finalización física antes de uso real.
