@@ -7,6 +7,7 @@ use App\Models\Invitation;
 use App\Models\User;
 use App\Services\AdminAudit;
 use App\Services\NavidromeAccounts;
+use App\Services\Storage\StorageReservations;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -100,6 +101,7 @@ class UserManagementController extends Controller
             if ($data['confirm_email'] !== $target->email) {
                 throw ValidationException::withMessages(['confirm_email' => 'Escribe el correo de esta cuenta para confirmar.']);
             }
+            app(StorageReservations::class)->prepareUserDeletion($target);
             $accounts = $target->serviceAccounts()->orderBy('id')->lockForUpdate()->get();
             if ($accounts->contains(fn ($account) => $account->service !== 'music')) {
                 throw ValidationException::withMessages(['deletion' => 'Esta cuenta tiene un servicio cuya baja todavía no está automatizada.']);

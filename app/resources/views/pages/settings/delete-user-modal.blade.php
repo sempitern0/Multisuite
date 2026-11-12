@@ -2,7 +2,10 @@
 
 use App\Concerns\PasswordValidationRules;
 use App\Livewire\Actions\Logout;
+use App\Models\User;
+use App\Services\Storage\StorageReservations;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 new class extends Component {
@@ -19,7 +22,12 @@ new class extends Component {
             'password' => $this->currentPasswordRules(),
         ]);
 
-        tap(Auth::user(), $logout(...))->delete();
+        DB::transaction(function (): void {
+            $user = User::whereKey(Auth::id())->lockForUpdate()->firstOrFail();
+            app(StorageReservations::class)->prepareUserDeletion($user);
+            $user->delete();
+        });
+        $logout();
 
         $this->redirect('/', navigate: true);
     }
@@ -36,6 +44,8 @@ new class extends Component {
         </div>
 
         <flux:input wire:model="password" :label="__('Password')" type="password" viewable />
+
+        <flux:error name="deletion" />
 
         <div class="flex justify-end space-x-2 rtl:space-x-reverse">
             <flux:modal.close>

@@ -17,6 +17,18 @@ jobs:
   application:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      storage-postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: multisuite_storage_ci
+          POSTGRES_USER: storage_ci
+          POSTGRES_PASSWORD: disposable-storage-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U storage_ci -d multisuite_storage_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     defaults:
       run:
         working-directory: app
@@ -27,7 +39,7 @@ jobs:
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
         with:
           php-version: '8.4'
-          extensions: mbstring, intl, pdo_sqlite
+          extensions: mbstring, intl, pdo_sqlite, pdo_pgsql
           tools: composer:v2
           coverage: none
       - uses: actions/setup-node@v4
@@ -55,6 +67,17 @@ jobs:
       - name: Feature and unit tests
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: php artisan test
+      - name: PostgreSQL storage concurrency
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        env:
+          STORAGE_CONCURRENCY_TEST: '1'
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: '5432'
+          DB_DATABASE: multisuite_storage_ci
+          DB_USERNAME: storage_ci
+          DB_PASSWORD: disposable-storage-ci
+        run: php artisan test tests/Integration/StorageConcurrencyTest.php
       - name: Navidrome account integration
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: |
