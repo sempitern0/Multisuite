@@ -113,3 +113,6 @@ Comando de solo lectura portal:storage-status, configuración explícita de ubic
 
 ### S02.2 — Reservas y cuotas transaccionales
 Implementación interna sobre S02.1 en PR dependiente: límites por usuario/grupo, reservas idempotentes y transición a consumo/liberación. Caducidad sin recuperar espacio antes de verificar limpieza. Prueba de concurrencia PostgreSQL. Ver STORAGE_RESERVATIONS.md. No habilita subidas; S02/S03 requieren reconciliación y finalización física antes de uso real.
+
+### S03.1 — Recepción privada conectada a reservas
+Implementados contrato HTTP de dos pasos, escritor limitado/verificado y limpieza de intentos pendientes. Detalles y QA en PRIVATE_UPLOADS.md. No completa S03: quedan interfaz, reconciliación de confirmados y conexión a bibliotecas privadas. Sin publicación en Navidrome ni cambios automáticos de mounts.

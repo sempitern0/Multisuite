@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminAuditController;
 use App\Http\Controllers\InitialPasswordController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\ManualUserController;
+use App\Http\Controllers\PrivateUploadController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\UsernameController;
@@ -23,6 +24,12 @@ Route::middleware(['auth'])->group(function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('settings/username', [UsernameController::class, 'update'])->middleware('throttle:5,1')->name('username.update');
+    Route::prefix('uploads')->middleware('throttle:20,1')->group(function () {
+        Route::post('/', [PrivateUploadController::class, 'store']);
+        Route::get('{key}', [PrivateUploadController::class, 'show'])->whereUuid('key');
+        Route::put('{key}', [PrivateUploadController::class, 'update'])->whereUuid('key');
+        Route::delete('{key}', [PrivateUploadController::class, 'destroy'])->whereUuid('key');
+    });
     Route::view('dashboard', 'dashboard')->name('dashboard');
     Route::get('services/{service}', ServiceController::class)->where('service', '[a-z0-9-]+')->name('services.open');
 
