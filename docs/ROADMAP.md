@@ -11,11 +11,13 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 
 ## Orden vigente
 1. **S02.3** — GUI de almacenamiento: PR #12 lista para merge.
-2. **S03.2** — Interfaz de subida privada y reconciliación de archivos confirmados.
-3. **S04** — Publicación/retirada administrativa.
-4. **S05** — Movimientos entre discos y backup/restore comprobado.
-5. **P03** — Cuentas existentes, baja integral, VPN/TLS y segundo dispositivo.
-6. **P04/P05** — Nuevos servicios (uno por PR), despliegue reproducible y piloto familiar.
+2. **S03.2** — Mis archivos: carpetas, subida web, descarga y vista previa (rama `feat/s03-my-files`).
+3. **S03.3** — Papelera y versiones con purga verificada que devuelve cuota.
+4. **S03.4** — Descargas ZIP (selección, carpeta, «Exportar todo») en segundo plano.
+5. **S05.1** — Backup del NAS (DB, servicios y archivos) a destino externo con restauración ensayada.
+6. **S04** — Publicación/retirada administrativa y movimientos entre discos.
+7. **P03** — Cuentas existentes, baja integral, VPN/TLS y segundo dispositivo.
+8. **P04/P05** — Nuevos servicios (uno por PR), despliegue reproducible y piloto familiar.
 
 ## S02 — Almacenamiento y cuotas
 - [ ] S02.3 QA ampliado (opcional antes del piloto): móvil 360 px, teclado, zoom 200 %, disco desconectado, conflicto de grupos, sobreasignación, admin frente a owner.
@@ -25,21 +27,22 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - [ ] Comando de reconciliación para reservas sin subida asociada (solo tras verificación física).
 - [ ] Opcional operador: guía de XFS project quota como defensa adicional.
 
-## S03 — Incorporación privada de contenido
-- [ ] Interfaz de subida para miembros (selector, progreso, cancelación) sobre el contrato HTTP existente.
-- [ ] Revisar límites Nginx/PHP (`client_max_body_size`, timeouts, temporales) antes de admitir archivos grandes; valorar subida por trozos/reanudable.
-- [ ] Listado, descarga y borrado de contenido propio con decremento verificado del consumo.
-- [ ] Reconciliar `ready` ausentes, corruptos o restaurados desde backup.
-- [ ] Conectar la ubicación privada con bibliotecas por usuario de Navidrome (escaneo bajo demanda). Archivos comprimidos: deshabilitados hasta soportarlos de forma segura.
+## S03 — Mis archivos (decisión 2026-11-13: dentro del portal, carpetas propias)
+- [ ] S03.2 Carpetas por persona, subida web con progreso, listado, renombrado, descarga individual y vista previa de solo lectura (imágenes, PDF, Markdown saneado, texto). Tipos de documento ampliados (ofimática, EPUB) solo para descarga.
+- [ ] S03.3 Papelera (borrado lógico, restaurar, vaciado con borrado físico verificado y decremento de cuota) y versiones al subir un archivo con el mismo nombre.
+- [ ] S03.4 ZIP de selección o carpeta y «Exportar todo», generado por job con reserva temporal, caducidad y limpieza; nunca extraer ZIP subidos.
+- [ ] Revisar límites Nginx/PHP para archivos grandes; valorar subida por trozos/reanudable.
+- [ ] Reconciliar archivos `ready` ausentes, corruptos o restaurados desde backup.
+- [ ] Conectar contenido con bibliotecas por usuario de Navidrome/servicios (escaneo bajo demanda).
 
 ## S04 — Publicación administrativa
 - [ ] Cerrar con el usuario: imputación de contenido global a cuotas, borrado por el aportante de contenido publicado, baja del aportante.
 - [ ] Estados personal → pendiente → global (rechazo vuelve a personal); solo admin publica/retira; permisos aplicados en el servicio antes de confirmar.
 - [ ] Auditoría de transiciones e idempotencia ante reintentos. Sin duplicar bytes.
 
-## S05 — Movimientos y recuperación
+## S05 — Copias de seguridad y movimientos
+- [ ] S05.1 Backup programado de DB del portal, datos de servicios y archivos privados a destino externo (herramienta a evaluar en DEPENDENCIES, p. ej. restic), retención, verificación y restauración ensayada en destino limpio. Otra partición del mismo disco no es backup.
 - [ ] Copia entre discos con reserva en destino, verificación de integridad, cambio de referencias y borrado del origen solo tras confirmación.
-- [ ] Backup consistente de DB del portal, datos de servicios y originales; restauración en destino limpio. Otra partición del mismo disco no es backup.
 
 ## S01 — Restos de validación de Navidrome
 - [ ] Cliente móvil/Subsonic y navegador con bibliotecas por usuario; streams ya abiertos tras retirar acceso.

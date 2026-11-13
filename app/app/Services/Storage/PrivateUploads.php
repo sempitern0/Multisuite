@@ -97,10 +97,7 @@ class PrivateUploads
             $actual = filesize($part);
             $mime = (new finfo(FILEINFO_MIME_TYPE))->file($part);
             $hash = hash_file('sha256', $part);
-            if ($actual !== $reservation->bytes || $hash === false || ! in_array($mime, [
-                'audio/mpeg', 'audio/flac', 'audio/x-flac', 'audio/ogg', 'application/ogg',
-                'audio/wav', 'audio/x-wav', 'application/pdf', 'text/plain',
-            ], true)) {
+            if ($actual !== $reservation->bytes || $hash === false || $mime === false || ! in_array($mime, (array) config('nas.allowed_mimes', []), true)) {
                 throw new RuntimeException('Tamaño o formato no permitido.');
             }
             if (! rename($part, $final)) {
@@ -141,6 +138,28 @@ class PrivateUploads
             $upload->state = 'cancelled';
             $upload->save();
         });
+    }
+
+    /**
+     * Absolute path of a confirmed blob owned by the user, for streaming only.
+     * The root identity, state and file type are re-checked on every read.
+     */
+    public function readablePath(User $user, string $key): string
+    {
+        $reservation = StorageReservation::whereKey($key)->where('user_id', $user->id)->firstOrFail();
+        $upload = PrivateUpload::whereKey($key)->firstOrFail();
+        if ($upload->state !== 'ready' || $reservation->state !== 'committed') {
+            throw new RuntimeException('El archivo no está disponible.');
+        }
+        [$root, , $location] = $this->destination();
+        $this->checkRoot($upload, $root, $location);
+        $path = $root.'/'.$upload->id.'.blob';
+        clearstatcache(true, $path);
+        if (is_link($path) || ! is_file($path) || ! is_readable($path)) {
+            throw new RuntimeException('El archivo no está disponible en el disco.');
+        }
+
+        return $path;
     }
 
     /** @return array{PrivateUpload, StorageReservation, string} */

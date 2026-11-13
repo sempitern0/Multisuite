@@ -2,7 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\Folder;
 use App\Models\User;
+use App\Models\UserFile;
+use App\Policies\FolderPolicy;
+use App\Policies\UserFilePolicy;
 use App\Policies\UserPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
@@ -28,6 +32,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         Gate::policy(User::class, UserPolicy::class);
+        Gate::policy(UserFile::class, UserFilePolicy::class);
+        Gate::policy(Folder::class, FolderPolicy::class);
         Gate::define('view-admin-audit', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
         Gate::define('manage-invitations', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
         Gate::define('view-storage', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));

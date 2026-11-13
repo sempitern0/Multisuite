@@ -49,6 +49,7 @@
                     <div class="h-full bg-teal-600" style="width: {{ \App\Support\Bytes::percent($used, $limit) }}%"></div>
                 </div>
                 <p class="text-sm text-zinc-600 dark:text-zinc-300">Has usado {{ \App\Support\Bytes::format($used) }} de {{ \App\Support\Bytes::format($limit) }}.</p>
+                <a href="{{ route('files.index') }}" class="text-sm underline">Ir a Mis archivos</a>
             </section>
         @endif
     </main>

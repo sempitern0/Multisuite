@@ -74,7 +74,7 @@ La página Almacenamiento muestra, por disco, las reservas caducadas que siguen 
 
 `portal:storage-quota` acepta bytes o unidades (`50GB`, `1,5TB`, `500MB`).
 
-## 5. Recepción privada (S03.1, sin interfaz todavía)
+## 5. Recepción privada (S03.1)
 
 Desactivada por defecto. Activar: ubicación dedicada con `.multisuite-volume-id` y directorio `.multisuite-private` (propietario PHP, 0700), cuotas configuradas y en `app/.env` `NAS_UPLOADS_ENABLED=true`, `NAS_UPLOAD_LOCATION=<id>`, `NAS_UPLOAD_MAX_BYTES=104857600`. Scheduler activo (`portal:uploads-cleanup` cada 10 min).
 
@@ -86,6 +86,19 @@ Desactivada por defecto. Activar: ubicación dedicada con `.multisuite-volume-id
 | Cancelar | `DELETE /uploads/<UUID>` | Borra restos y después libera |
 
 Sesión del portal + CSRF, 20 peticiones/min. Escritura `.part` exclusiva → fsync → rename a `.blob` → commit en la misma transacción. Un fallo deja la reserva `pending`; nunca se libera a ciegas. Nginx/PHP pueden almacenar el cuerpo antes de Laravel: ajustar `client_max_body_size` y límites PHP antes de admitir archivos grandes. Sin multipart, chunks ni reanudación todavía.
+
+## 5b. Mis archivos (S03.2)
+
+Decisión del usuario (2026-11-13): gestor de archivos propio del portal con carpetas, en lugar de un servicio de terceros, para reutilizar cuotas, reservas, auditoría y cuentas. Alcance acotado en AGENTS.md: vista previa de **solo lectura**; sin editores ni ofimática online.
+
+- **Rutas** (`/files`, menú «Mis archivos»): listado por carpeta, `POST /files` (reserva + registro), subida del cuerpo con el `PUT /uploads/{uuid}` existente, `GET /files/{id}` (vista previa), `GET /files/{id}/content[?download=1]` (contenido). Nunca bajo `/storage/`.
+- **Modelo**: `folders` (propietario, padre, nombre; 8 niveles máx.; nombres únicos por nivel sin distinguir mayúsculas) y `user_files` (propietario, carpeta, nombre visible, `upload_id` → `private_uploads`). El nombre es solo una etiqueta: en disco el archivo sigue siendo `<uuid>.blob`.
+- **Privacidad**: todas las consultas filtran por propietario y hay policies; un administrador no ve archivos ajenos (404). Carpeta ajena en una subida → 404 antes de reservar cuota.
+- **Tipos admitidos** (`config/nas.php` → `allowed_mimes`, detectados con fileinfo): audio, PDF, texto/Markdown/CSV/JSON, JPEG/PNG/GIF/WebP, EPUB y ofimática (Word/Excel/PowerPoint/OpenDocument). Rechazados: comprimidos, ejecutables, HTML y SVG. Un `.md` que contenga etiquetas como `<script>` o `<html>` se detecta como HTML y se rechaza al subirlo.
+- **Vista previa**: imágenes (`<img>`), PDF (visor nativo del navegador en iframe del mismo origen), Markdown renderizado con `html_input=strip` y sin enlaces inseguros, texto escapado (máx. 1 MiB). El resto, solo descarga.
+- **Cabeceras de contenido**: `nosniff`, `Cache-Control: private, no-store`, `Cross-Origin-Resource-Policy: same-origin`, CSP `default-src 'none'` con `sandbox` (salvo PDF, porque los navegadores no abren su visor en sandbox). Descargas siempre `application/octet-stream` + `attachment`. Soporta peticiones Range.
+- **Límites**: `NAS_UPLOAD_MAX_BYTES` (100 MiB por defecto) debe ser ≤ `client_max_body_size` de Nginx (110 MiB). Subidas secuenciales con progreso; un fallo cancela su reserva al momento.
+- **Pendiente**: borrar (S03.3, papelera), mover entre carpetas, ZIP (S03.4).
 
 ## 6. Contenido personal y publicación (contrato aprobado 2026-11-11)
 
@@ -100,8 +113,9 @@ Sesión del portal + CSRF, 20 peticiones/min. Escritura `.part` exclusiva → fs
 | --- | --- |
 | Inventario de solo lectura (S02.1) | Integrado (PR #9) |
 | Reservas y cuotas transaccionales (S02.2) | Integrado (PR #10), concurrencia PostgreSQL en CI |
-| Recepción privada HTTP (S03.1) | Integrado (PR #11), sin interfaz |
+| Recepción privada HTTP (S03.1) | Integrado (PR #11) |
+| Mis archivos: carpetas, subida web, vista previa y descarga (S03.2) | Rama `feat/s03-my-files` |
 | GUI de almacenamiento y cuota por defecto (S02.3) | Rama `feat/s02-storage-admin-gui`, pendiente de CI y QA visual |
-| Reconciliación de confirmados, borrado con decremento, interfaz de subida, bibliotecas por usuario, publicación, movimientos y backup | Pendiente (ROADMAP S03–S05) |
+| Papelera/versiones, ZIP, reconciliación, bibliotecas por usuario, publicación, movimientos y backup | Pendiente (ROADMAP S03–S05) |
 
-Tests: `make test CMD="--filter=Storage"`, `make test CMD="--filter=PrivateUploadsTest"`, `make test CMD="--filter=BytesTest"`.
+Tests: `make test CMD="--filter=Storage"`, `--filter=PrivateUploadsTest`, `--filter=PersonalFilesTest`, `--filter=BytesTest`.

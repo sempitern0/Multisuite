@@ -21,7 +21,8 @@ NAS doméstico con portal privado Laravel + Livewire para el propietario, famili
 
 ## Arquitectura y límites de alcance
 - Portada Laravel/Livewire con registro de servicios (`config/portal.php`), tarjetas y rutas de acceso controladas.
-- Cada servicio conserva interfaz, cuentas, catálogo, reproductor, historial y datos. No implementar equivalentes propios (reproductor, lector, catálogo, notas, descargador) ni adaptadores que dupliquen catálogos.
+- Cada servicio conserva interfaz, cuentas, catálogo, reproductor, historial y datos. No implementar equivalentes propios (reproductor, lector de libros/cómics, catálogo multimedia, notas, descargador) ni adaptadores que dupliquen catálogos.
+- Excepción decidida por el usuario el 2026-11-13: **Mis archivos** es del portal (carpetas privadas, subida, descarga, ZIP, papelera/versiones y exportación) con **vista previa de solo lectura** de imágenes, PDF (visor nativo del navegador), Markdown saneado y texto. Sin editores, ofimática online, transcodificación ni galerías: eso sigue siendo de servicios de terceros. Ver docs/STORAGE.md.
 - Navidrome es la interfaz completa de música; `compose.music.yaml` es autónomo y se ejecuta separado de `compose.yaml`.
 - El portal no monta discos, no formatea, no recibe el socket Docker y nunca acepta rutas de usuarios. Las ubicaciones NAS las declara el operador (`NAS_STORAGE_VOLUMES`); la GUI solo reparte espacio. Ver docs/STORAGE.md.
 - El portal aprovisiona cuentas y sincroniza contraseñas en servicios compatibles. Credenciales administrativas solo en configuración secreta; contraseñas de usuarios cifradas temporalmente para reintentos, con caducidad de una hora y borrado tras éxito (docs/SERVICE_ACCOUNTS.md).
