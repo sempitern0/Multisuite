@@ -1,0 +1,56 @@
+# Arquitectura y mapa del código
+
+Guía rápida para personas y agentes de IA. Si algo aquí contradice al código, manda el código: corrige este archivo en la misma PR.
+
+## Vista general
+```
+Navegador ──► Caddy/Nginx ──► Laravel 13 + Livewire 4 + Flux 2 (app/, PHP ≥ 8.3)
+                                   │  DB: SQLite (dev/tests) · PostgreSQL (concurrencia real)
+                                   │  scheduler: portal:sync-accounts (1 min), portal:uploads-cleanup (10 min)
+                                   ├──► API nativa de Navidrome (aprovisionamiento de cuentas)
+                                   └──► Carpetas NAS montadas en el contenedor (solo las declaradas)
+Navegador ──► music-gateway (Nginx, mismo origen) ──► Navidrome 0.64.2 (compose.music.yaml, autónomo)
+```
+El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada servicio mantiene su propia autenticación.
+
+## Raíz del repositorio
+| Ruta | Contenido |
+| --- | --- |
+| `app/` | Aplicación Laravel (se versiona entera con lockfiles) |
+| `compose.yaml`, `compose.production.yaml` | Stack del portal heredado de Laravel Foundry |
+| `compose.music.yaml`, `music.env.example` | Navidrome independiente |
+| `deploy/*.example.yaml` | Overlays de cuentas/red compartida que aplica Make |
+| `docker/` | Imágenes PHP/Nginx, Caddy, gateway musical (`docker/music-proxy`) |
+| `scripts/` | Setup/preflight/backup en Bash y PowerShell (paridad obligatoria) |
+| `tests/` | Pruebas de infraestructura (Python/Bash/PowerShell/Node) y laboratorio `tests/isolation/` |
+| `docs/` | Documentación del producto; `docs/foundry/` = guías heredadas de la plantilla |
+| `Makefile` | Punto de entrada: `make up`, `make test`, `make artisan CMD=…`, `make npm CMD=…`, `music-*` |
+
+## Aplicación (`app/`)
+| Dominio | Código clave | Doc |
+| --- | --- | --- |
+| Portada y servicios | `config/portal.php`, `ServiceController`, `resources/views/dashboard.blade.php` | NAVIDROME.md |
+| Roles y permisos | `User::canInviteRole`, `Policies/UserPolicy`, gates en `Providers/AppServiceProvider` | USER_MANAGEMENT.md |
+| Invitaciones | `InvitationController`, `Models/Invitation`, `Notifications/PortalInvitation` | INVITATIONS.md |
+| Alta manual y primer acceso | `ManualUserController`, `InitialPasswordController`, `Middleware/EnsureInitialPasswordChanged` | USER_MANAGEMENT.md |
+| Cuentas de servicio | `Services/ServiceAccounts`, `Services/NavidromeAccounts`, `config/provisioning.php`, `portal:sync-accounts`, `portal:accounts-status` | SERVICE_ACCOUNTS.md |
+| Sesión musical | `MusicSessionController`, `Services/MusicSessionBridge`, `docker/music-proxy/` | MUSIC_SESSION_BRIDGE.md |
+| Auditoría | `Services/AdminAudit`, `Enums/ServiceAuditAction`, `AdminAuditController` | ADMIN_AUDIT.md |
+| Almacenamiento | `Services/Storage/{VolumeProbe,StorageInventory,StorageReservations,StorageOverview,PrivateUploads}`, `StorageController`, `PrivateUploadController`, `Support/Bytes`, `config/nas.php`, `portal:storage-status`, `portal:storage-quota`, `portal:uploads-cleanup` | STORAGE.md |
+
+Gates: `manage-invitations`, `view-admin-audit`, `view-storage` (owner/admin); `manage-storage-pools` (owner); `manage-storage-quota` (owner → todos; admin → miembros).
+
+Tablas propias: `invitations`, `service_accounts`, `admin_audit_events`, `storage_pools`, `user_storage_quotas`, `storage_reservations`, `private_uploads`, `storage_settings`.
+
+## Invariantes que no se deben romper
+- Autorización en servidor en cada lectura/escritura; revalidar roles **bajo bloqueo** en operaciones administrativas (patrón `lockedUsers`).
+- Orden de bloqueo del almacenamiento: usuario → grupo → cuota → reserva.
+- Nunca aceptar rutas, URLs de redirección ni IDs de servicio no registrados desde la petición.
+- Auditoría con lista blanca de campos: sin payloads, rutas, contraseñas ni respuestas remotas.
+- Migraciones solo incrementales; no editar las ya aplicadas.
+- Fallar cerrado: capacidad desconocida, marca ausente o conflicto bloquean escrituras.
+
+## Pruebas
+- `make test` (PHPUnit; `CMD="--filter=…"`), `make lint`/Pint, PHPStan nivel 7 (`app/phpstan.neon`), build con `make npm CMD="run build"`.
+- CI: `.github/workflows/application.yml` (app, Navidrome real, PostgreSQL), `ci.yml` (infraestructura Linux/Windows), `library-isolation.yml` (S01).
+- El entorno de un agente puede no tener PHP/Docker: indicarlo y delegar la ejecución en CI, sin inventar resultados.

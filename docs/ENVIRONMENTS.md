@@ -1,5 +1,5 @@
 # Entornos del portal y servicios
-Decisión vigente: portal Laravel/Livewire separado de servicios con interfaces propias. Sustituye el contrato de integraciones del plan Hxx.
+Portal Laravel/Livewire separado de servicios con interfaces propias.
 
 ## Desarrollo
 - Foundry conserva compose.yaml para generar y ejecutar el portal; configuración y release aún pendientes P02/P05.
@@ -21,4 +21,4 @@ Probar paridad local y staging con misma imagen antes de promoción; nunca copia
 Las altas y contraseñas de cuentas nuevas pueden aprovisionarse desde el portal mediante SERVICE_ACCOUNTS.md. VPN, sesión web unificada y baja integral siguen pendientes.
 Backup de cada DB de forma consistente y de archivos originales. Ensayar restore con versión compatible antes de actualizar.
 Despliegue real, cambios de secretos y operaciones destructivas requieren autorización aplicable. down -v o reset no son procedimientos de actualización.
-No se afirma readiness de producción hasta completar P03 y P05. Guía Foundry: [DEPLOYMENT.md](DEPLOYMENT.md); adaptar al alcance actual.
+No se afirma readiness de producción hasta completar P03 y P05. Guía Foundry: [DEPLOYMENT.md](foundry/DEPLOYMENT.md); adaptar al alcance actual.

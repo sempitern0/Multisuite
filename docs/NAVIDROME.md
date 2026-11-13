@@ -1,5 +1,5 @@
-# Navidrome independiente: prueba local
-Adaptado de private-nas, rama feat/music-library-player, commit a97d48ee8872dfcd36ada9b6be364428bc4a90ff. Este stack no necesita Laravel, PostgreSQL, Redis ni generar app/.
+# Navidrome (Música)
+Stack autónomo rescatado de private-nas. No necesita Laravel, PostgreSQL, Redis ni generar app/.
 
 ## Qué incluye
 compose.music.yaml es un Compose autónomo con proyecto propio: no combinarlo con compose.yaml. Publica solo 127.0.0.1:4533, conserva /data y monta música en solo lectura. La app de Navidrome es la interfaz de música.
@@ -54,10 +54,10 @@ docker compose --env-file music.env -f compose.music.yaml logs --tail=80 navidro
 ~~~
 
 Abrir http://127.0.0.1:4533 y crear el administrador inicial antes de compartir acceso. Crear cuentas normales individuales para familiares. El navegador de otro dispositivo no puede usar este localhost; necesitará URL VPN/proxy del servidor.
-Añadir/quitar archivos desde el host o una herramienta de importación externa; no se implementa un uploader Laravel. Navidrome escanea cada cinco minutos.
+Añadir/quitar archivos desde el host o una herramienta de importación externa; la recepción privada del portal (docs/STORAGE.md) todavía no publica en bibliotecas de Navidrome. Navidrome escanea cada cinco minutos.
 Parar con stop; volver con start o up -d. down elimina contenedor/red, conserva carpetas bind. No borrar data para actualizar.
 
-## QA pendiente de ejecución Docker
+## QA pendiente con Docker real (P01-03/05)
 - [ ] Acceder, crear admin y cuenta normal; contraseña equivocada rechazada.
 - [ ] Escanear muestra MP3/FLAC y reproducir/pausar/buscar dentro de canción.
 - [ ] Crear favorito/playlist desde Navidrome.
@@ -65,7 +65,7 @@ Parar con stop; volver con start o up -d. down elimina contenedor/red, conserva 
 - [ ] Comprobar que el contenedor no puede escribir música y sí escribir data.
 - [ ] Verificar escucha solo en loopback y ausencia de acceso desde otra máquina sin túnel.
 - [ ] Restaurar copia de data y música en carpetas/proyecto de prueba.
-Esta entrega valida estructura YAML, no arranque, permisos o reproducción: el entorno de trabajo no dispone de Docker.
+El usuario confirma Navidrome operativo en su equipo; esta lista sigue sin evidencia registrada.
 
 ## Ruta de acceso en Multisuite
 Primero una tarjeta Música con URL configurada por el administrador. Nunca aceptar destinos de redirección libres desde parámetros de usuario.
@@ -83,3 +83,10 @@ Fuentes: https://www.navidrome.org/docs/installation/docker/ y https://github.co
 
 ## Tarjeta en el portal
 En app/.env configurar PORTAL_MUSIC_ENABLED=true y PORTAL_MUSIC_URL=http://127.0.0.1:4533. Ejecutar `make artisan CMD="config:clear"` y abrir /dashboard autenticado. El enlace abre la UI independiente; no proporciona SSO. Esta URL solo sirve en el mismo ordenador.
+
+## Aislamiento por biblioteca (laboratorio S01)
+Fuentes v0.64.2: [modelo Library](https://github.com/navidrome/navidrome/blob/v0.64.2/model/library.go), [servicio](https://github.com/navidrome/navidrome/blob/v0.64.2/core/library.go), [API nativa](https://github.com/navidrome/navidrome/blob/v0.64.2/server/nativeapi/library.go), [tests multibiblioteca](https://github.com/navidrome/navidrome/blob/v0.64.2/server/subsonic/e2e/subsonic_multilibrary_test.go).
+
+- Usuarios normales solo acceden a bibliotecas asignadas; administradores de Navidrome acceden a todo. «Privado» significa aislado entre miembros, no frente al operador.
+- Laboratorio desechable: `python3 tests/isolation/navidrome.py` (Windows: `py -3 …`). Crea WAV/portadas sintéticos, contenedor aleatorio en 127.0.0.1, usuarios A/B y biblioteca global; prueba listado, búsqueda, IDs directos, stream/descarga/portada, escalada, concesión/retirada con JWT previo, playlists y reinicio. Escribe `s01-report.json` (no versionar). Limpia solo recursos con etiqueta `multisuite.lab=s01`. CI: workflow *Library isolation* (30 comprobaciones verdes).
+- No demostrado: publicar un archivo individual sin moverlo, subida/cuotas nativas, clientes móviles, streams ya abiertos y permisos por defecto de usuarios nuevos. El despliegue habitual monta una única biblioteca común: no afirmar privacidad hasta configurar bibliotecas por usuario.

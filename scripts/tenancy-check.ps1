@@ -44,5 +44,5 @@ try {
         Write-Host "PASS $url"
     }
     if($failures -ne 0) { throw "$failures tenancy routing checks failed." }
-    Write-Host 'Hostname check passed. Real data isolation requires Laravel feature tests (see docs/SAAS.md).'
+    Write-Host 'Hostname check passed. Real data isolation requires Laravel feature tests (see docs/foundry/SAAS.md).'
 } finally {Pop-Location}

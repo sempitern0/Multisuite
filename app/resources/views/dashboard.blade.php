@@ -39,5 +39,17 @@
                 <p class="text-zinc-600 dark:text-zinc-300">Aún no hay aplicaciones configuradas.</p>
             @endforelse
         </section>
+        @php($quota = \App\Models\UserStorageQuota::find(auth()->id()))
+        @php($limit = (int) ($quota?->limit_bytes ?? \App\Models\StorageSetting::defaultUserQuotaBytes()))
+        @if ($limit > 0)
+            @php($used = (int) ($quota?->used_bytes ?? 0))
+            <section aria-labelledby="my-storage" class="max-w-xl space-y-2 rounded-2xl border border-zinc-200 p-6 dark:border-zinc-700">
+                <h2 id="my-storage" class="text-lg font-semibold">Tu almacenamiento</h2>
+                <div class="h-3 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ \App\Support\Bytes::percent($used, $limit) }}" aria-label="Espacio usado">
+                    <div class="h-full bg-teal-600" style="width: {{ \App\Support\Bytes::percent($used, $limit) }}%"></div>
+                </div>
+                <p class="text-sm text-zinc-600 dark:text-zinc-300">Has usado {{ \App\Support\Bytes::format($used) }} de {{ \App\Support\Bytes::format($limit) }}.</p>
+            </section>
+        @endif
     </main>
 </x-layouts::app>

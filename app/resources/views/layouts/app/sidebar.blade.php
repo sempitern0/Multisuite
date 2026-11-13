@@ -23,6 +23,11 @@
                             Usuarios
                         </flux:sidebar.item>
                     @endcan
+                    @can('view-storage')
+                        <flux:sidebar.item icon="circle-stack" :href="route('storage.index')" :current="request()->routeIs('storage.*')">
+                            Almacenamiento
+                        </flux:sidebar.item>
+                    @endcan
                     @can('view-admin-audit')
                         <flux:sidebar.item icon="clock" :href="route('audit.index')" :current="request()->routeIs('audit.*')">
                             Actividad

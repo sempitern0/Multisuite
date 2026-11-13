@@ -1,4 +1,4 @@
-# P03-06e.1 — Puente de sesión de Música
+# Puente de sesión de Música
 
 ## Resultado
 Al pulsar **Abrir Música**, una cuenta gestionada y preparada pasa por una página breve en el mismo origen de Navidrome:
@@ -45,7 +45,7 @@ El ejemplo sigue siendo local. Publicar el gateway exclusivamente tras TLS/VPN y
 Conectar gateway y portal web en una red privada con alias multisuite-portal-web. El Compose de producción aún requiere adaptar esa red/entrada; no se activa automáticamente por este hito. No publicar el puerto de Navidrome directamente si se pretende que el gateway sea la entrada.
 Copiar montajes estáticos de docker/music-proxy a una imagen inmutable en la preparación de release P05. Validar certificado, puertos, backups y clientes antes de ofrecer acceso fuera del equipo.
 
-## QA visual/funcional
+## QA pendiente (navegador real)
 1. Actualizar, ejecutar make up y comprobar make music-status: Navidrome y music-gateway activos.
 2. Usuario A: abrir Música e iniciar sesión. Volver al portal y abrir Música otra vez: debe conservar cuenta y cola.
 3. Cerrar la pestaña musical, salir del portal y entrar como B: abrir Música debe pedir login de Navidrome, sin mostrar la cuenta ni cola de A. Entrar con B.

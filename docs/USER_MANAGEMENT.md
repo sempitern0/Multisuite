@@ -1,4 +1,4 @@
-# Administración de usuarios
+# Administración de usuarios y alta manual
 
 El menú **Usuarios** está disponible solo para propietario y administradores. Requiere sesión verificada y confirmación reciente de contraseña. Lista paginada, búsqueda por nombre/usuario/correo y enlace al alta manual existente.
 
@@ -9,7 +9,7 @@ El menú **Usuarios** está disponible solo para propietario y administradores. 
 
 La baja remota y la transacción local no son una transacción distribuida: si falla la confirmación posterior, Música puede haberse eliminado mientras Multisuite conserva el registro para reintentar. La acción elimina datos personales de Navidrome, no archivos musicales. Solo cubre cuentas vinculadas por Multisuite; no descubre cuentas creadas manualmente ni modifica el flujo de autoeliminación de ajustes. No es suspensión ni gestión de permisos por servicio.
 
-## QA con cuentas desechables
+## QA pendiente con cuentas desechables
 1. Como miembro, comprobar ausencia del menú y HTTP 403 al acceder directamente a `/users`.
 2. Como administrador, abrir Usuarios, confirmar contraseña, buscar, crear miembro y editar nombre. Probar móvil, teclado y zoom 200 %.
 3. Comprobar que solo el propietario puede gestionar administradores y que nadie puede gestionar propietarios desde aquí.
@@ -18,3 +18,13 @@ La baja remota y la transacción local no son una transacción distribuida: si f
 6. Arrancar Música, repetir la baja y comprobar desaparición en ambos servicios y rechazo de un nuevo login musical. No usar cuentas reales para este ensayo.
 
 Pruebas automatizadas: `make artisan CMD="test --filter=UserManagementTest"`; CI ejecuta además el ciclo de alta/cambio/baja contra Navidrome 0.64.2 desechable.
+
+## Alta manual (sin SMTP ni invitación)
+Solo owner/admin desde **Usuarios → Crear usuario**; solo owner crea admin; nadie crea owner desde la web.
+1. Elegir nombre, correo (verificar su titularidad: se marca como verificado), usuario opcional, rol y servicios.
+2. Fijar una contraseña temporal y entregarla por un canal privado. La cuenta queda con `must_change_password`.
+3. En el primer acceso solo puede cambiar la contraseña o salir. La nueva contraseña pasa por `ServiceAccounts::changePassword`, que aprovisiona los servicios con la contraseña personal, nunca con la temporal (ver SERVICE_ACCOUNTS.md).
+Invalida invitaciones previas de ese correo. Roles del portal no otorgan privilegios administrativos en Navidrome. Tests: `make test CMD="--filter=ManualUserTest"`.
+
+## Espacio de almacenamiento
+La ficha muestra el uso y enlaza a **Almacenamiento**, donde se fija el espacio máximo. Una baja se bloquea mientras la persona tenga espacio usado o reservado (STORAGE.md).
