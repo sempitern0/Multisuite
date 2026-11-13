@@ -1,4 +1,4 @@
-# P02-05 — Invitaciones privadas y roles
+# Invitaciones privadas y roles
 
 No existen GET/POST /register, pantalla de registro libre, códigos manuales ni el antiguo comando portal:invite. La portada y el login no enlazan a registro. Recuperación de contraseña, 2FA, passkeys y ajustes siguen disponibles porque protegen cuentas existentes.
 
@@ -26,15 +26,7 @@ Reenviar a un correo pendiente reemplaza su token: el enlace anterior deja de fu
 
 Estos roles solo afectan al portal. Navidrome conserva usuarios y permisos independientes. No se han modificado usuarios ni enviado mensajes reales durante el desarrollo.
 
-## QA antes de fusionar
-- /register GET/POST devuelve 404; portada y login no ofrecen registro.
-- Miembro no ve gestión y recibe 403 si llama directamente a sus endpoints.
-- Administrador invita miembros; no puede asignar owner/admin ni alterar invitaciones de admin.
-- Propietario invita admin y member; comprobar email en Mailpit y completar el enlace.
-- Manipular query/token/expiry: 403. Inyectar role/email en POST: error y ningún usuario creado.
-- Enlace caducado, revocado, usado o emisor degradado: rechazo. Reemisión invalida el anterior.
-- Contraseña inválida: no consume invitación. Doble envío: una sola cuenta (repetir en PostgreSQL real).
-- Revisar login, recuperación, confirmación de contraseña, 2FA y passkeys tras retirar registro.
-- Formularios a 360/768/1440 px, teclado, foco, errores y zoom 200 %.
+## Pruebas
+`make test CMD="--filter=InvitationTest"`: endpoints de registro retirados, permisos por rol, firma manipulada, rol/correo inyectados, revocación, reemisión y uso único. Flujo confirmado por el usuario (PR #2). Pendiente: doble envío simultáneo con PostgreSQL real.
 
-Referencia técnica: Laravel 13, URL Generation (temporarySignedRoute/signed) y Authorization (Gates), consultadas 2026-11-09. Sin dependencias añadidas.
+Referencia: Laravel 13 URL Generation (temporarySignedRoute) y Authorization (Gates), consultadas 2026-11-09. Sin dependencias añadidas.

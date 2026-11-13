@@ -6,6 +6,7 @@ use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\ManualUserController;
 use App\Http\Controllers\PrivateUploadController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\StorageController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\UsernameController;
 use Illuminate\Support\Facades\Route;
@@ -44,6 +45,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('invitations', [InvitationController::class, 'index'])->name('invitations.index');
         Route::post('invitations', [InvitationController::class, 'store'])->name('invitations.store');
         Route::delete('invitations/{invitation}', [InvitationController::class, 'revoke'])->name('invitations.revoke');
+    });
+
+    // Storage limits: same audience, but a higher rate so a family can be configured in one sitting.
+    // Never under /storage/: Nginx serves that prefix as the public disk (docker/nginx/site.conf).
+    Route::middleware(['can:view-storage', 'password.confirm', 'throttle:60,1'])->prefix('admin/storage')->name('storage.')->group(function () {
+        Route::get('/', [StorageController::class, 'index'])->name('index');
+        Route::put('default', [StorageController::class, 'updateDefault'])->name('default.update');
+        Route::put('pools/{pool}', [StorageController::class, 'updatePool'])->where('pool', '[a-z][a-z0-9-]{0,63}')->name('pools.update');
+        Route::put('users/{user}', [StorageController::class, 'updateUser'])->name('users.update');
     });
 });
 

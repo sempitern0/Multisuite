@@ -107,4 +107,4 @@ foreach ($env as $key=>$value) {
 file_put_contents($path, implode("\n",$lines)."\n");
 echo "\nConfigured $name: DB=$db, queue=$queue, mail=$mail, admin=$ui, HTTPS=".($https?'yes':'no')."\n";
 if ($https) echo "Add 127.0.0.1 $domain to your hosts file; then open https://$domain".($httpsPort==='443'?'':":$httpsPort")."\nRun make https-setup on Windows to configure hosts and certificate trust with confirmation.\n";
-if ($tenancyMode !== 'none') echo "Local tenants: alpha.$domain and beta.$domain. Run make tenancy-check after configuring Laravel tenant resolution. See docs/SAAS.md.\n";
+if ($tenancyMode !== 'none') echo "Local tenants: alpha.$domain and beta.$domain. Run make tenancy-check after configuring Laravel tenant resolution. See docs/foundry/SAAS.md.\n";

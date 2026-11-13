@@ -1,35 +1,41 @@
 # Multisuite
-Portal privado Laravel + Livewire para acceder a servicios existentes. Cada aplicación conserva su interfaz y gestiona sus usuarios/datos: Navidrome para música; los demás servicios se incorporarán progresivamente.
 
-**Estado:** portada de aplicaciones y redirecciones autenticadas implementadas; validación runtime y visual pendiente. Navidrome local preparado, aún pendiente de prueba Docker.
+NAS doméstico autoalojado con un portal privado (Laravel 13 + Livewire 4 + Flux) para centralizar los servicios del día a día y el ocio, e invitar a familiares y amistades. Cada aplicación de terceros conserva su interfaz y sus datos; el portal gestiona el acceso, las cuentas, el espacio de almacenamiento y la auditoría.
 
-## Probar música sin instalar Laravel
-Seguir [Navidrome local](docs/NAVIDROME.md): copiar music.env.example, crear carpetas y ejecutar:
+## Qué funciona hoy
+- **Portada** con tarjetas de servicios y acceso controlado (`/services/{id}`).
+- **Acceso privado**: sin registro libre; invitaciones firmadas de un uso, alta manual con contraseña temporal, roles propietario/administrador/miembro, 2FA y passkeys.
+- **Música** con [Navidrome](docs/NAVIDROME.md): stack independiente, cuentas aprovisionadas desde el portal y puente de sesión para dispositivos compartidos.
+- **Administración**: usuarios, invitaciones y registro de actividad.
+- **Almacenamiento**: inventario de discos, cuotas por persona con reservas atómicas, recepción privada de archivos y página **Almacenamiento** para repartir el espacio sin conocimientos técnicos ([STORAGE.md](docs/STORAGE.md)).
 
-~~~sh
-docker compose --env-file music.env -f compose.music.yaml up -d
-~~~
+Aún no desplegado en producción (VPN/TLS, backups y piloto pendientes). Estado exacto en [PROJECT_STATUS.md](docs/PROJECT_STATUS.md); trabajo pendiente en [ROADMAP.md](docs/ROADMAP.md).
 
-Con music.env preparado, `make up` arranca también Navidrome; `make stop/start/restart` gestionan ambos stacks. Para omitir música en una llamada: `make up MUSIC_AUTO=0`. Diagnóstico: `make music-status` y `make music-logs`.
+## Arranque rápido (desarrollo)
+Requisitos: Docker con Compose v2 y Make (Windows sin Make: `powershell -NoProfile -File scripts/setup.ps1`).
 
-Abrir http://127.0.0.1:4533. El archivo es autónomo: no combinar con compose.yaml.
-Música en solo lectura, datos persistentes separados, puerto solo loopback y sin catálogo/reproductor Laravel duplicados.
+```sh
+make up                                   # portal (+ Navidrome si existe music.env)
+make artisan CMD="migrate"
+make artisan CMD="portal:owner tu@correo --create"   # primer propietario
+make test                                 # tests de la aplicación
+```
 
-## Continuar
-- [Planning vigente P00–P05](docs/ROADMAP.md)
-- [Estado y siguiente paso](docs/PROJECT_STATUS.md)
-- [Análisis y rescate de private-nas](docs/PRIVATE_NAS_REVIEW.md)
-- [Instrucciones comunes](AGENTS.md) y [Claude](CLAUDE.md)
-- [Entornos](docs/ENVIRONMENTS.md) y [dependencias](docs/DEPENDENCIES.md)
+Solo música, sin Laravel: copiar `music.env.example` a `music.env`, crear carpetas y `docker compose --env-file music.env -f compose.music.yaml up -d` ([guía](docs/NAVIDROME.md)). `make up MUSIC_AUTO=0` arranca solo el portal.
 
-## Portal y producción
-Infraestructura heredada de [Laravel Foundry](https://github.com/sempitern0/laravel-foundry). Bootstrap previsto: make setup STARTER=livewire en checkout sin app configurada; Windows sin Make: scripts/setup.ps1 -Starter livewire.
-Versionar app/ y lockfiles; nunca secretos o datos. No ejecutar reset para actualizar.
-La portada autenticada está en /dashboard; /services/music es una redirección controlada. Activar PORTAL_MUSIC_ENABLED=true y configurar PORTAL_MUSIC_URL en app/.env; ejecutar make artisan CMD="config:clear". Servir realmente bajo /music requiere proxy y BaseUrl comprobados. No hay SSO implícito.
-Producción exige VPN/TLS, cuentas por servicio y backups/restauración verificados; todavía no está desplegada. Ver [guía heredada](docs/DEPLOYMENT.md) y contrato de entornos vigente.
-Librerías PHP/JS/CSS permitidas si estables, mantenidas y útiles; documentar compatibilidad/licencia.
-Licencia del repositorio: [LICENSE](LICENSE). Los servicios conservan sus licencias.
+No ejecutar `make setup`/`reset-project` sobre la app existente: el starter ya está versionado en `app/`.
 
+## Documentación
+| Tema | Documento |
+| --- | --- |
+| Instrucciones para agentes de IA y colaboradores | [AGENTS.md](AGENTS.md) · [CLAUDE.md](CLAUDE.md) |
+| Arquitectura y mapa del código | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| Estado y pendientes | [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) · [docs/ROADMAP.md](docs/ROADMAP.md) |
+| Almacenamiento y cuotas | [docs/STORAGE.md](docs/STORAGE.md) |
+| Usuarios, invitaciones, auditoría | [USER_MANAGEMENT](docs/USER_MANAGEMENT.md) · [INVITATIONS](docs/INVITATIONS.md) · [ADMIN_AUDIT](docs/ADMIN_AUDIT.md) |
+| Servicios | [NAVIDROME](docs/NAVIDROME.md) · [SERVICE_ACCOUNTS](docs/SERVICE_ACCOUNTS.md) · [MUSIC_SESSION_BRIDGE](docs/MUSIC_SESSION_BRIDGE.md) |
+| Entornos y dependencias | [ENVIRONMENTS](docs/ENVIRONMENTS.md) · [DEPENDENCIES](docs/DEPENDENCIES.md) |
+| Plantilla Laravel Foundry (despliegue, hosting, entornos de desarrollo) | [docs/foundry/](docs/foundry/DEPLOYMENT.md) |
 
-### Sesión de Música en dispositivos compartidos
-El modo integrado usa un gateway para comprobar la cuenta del navegador al abrir Música. Conserva una sesión coincidente y pide login si pertenece a otra persona. Guía y QA: [MUSIC_SESSION_BRIDGE.md](docs/MUSIC_SESSION_BRIDGE.md).
+## Licencia
+[MIT](LICENSE) para este repositorio. Cada servicio integrado conserva su licencia.

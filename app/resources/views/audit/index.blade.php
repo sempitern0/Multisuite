@@ -32,6 +32,9 @@
                     @if (($event->details['previous_role'] ?? null) !== null && $event->details['previous_role'] !== $event->details['role'])
                         <flux:text>Rol: {{ $event->details['previous_role'] }} → {{ $event->details['role'] }}.</flux:text>
                     @endif
+                    @if (array_key_exists('limit_bytes', $event->details))
+                        <flux:text>@if (($event->details['pool'] ?? null) !== null)Disco {{ $event->details['pool'] }}. @endif Límite: {{ ($event->details['previous_limit_bytes'] ?? null) === null ? 'sin configurar' : \App\Support\Bytes::format((int) $event->details['previous_limit_bytes']) }} → {{ \App\Support\Bytes::format((int) $event->details['limit_bytes']) }}.</flux:text>
+                    @endif
                 </li>
             @empty
                 <li class="p-5">Todavía no hay actividad registrada para este filtro.</li>

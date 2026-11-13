@@ -168,9 +168,9 @@ jobs:
           ! grep -q 'production.conf' docker/nginx/Dockerfile
       - name: Check provider guide navigation and no implicit cloud deployment
         run: |
-          test -s docs/HOSTING_PROVIDERS.md
+          test -s docs/foundry/HOSTING_PROVIDERS.md
           grep -q 'ROADMAP.md' README.md
-          grep -q 'HOSTING_PROVIDERS.md' docs/DEPLOYMENT.md
+          grep -q 'HOSTING_PROVIDERS.md' docs/foundry/DEPLOYMENT.md
           grep -q 'DEPLOYMENT.md' AGENTS.md
           ! grep -Eq '^(deploy-cloud|deploy-production|provision-vps):' Makefile
       - name: Check staged and production environment contract
@@ -182,7 +182,7 @@ jobs:
                       "PUBLIC_BIND_IP", "PUBLIC_HTTP_PORT", "PUBLIC_HTTPS_PORT",
                       "$POSTGRES_USER", "$POSTGRES_DB"):
               assert val in s, val
-          assert Path("docs/DEPLOYMENT.md").is_file()
+          assert Path("docs/foundry/DEPLOYMENT.md").is_file()
           assert "POSTGRES_USER=foundry" in Path("db.production.env.example").read_text()
           assert "/deploy/*.env" in Path(".gitignore").read_text()
           assert '$POSTGRES_USER' in s and '$POSTGRES_DB' in s
@@ -220,7 +220,7 @@ jobs:
         run: |
           php -l scripts/wizard.php
           sh -n scripts/tenancy-check.sh
-          test -s docs/SAAS.md
+          test -s docs/foundry/SAAS.md
           grep -q 'TENANCY_MODE' .env.example
           grep -q 'TENANCY_MODE' scripts/wizard.php
           grep -q 'Caddyfile.saas' scripts/wizard.php

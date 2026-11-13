@@ -4,6 +4,7 @@ namespace App\Services\Storage;
 
 use App\Models\StoragePool;
 use App\Models\StorageReservation;
+use App\Models\StorageSetting;
 use App\Models\User;
 use App\Models\UserStorageQuota;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +30,8 @@ class StorageReservations
             // Same order for all mutations: user, pool, quota, reservation.
             User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             $pool = StoragePool::whereKey($poolId)->lockForUpdate()->firstOrFail();
-            $quota = UserStorageQuota::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            // The user row is locked, so lazily creating the default quota cannot race.
+            $quota = UserStorageQuota::whereKey($user->id)->lockForUpdate()->first() ?? $this->createDefaultQuota($user);
             $existing = StorageReservation::whereKey($key)->lockForUpdate()->first();
             if ($existing !== null) {
                 $this->owns($existing, $user);
@@ -112,35 +114,81 @@ class StorageReservations
         });
     }
 
-    public function setUserQuota(User $user, int $bytes): void
+    /** @return int|null Previous explicit limit, null when the user followed the default. */
+    public function setUserQuota(User $user, int $bytes): ?int
     {
         $bytes = $this->validateBytes($bytes, true);
-        DB::transaction(function () use ($user, $bytes): void {
+
+        return DB::transaction(function () use ($user, $bytes): ?int {
             User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             $quota = UserStorageQuota::whereKey($user->id)->lockForUpdate()->first() ?? new UserStorageQuota;
             if ($bytes < ($quota->used_bytes ?? 0) + ($quota->reserved_bytes ?? 0)) {
-                throw new RuntimeException('El límite no puede ser inferior al espacio contabilizado.');
+                throw new RuntimeException('El límite no puede ser inferior al espacio que ya usa o tiene reservado.');
             }
+            $previous = $quota->exists ? (int) $quota->limit_bytes : null;
             $quota->user_id = $this->nonnegative($user->id);
             $quota->limit_bytes = $bytes;
             $quota->save();
+
+            return $previous;
         });
     }
 
-    public function setPoolLimit(string $id, int $bytes): void
+    /** @return int|null Previous limit, null when the pool was not configured yet. */
+    public function setPoolLimit(string $id, int $bytes): ?int
     {
         $bytes = $this->validateBytes($bytes, true);
         $this->headroom($id);
-        DB::transaction(function () use ($id, $bytes): void {
+
+        return DB::transaction(function () use ($id, $bytes): ?int {
             // A stable configured pool is provisioned by the operator, not by uploads.
             $pool = StoragePool::whereKey($id)->lockForUpdate()->first() ?? new StoragePool;
             if ($bytes < ($pool->used_bytes ?? 0) + ($pool->reserved_bytes ?? 0)) {
-                throw new RuntimeException('El límite no puede ser inferior al espacio contabilizado.');
+                throw new RuntimeException('El límite no puede ser inferior al espacio que ya se usa o está reservado en este disco.');
             }
+            $previous = $pool->exists ? (int) $pool->limit_bytes : null;
             $pool->id = $id;
             $pool->limit_bytes = $bytes;
             $pool->save();
+
+            return $previous;
         });
+    }
+
+    public function defaultUserQuota(): int
+    {
+        return StorageSetting::defaultUserQuotaBytes();
+    }
+
+    /**
+     * Applies only to users without an explicit quota, at their first reservation.
+     * Existing explicit quotas are never rewritten implicitly.
+     */
+    public function setDefaultUserQuota(int $bytes): int
+    {
+        $bytes = $this->validateBytes($bytes, true);
+
+        return DB::transaction(function () use ($bytes): int {
+            $setting = StorageSetting::whereKey(StorageSetting::SINGLETON)->lockForUpdate()->first() ?? new StorageSetting;
+            $previous = $setting->exists ? (int) $setting->default_user_quota_bytes : 0;
+            $setting->id = StorageSetting::SINGLETON;
+            $setting->default_user_quota_bytes = $bytes;
+            $setting->save();
+
+            return $previous;
+        });
+    }
+
+    private function createDefaultQuota(User $user): UserStorageQuota
+    {
+        $quota = new UserStorageQuota;
+        $quota->user_id = $this->nonnegative($user->id);
+        $quota->limit_bytes = $this->validateBytes(StorageSetting::defaultUserQuotaBytes(), true);
+        $quota->reserved_bytes = 0;
+        $quota->used_bytes = 0;
+        $quota->save();
+
+        return $quota;
     }
 
     public function prepareUserDeletion(User $user): void
