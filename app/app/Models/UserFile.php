@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -16,8 +17,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $name
  * @property int|null $original_folder_id
  * @property int|null $version_of_id
- * @property \Carbon\CarbonImmutable|null $trashed_at
- * @property \Carbon\CarbonImmutable|null $superseded_at
+ * @property CarbonImmutable|null $trashed_at
+ * @property CarbonImmutable|null $superseded_at
  */
 class UserFile extends Model
 {

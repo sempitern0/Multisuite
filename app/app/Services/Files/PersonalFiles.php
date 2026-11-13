@@ -413,7 +413,7 @@ class PersonalFiles
             ->havingRaw('count(*) > ?', [max(0, $keepVersions)])->pluck('version_of_id');
         foreach ($heads as $head) {
             UserFile::where('version_of_id', $head)->orderByDesc('superseded_at')->orderByDesc('id')
-                ->get()->slice(max(0, $keepVersions))->each($run);
+                ->offset(max(0, $keepVersions))->limit(100000)->get()->each($run);
         }
 
         return [$purged, $failed];

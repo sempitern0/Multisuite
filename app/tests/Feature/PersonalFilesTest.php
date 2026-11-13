@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Folder;
-use App\Models\User;
 use App\Models\StoragePool;
+use App\Models\User;
 use App\Models\UserFile;
 use App\Models\UserStorageQuota;
 use App\Services\Files\PersonalFiles;
@@ -220,8 +220,9 @@ class PersonalFilesTest extends TestCase
 
     public function test_other_people_cannot_trash_restore_purge_or_promote(): void
     {
-        $this->upload($this->owner, 'mio.txt', 'a')->assertOk();
-        $this->upload($this->owner, 'mio.txt', 'b')->assertOk();
+        // Bodies of a few bytes: fileinfo cannot type a single byte, which is (rightly) refused.
+        $this->upload($this->owner, 'mio.txt', 'contenido A')->assertOk();
+        $this->upload($this->owner, 'mio.txt', 'contenido B')->assertOk();
         $current = UserFile::whereNull('version_of_id')->sole();
         $old = UserFile::whereNotNull('version_of_id')->sole();
         app(PersonalFiles::class)->trash($this->owner, $current->id);
