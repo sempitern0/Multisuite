@@ -2,7 +2,9 @@
 
 namespace App\Services\Storage;
 
+use App\Models\PrivateUpload;
 use App\Models\StoragePool;
+use App\Models\StorageReservation;
 use App\Models\User;
 use App\Models\UserStorageQuota;
 use App\Support\Bytes;
@@ -41,9 +43,10 @@ class StorageOverview
         }
 
         $pools = StoragePool::all()->keyBy('id');
+        $stale = $this->staleReservations();
         $disks = [];
         foreach ($groups as $group) {
-            $disks[] = $this->disk($group, $pools->get($group['id']), array_values(array_map(
+            $disks[] = $this->disk($group, $pools->get($group['id']), $stale[$group['id']] ?? [], array_values(array_map(
                 fn (array $location): string => $location['id'],
                 array_filter($locations, fn (array $location): bool => $location['group'] === $group['id']),
             )));
@@ -51,7 +54,7 @@ class StorageOverview
         $listed = array_column($disks, 'id');
         foreach ($pools as $id => $pool) {
             if (! in_array($id, $listed, true)) {
-                $disks[] = $this->disk(['id' => (string) $id, 'status' => 'missing'], $pool, []);
+                $disks[] = $this->disk(['id' => (string) $id, 'status' => 'missing'], $pool, $stale[$id] ?? [], []);
             }
         }
 
@@ -92,11 +95,33 @@ class StorageOverview
     }
 
     /**
+     * Expired reservations still count against quotas until a verified cleanup releases them.
+     * Those with a pending private upload are handled by portal:uploads-cleanup; the rest
+     * have no automatic owner and need the operator's reconciliation.
+     *
+     * @return array<string, array{automatic: int, manual: int, count: int}>
+     */
+    private function staleReservations(): array
+    {
+        $pending = PrivateUpload::where('state', 'pending')->pluck('id')->flip();
+        $stale = [];
+        foreach (StorageReservation::where('state', 'reserved')->where('expires_at', '<', now())->get(['id', 'pool_id', 'bytes']) as $reservation) {
+            $entry = $stale[$reservation->pool_id] ?? ['automatic' => 0, 'manual' => 0, 'count' => 0];
+            $entry[$pending->has($reservation->id) ? 'automatic' : 'manual'] += (int) $reservation->bytes;
+            $entry['count']++;
+            $stale[$reservation->pool_id] = $entry;
+        }
+
+        return $stale;
+    }
+
+    /**
      * @param  array<string, mixed>  $group
+     * @param  array{automatic?: int, manual?: int, count?: int}  $stale
      * @param  list<string>  $locationIds
      * @return array<string, mixed>
      */
-    private function disk(array $group, ?StoragePool $pool, array $locationIds): array
+    private function disk(array $group, ?StoragePool $pool, array $stale, array $locationIds): array
     {
         $status = (string) $group['status'];
         $observed = $status === 'observed';
@@ -144,6 +169,9 @@ class StorageOverview
             'segments' => $segments,
             'limitAboveCapacity' => $limit !== null && $suggested !== null && $limit > $suggested,
             'editable' => $observed,
+            'staleAutomatic' => $stale['automatic'] ?? 0,
+            'staleManual' => $stale['manual'] ?? 0,
+            'staleCount' => $stale['count'] ?? 0,
         ];
     }
 

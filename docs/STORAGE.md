@@ -52,7 +52,7 @@ NAS_STORAGE_VOLUMES='[{"id":"music","group":"disk1","path":"/nas/music","reserve
 1. Montar explícitamente cada carpeta en el servicio PHP (Compose override). Nunca la biblioteca compartida de Navidrome como ubicación privada, ni `public/`.
 2. En cada raíz crear `.multisuite-volume-id` con el ID exacto. La app nunca lo genera: así un punto de montaje vacío (disco desconectado) no se confunde con el disco real.
 3. `make artisan CMD="migrate"`, `make artisan CMD="config:clear"` y comprobar `make artisan CMD="portal:storage-status"` (JSON sin rutas; código 1 ante configuración inválida o volumen no observable).
-4. Fijar límites en la GUI, o por consola: `portal:storage-quota pool disk1 <bytes>` / `portal:storage-quota user persona@example.com <bytes>`.
+4. Fijar límites en la GUI, o por consola: `portal:storage-quota pool disk1 500GB` / `portal:storage-quota user persona@example.com 50GB`.
 
 Reglas del inventario: mismo FS declarado en grupos distintos → `configuration_conflict` y capacidad nula; marca ausente/incorrecta, error de stat o plataforma no Linux → `unavailable`. `stat.dev` no identifica discos físicos, redundancia ni topologías Btrfs/ZFS/red: ante duda se corrige la configuración, nunca se ignora.
 
@@ -64,6 +64,13 @@ Reglas del inventario: mismo FS declarado en grupos distintos → `configuration
 - `setUserQuota`, `setPoolLimit`, `setDefaultUserQuota`: devuelven el valor anterior (para auditoría); rechazan límites por debajo de usado + reservado.
 - La baja de un usuario se bloquea mientras tenga espacio usado/reservado.
 - Concurrencia certificada en CI con dos procesos contra PostgreSQL (`tests/Integration/StorageConcurrencyTest.php`). SQLite solo sirve para tests funcionales.
+
+### Reconciliación de reservas caducadas
+La página Almacenamiento muestra, por disco, las reservas caducadas que siguen contando contra la cuota:
+- **Con subida privada pendiente**: `portal:uploads-cleanup` (scheduler, cada 10 min) borra `.part`/`.blob` y solo después libera. Si falla (volumen ausente, permisos, symlink), conserva la reserva y lo registra en consola.
+- **Sin subida asociada**: hoy no deberían existir, porque `PrivateUploads::begin` crea la reserva y la subida en la misma transacción. Aparecerán si un futuro integrador reserva sin registro propio. No hay comando para liberarlas todavía (ROADMAP S02): no editar la base de datos a mano; comprobar primero que no quedan bytes en disco.
+
+`portal:storage-quota` acepta bytes o unidades (`50GB`, `1,5TB`, `500MB`).
 
 ## 5. Recepción privada (S03.1, sin interfaz todavía)
 

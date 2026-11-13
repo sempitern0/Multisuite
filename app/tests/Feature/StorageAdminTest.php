@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\AdminAuditEvent;
+use App\Models\PrivateUpload;
 use App\Models\StoragePool;
+use App\Models\StorageReservation;
 use App\Models\User;
 use App\Models\UserStorageQuota;
 use App\Services\Storage\StorageInventory;
@@ -168,5 +170,44 @@ class StorageAdminTest extends TestCase
         $this->actingAs($member)->get('/dashboard')->assertDontSee('Tu almacenamiento');
         app(StorageReservations::class)->setUserQuota($member, 3 * self::GB);
         $this->get('/dashboard')->assertSee('Tu almacenamiento')->assertSee('de '.Bytes::format(3 * self::GB));
+    }
+
+    public function test_expired_reservations_are_shown_split_by_automatic_and_manual_cleanup(): void
+    {
+        $member = $this->actor('member');
+        $service = app(StorageReservations::class);
+        $service->setPoolLimit('disk', 100 * self::GB);
+        $service->setUserQuota($member, 10 * self::GB);
+        $withUpload = (string) Str::uuid();
+        $orphan = (string) Str::uuid();
+        $service->reserve($member, 'disk', self::GB, $withUpload);
+        $service->reserve($member, 'disk', 2 * self::GB, $orphan);
+        $upload = new PrivateUpload;
+        $upload->id = $withUpload;
+        $upload->location_id = 'music';
+        $upload->root_hash = str_repeat('a', 64);
+        $upload->state = 'pending';
+        $upload->save();
+        StorageReservation::query()->update(['expires_at' => now()->subHour()]);
+
+        $this->confirmed($this->actor('owner'))->get('/storage')->assertOk()
+            ->assertSee('2 subidas interrumpidas siguen ocupando '.Bytes::format(3 * self::GB))
+            ->assertSee(Bytes::format(self::GB).' se liberarán solos')
+            ->assertSee(Bytes::format(2 * self::GB).' no tienen limpieza automática');
+        // Display only: nothing is released by viewing the page.
+        $this->assertSame(3 * self::GB, StoragePool::findOrFail('disk')->reserved_bytes);
+    }
+
+    public function test_quota_command_accepts_human_units_and_rejects_ambiguous_values(): void
+    {
+        $member = $this->actor('member');
+        $this->artisan('portal:storage-quota', ['scope' => 'user', 'subject' => $member->email, 'bytes' => '1,5GB'])->assertExitCode(0);
+        $this->assertSame((int) (1.5 * self::GB), UserStorageQuota::findOrFail($member->id)->limit_bytes);
+        $this->artisan('portal:storage-quota', ['scope' => 'user', 'subject' => $member->email, 'bytes' => '2 tb'])->assertExitCode(0);
+        $this->assertSame(2 * 1_099_511_627_776, UserStorageQuota::findOrFail($member->id)->limit_bytes);
+        foreach (['1e9', '5PB', '1.234GB', '-1GB'] as $value) {
+            $this->artisan('portal:storage-quota', ['scope' => 'user', 'subject' => $member->email, 'bytes' => $value])->assertExitCode(1);
+        }
+        $this->assertSame(2 * 1_099_511_627_776, UserStorageQuota::findOrFail($member->id)->limit_bytes);
     }
 }

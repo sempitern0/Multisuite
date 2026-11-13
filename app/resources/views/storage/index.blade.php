@@ -66,6 +66,18 @@
                         <div><dt class="text-zinc-500">Máximo recomendado</dt><dd class="text-base font-medium">{{ $disk['suggested'] === null ? 'Desconocido' : $fmt($disk['suggested']) }}</dd></div>
                     </dl>
 
+                    @if ($disk['staleCount'] > 0)
+                        <div role="status" class="space-y-1 rounded-lg bg-zinc-100 p-3 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
+                            <p>{{ $disk['staleCount'] }} {{ $disk['staleCount'] === 1 ? 'subida interrumpida sigue' : 'subidas interrumpidas siguen' }} ocupando {{ $fmt($disk['staleAutomatic'] + $disk['staleManual']) }} del espacio de sus propietarios.</p>
+                            @if ($disk['staleAutomatic'] > 0)
+                                <p class="text-sm">{{ $fmt($disk['staleAutomatic']) }} se liberarán solos: la limpieza automática comprueba cada 10 minutos que no quedan restos en el disco antes de devolver el espacio.</p>
+                            @endif
+                            @if ($disk['staleManual'] > 0)
+                                <p class="text-sm">{{ $fmt($disk['staleManual']) }} no tienen limpieza automática. Pide al responsable técnico que los revise (docs/STORAGE.md, «Reconciliación»). No se liberan a ciegas para no perder la cuenta de archivos que podrían seguir en el disco.</p>
+                            @endif
+                        </div>
+                    @endif
+
                     @if ($disk['limitAboveCapacity'])
                         <p role="alert" class="rounded-lg bg-amber-50 p-3 text-amber-900 dark:bg-amber-950 dark:text-amber-200">El límite es mayor que el espacio realmente disponible. No es peligroso (el portal comprueba el espacio real antes de aceptar contenido), pero las personas podrían quedarse sin sitio antes de llegar a su máximo.</p>
                     @endif

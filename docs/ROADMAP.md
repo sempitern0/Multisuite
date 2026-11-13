@@ -21,7 +21,8 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - [ ] S02.3 QA: móvil 360 px, teclado, zoom 200 %, disco desconectado, conflicto de grupos, sobreasignación, reducción por debajo de lo usado, admin frente a owner.
 - [ ] Probar con topología real: un disco con dos carpetas, dos discos, disco retirado, disco lleno (ENOSPC).
 - [ ] Reconciliación: comparar contabilidad con bytes reales y detectar reservas caducadas sin limpiar.
-- [ ] Mostrar en la GUI reservas caducadas pendientes y botón de reconciliación seguro (solo tras verificación física).
+- [x] Mostrar en la GUI reservas caducadas que siguen contando (limpieza automática frente a revisión manual) — en la rama S02.3.
+- [ ] Comando de reconciliación para reservas sin subida asociada (solo tras verificación física).
 - [ ] Opcional operador: guía de XFS project quota como defensa adicional.
 
 ## S03 — Incorporación privada de contenido

@@ -14,15 +14,16 @@ Instantánea a 2026-11-13. Historial detallado: git log y PRs #1–#11. Este arc
 | Aislamiento | Laboratorio S01 con 30 comprobaciones reales | Workflow *Library isolation* verde |
 | Almacenamiento | Inventario de discos, reservas/cuotas transaccionales, recepción privada HTTP | CI + concurrencia PostgreSQL |
 
-## En curso: S02.3 — rama `feat/s02-storage-admin-gui` (sin commit ni PR todavía)
+## En curso: S02.3 — rama `feat/s02-storage-admin-gui` (commit fac3b9a subido, PR pendiente)
 - Página **Almacenamiento** para owner/admin: estado y barra de cada disco, límite con opciones predefinidas o unidades humanas, reparto/sobreasignación, cuota por defecto y cuota por persona. Owner gestiona discos, defecto y a cualquiera; admin solo cuotas de miembros.
 - Cuota por defecto (`storage_settings`, migración incremental) aplicada de forma perezosa en la primera reserva; 0 conserva el comportamiento anterior.
 - Auditoría `storage.*`, «Tu almacenamiento» en portada, enlace desde la ficha de usuario.
-- Tests nuevos: `StorageAdminTest`, `BytesTest`. **No ejecutados**: el entorno del agente no tiene PHP ni Docker; validar en CI (`make test`, Pint, PHPStan).
+- Reservas caducadas visibles por disco, separando limpieza automática y revisión manual (solo lectura). `portal:storage-quota` acepta unidades (`50GB`, `1,5TB`).
+- Tests nuevos: `StorageAdminTest` (incluye reservas caducadas y comando con unidades), `BytesTest`. **No ejecutados**: el entorno del agente no tiene PHP ni Docker; validar en CI (`make test`, Pint, PHPStan).
 - Documentación reorganizada: obsoletos eliminados, Foundry en `docs/foundry/`, almacenamiento consolidado en STORAGE.md, guía para agentes en AGENTS.md y ARCHITECTURE.md.
 
 ## Siguiente acción ejecutable
-1. Revisar el diff, hacer commit en la rama y abrir PR; corregir lo que indique CI.
+1. Abrir la PR de la rama (GitHub la marca como fusionable sin conflictos a 2026-11-13; las 11 PRs anteriores están fusionadas) y corregir lo que indique CI.
 2. QA visual de `/storage` (ver ROADMAP S02.3) con discos de prueba, nunca bibliotecas reales.
 3. Empezar S03.2 (interfaz de subida) en rama nueva desde `main` actualizado.
 
