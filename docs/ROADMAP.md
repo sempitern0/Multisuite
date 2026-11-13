@@ -7,17 +7,15 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - Cada servicio de terceros (Navidrome hoy; Komga/Jellyfin/… mañana) conserva su interfaz, catálogo y datos. **No** construir reproductor, lector, catálogo, notas ni descargador propios.
 - El portal no recibe el socket Docker, no monta/formatea discos y nunca acepta rutas de usuarios.
 - Contenido privado por defecto; solo el administrador publica para todos.
-- Un incremento = una rama desde `main` + una PR. Sin merges automáticos.
+- Un incremento = una rama desde `main` + una PR (apilada si depende de otra). Se fusiona solo con indicación del usuario.
 
 ## Orden vigente
-1. **S02.3** — GUI de almacenamiento: PR #12 lista para merge.
-2. **S03.2** — Mis archivos: carpetas, subida web, descarga y vista previa (rama `feat/s03-my-files`).
-3. **S03.3** — Papelera y versiones con purga verificada que devuelve cuota.
-4. **S03.4** — Descargas ZIP (selección, carpeta, «Exportar todo») en segundo plano.
-5. **S05.1** — Backup del NAS (DB, servicios y archivos) a destino externo con restauración ensayada.
-6. **S04** — Publicación/retirada administrativa y movimientos entre discos.
-7. **P03** — Cuentas existentes, baja integral, VPN/TLS y segundo dispositivo.
-8. **P04/P05** — Nuevos servicios (uno por PR), despliegue reproducible y piloto familiar.
+1. **S03.3** — Papelera y versiones con purga verificada que devuelve cuota.
+2. **S03.4** — Descargas ZIP (selección, carpeta, «Exportar todo») en segundo plano.
+3. **S05.1** — Backup del NAS (DB, servicios y archivos) a destino externo con restauración ensayada.
+4. **S04** — Publicación/retirada administrativa y movimientos entre discos.
+5. **P03** — Cuentas existentes, baja integral, VPN/TLS y segundo dispositivo.
+6. **P04/P05** — Nuevos servicios (uno por PR), despliegue reproducible y piloto familiar.
 
 ## S02 — Almacenamiento y cuotas
 - [ ] S02.3 QA ampliado (opcional antes del piloto): móvil 360 px, teclado, zoom 200 %, disco desconectado, conflicto de grupos, sobreasignación, admin frente a owner.
@@ -28,7 +26,7 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - [ ] Opcional operador: guía de XFS project quota como defensa adicional.
 
 ## S03 — Mis archivos (decisión 2026-11-13: dentro del portal, carpetas propias)
-- [ ] S03.2 Carpetas por persona, subida web con progreso, listado, renombrado, descarga individual y vista previa de solo lectura (imágenes, PDF, Markdown saneado, texto). Tipos de documento ampliados (ofimática, EPUB) solo para descarga.
+- [ ] S03.2 QA del usuario: subir varios tipos, previsualizar en móvil/escritorio, aislamiento con una segunda persona. Mover archivos entre carpetas.
 - [ ] S03.3 Papelera (borrado lógico, restaurar, vaciado con borrado físico verificado y decremento de cuota) y versiones al subir un archivo con el mismo nombre.
 - [ ] S03.4 ZIP de selección o carpeta y «Exportar todo», generado por job con reserva temporal, caducidad y limpieza; nunca extraer ZIP subidos.
 - [ ] Revisar límites Nginx/PHP para archivos grandes; valorar subida por trozos/reanudable.
