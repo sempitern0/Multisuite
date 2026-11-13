@@ -7,6 +7,8 @@ return [
     // Keep at or below Nginx client_max_body_size (docker/nginx/site.conf).
     'upload_max_bytes' => env('NAS_UPLOAD_MAX_BYTES', 104857600),
     'volumes' => env('NAS_STORAGE_VOLUMES', '[]'),
+    // lsblk inventory written on the server by `make nas-discover` (read-only display).
+    'hardware_snapshot' => env('NAS_HARDWARE_SNAPSHOT', ''),
 
     // Detected (never client-declared) types accepted for private files. Archives,
     // executables, HTML and SVG are deliberately absent: they are never extracted,

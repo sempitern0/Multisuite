@@ -56,7 +56,14 @@ Make aplica `deploy/compose.nas-dev.yaml` salvo `NAS_DEV=0`:
 - Las variables del contenedor tienen prioridad sobre `app/.env`: con discos reales usa `NAS_DEV=0`.
 - Borrar el volumen (p. ej. `make reset-project`) elimina los archivos de desarrollo; la DB conserva referencias que fallarán al abrirlas. Recrear ambos juntos.
 
-### Operador con discos reales (una vez por disco)
+### Servidor Linux con discos reales (automatizado)
+1. Monta los discos en el host como siempre (fstab/systemd). Multisuite no formatea, particiona ni monta nada.
+2. `make nas-discover` (solo lectura): lista discos, particiones, sistema de archivos, punto de montaje y libre real (`lsblk`/`findmnt`), sugiere candidatos y guarda `local/nas-hardware.json`, que la página Almacenamiento muestra en **Discos del servidor**.
+3. `make nas-apply TARGETS="/srv/disco1 /srv/disco2" [UPLOAD=disco2] [YES=1]`: valida que cada destino sea un punto de montaje de lectura/escritura y no del sistema; crea `<montaje>/multisuite` con su marca (ID derivado del nombre, p. ej. `disco1`) y `.multisuite-private` (0700, propietario `DEV_UID`); no sobrescribe marcas ajenas; agrupa por UUID del sistema de archivos (`fs-<uuid>`), y escribe `compose.nas.yaml` (local, ignorado por Git) con los bind mounts, `NAS_*`, una reserva de 10 GiB por volumen y el inventario montado en solo lectura. Puede necesitar `sudo` si los discos pertenecen a root. Es idempotente.
+4. `make up`: Make detecta `compose.nas.yaml`, lo usa en lugar del NAS de desarrollo y `portal:dev-bootstrap` fija los límites que falten. El espacio por defecto por persona se elige en la GUI.
+En Windows/Docker Desktop los scripts PowerShell solo informan: allí se usa el NAS de desarrollo.
+
+### Operador con discos reales (manual, una vez por disco)
 
 `NAS_STORAGE_VOLUMES` en `app/.env`, lista JSON (máx. 64). Rutas vistas **dentro del contenedor Linux**, también con Docker Desktop:
 
@@ -128,7 +135,8 @@ Decisión del usuario (2026-11-13): gestor de archivos propio del portal con car
 | Inventario de solo lectura (S02.1) | Integrado (PR #9) |
 | Reservas y cuotas transaccionales (S02.2) | Integrado (PR #10), concurrencia PostgreSQL en CI |
 | Recepción privada HTTP (S03.1) | Integrado (PR #11) |
-| Mis archivos: carpetas, subida web, vista previa y descarga (S03.2) | Rama `feat/s03-my-files` |
+| Mis archivos: carpetas, subida web, vista previa y descarga (S03.2) | Integrado (PR #13) |
+| Descubrimiento de discos del servidor y panel de solo lectura (S02.4) | Rama `feat/s02-disk-discovery` |
 | GUI de almacenamiento y cuota por defecto (S02.3) | Rama `feat/s02-storage-admin-gui`, pendiente de CI y QA visual |
 | Papelera/versiones, ZIP, reconciliación, bibliotecas por usuario, publicación, movimientos y backup | Pendiente (ROADMAP S03–S05) |
 

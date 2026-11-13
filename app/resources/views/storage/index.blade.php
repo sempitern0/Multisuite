@@ -107,6 +107,40 @@
             @endforeach
         </section>
 
+        {{-- Physical disks (read-only snapshot from make nas-discover) --}}
+        <section aria-labelledby="hardware" class="space-y-3">
+            <flux:heading id="hardware" size="lg">Discos del servidor</flux:heading>
+            @if ($hardware === null)
+                <flux:text>Para ver aquí todos los discos y particiones del servidor, ejecuta <code>make nas-discover</code> en él. Para usarlos con el portal: <code>make nas-apply TARGETS="/punto/de/montaje"</code> y después <code>make up</code>. Nunca se formatea ni se particiona nada.</flux:text>
+            @else
+                <flux:text>Última detección{{ $hardware['host'] !== '' ? ' en '.$hardware['host'] : '' }}: {{ $hardware['generated_at'] }}. Solo lectura; para cambiarlos usa <code>make nas-apply</code> en el servidor.</flux:text>
+                @forelse ($hardware['disks'] as $device)
+                    <article class="space-y-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                        <p class="font-semibold">{{ $device['model'] !== '' ? $device['model'] : 'Disco' }} <span class="font-normal text-zinc-500">· {{ $device['name'] }} · {{ $fmt($device['size']) }}@if ($device['removable']) · extraíble @endif</span></p>
+                        @if ($device['partitions'] === [])
+                            <flux:text>Sin particiones con sistema de archivos (disco sin usar).</flux:text>
+                        @else
+                            <ul class="divide-y text-sm">
+                                @foreach ($device['partitions'] as $part)
+                                    <li class="flex flex-wrap justify-between gap-2 py-2">
+                                        <span>{{ $part['name'] }} · {{ $part['fstype'] !== '' ? $part['fstype'] : 'sin formato' }} · {{ $fmt($part['size']) }}</span>
+                                        <span class="text-zinc-600 dark:text-zinc-300">
+                                            @if ($part['mountpoint'] === '') No montada
+                                            @else {{ $part['mountpoint'] }}@if ($part['fs_available'] !== null) · libre {{ $fmt($part['fs_available']) }}@endif
+                                            @endif
+                                            @if ($part['in_use']) · <strong class="text-teal-800 dark:text-teal-300">en uso por el portal</strong>@endif
+                                        </span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </article>
+                @empty
+                    <flux:text>La última detección no encontró discos.</flux:text>
+                @endforelse
+            @endif
+        </section>
+
         {{-- Summary and default --}}
         <section aria-labelledby="sharing" class="space-y-4 rounded-xl border border-zinc-200 p-5 dark:border-zinc-700">
             <flux:heading id="sharing" size="lg">Reparto</flux:heading>
