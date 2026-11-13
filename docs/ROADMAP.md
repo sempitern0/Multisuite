@@ -10,12 +10,11 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - Un incremento = una rama desde `main` + una PR (apilada si depende de otra). Se fusiona solo con indicación del usuario.
 
 ## Orden vigente
-1. **S03.3** — Papelera y versiones con purga verificada que devuelve cuota.
-2. **S03.4** — Descargas ZIP (selección, carpeta, «Exportar todo») en segundo plano.
-3. **S05.1** — Backup del NAS (DB, servicios y archivos) a destino externo con restauración ensayada.
-4. **S04** — Publicación/retirada administrativa y movimientos entre discos.
-5. **P03** — Cuentas existentes, baja integral, VPN/TLS y segundo dispositivo.
-6. **P04/P05** — Nuevos servicios (uno por PR), despliegue reproducible y piloto familiar.
+1. **S03.4** — Descargas ZIP (selección, carpeta, «Exportar todo») en segundo plano.
+2. **S05.1** — Backup del NAS (DB, servicios y archivos) a destino externo con restauración ensayada.
+3. **S04** — Publicación/retirada administrativa y movimientos entre discos.
+4. **P03** — Cuentas existentes, baja integral, VPN/TLS y segundo dispositivo.
+5. **P04/P05** — Nuevos servicios (uno por PR), despliegue reproducible y piloto familiar.
 
 ## S02 — Almacenamiento y cuotas
 - [ ] S02.3 QA ampliado (opcional antes del piloto): móvil 360 px, teclado, zoom 200 %, disco desconectado, conflicto de grupos, sobreasignación, admin frente a owner.
@@ -28,7 +27,7 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 
 ## S03 — Mis archivos (decisión 2026-11-13: dentro del portal, carpetas propias)
 - [ ] Mover archivos y carpetas entre carpetas.
-- [ ] S03.3 Papelera (borrado lógico, restaurar, vaciado con borrado físico verificado y decremento de cuota) y versiones al subir un archivo con el mismo nombre.
+- [ ] S03.3 QA del usuario: papelera, restaurar, vaciar, versiones (rama `feat/s03-trash-versions`).
 - [ ] S03.4 ZIP de selección o carpeta y «Exportar todo», generado por job con reserva temporal, caducidad y limpieza; nunca extraer ZIP subidos.
 - [ ] Revisar límites Nginx/PHP para archivos grandes; valorar subida por trozos/reanudable.
 - [ ] Reconciliar archivos `ready` ausentes, corruptos o restaurados desde backup.

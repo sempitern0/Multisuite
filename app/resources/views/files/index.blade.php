@@ -58,6 +58,7 @@
                     <p class="text-sm text-zinc-600 dark:text-zinc-300">Hasta {{ $fmt($maxBytes) }} por archivo. Documentos, PDF, imágenes, texto y audio.</p>
                 </div>
             @endif
+            <flux:button :href="route('files.trash')" icon="trash">Papelera</flux:button>
             <form method="POST" action="{{ route('files.folders.store') }}" class="flex flex-wrap items-end gap-2">
                 @csrf
                 <input type="hidden" name="parent" value="{{ $folder?->id }}">

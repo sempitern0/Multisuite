@@ -27,6 +27,10 @@ Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md
 - Panel **Discos del servidor** en Almacenamiento a partir del inventario `lsblk` (solo lectura).
 - Validado: `tests/nas-disk-discovery.py` con `lsblk`/`findmnt` simulados; `HardwareSnapshotTest` en CI. Pendiente: prueba en el servidor real.
 
+## En revisión: S03.3 papelera y versiones — rama `feat/s03-trash-versions` (apilada sobre #16)
+- Papelera con restauración; borrado definitivo verificado que devuelve la cuota; versiones al subir un nombre repetido (se aplican al verificar los bytes); retención diaria (30 días, 5 versiones).
+- Tests en `PersonalFilesTest`: versiones, papelera y cuota, aislamiento, fallo cerrado sin volumen, retención.
+
 ## Siguiente acción ejecutable
 1. Usuario confirmó el 2026-11-13 que `main` funciona (Almacenamiento y Mis archivos). Revisar la PR de información de carpetas.
 2. S03.3 Papelera y versiones (rama nueva desde `main`).

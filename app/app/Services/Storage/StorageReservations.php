@@ -115,6 +115,37 @@ class StorageReservations
     }
 
     /** @return int|null Previous explicit limit, null when the user followed the default. */
+    /**
+     * Returns confirmed bytes to the quota and the pool. Only the purge step calls it,
+     * after verifying that the blob no longer exists. Repeating it is a no-op.
+     */
+    public function releaseCommitted(User $user, string $key): StorageReservation
+    {
+        return DB::transaction(function () use ($user, $key): StorageReservation {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $lookup = StorageReservation::whereKey($key)->firstOrFail();
+            $this->owns($lookup, $user);
+            $pool = StoragePool::whereKey($lookup->pool_id)->lockForUpdate()->firstOrFail();
+            $quota = UserStorageQuota::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $reservation = StorageReservation::whereKey($key)->lockForUpdate()->firstOrFail();
+            if ($reservation->state === 'purged') {
+                return $reservation;
+            }
+            $bytes = (int) $reservation->actual_bytes;
+            if ($reservation->state !== 'committed' || $pool->used_bytes < $bytes || $quota->used_bytes < $bytes) {
+                throw new RuntimeException('Contabilidad inconsistente: requiere reconciliación.');
+            }
+            $pool->used_bytes = $this->nonnegative($pool->used_bytes - $bytes);
+            $quota->used_bytes = $this->nonnegative($quota->used_bytes - $bytes);
+            $pool->save();
+            $quota->save();
+            $reservation->state = 'purged';
+            $reservation->save();
+
+            return $reservation;
+        });
+    }
+
     public function setUserQuota(User $user, int $bytes): ?int
     {
         $bytes = $this->validateBytes($bytes, true);

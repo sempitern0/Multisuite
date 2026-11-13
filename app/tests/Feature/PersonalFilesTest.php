@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Folder;
 use App\Models\User;
+use App\Models\StoragePool;
 use App\Models\UserFile;
+use App\Models\UserStorageQuota;
 use App\Services\Files\PersonalFiles;
 use App\Services\Storage\StorageReservations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -142,15 +144,136 @@ class PersonalFilesTest extends TestCase
         }
     }
 
-    public function test_same_name_gets_a_numbered_copy_and_rename_conflicts_are_refused(): void
+    private function blob(UserFile $file): string
+    {
+        return $this->root.'/.multisuite-private/'.$file->upload_id.'.blob';
+    }
+
+    private function used(User $user): int
+    {
+        return (int) UserStorageQuota::findOrFail($user->id)->used_bytes;
+    }
+
+    public function test_same_name_creates_versions_that_can_be_restored_and_purged(): void
     {
         $this->upload($this->owner, 'acta.txt', 'uno')->assertOk();
-        $this->upload($this->owner, 'acta.txt', 'dos')->assertOk();
-        $this->assertSame('dos', file_get_contents($this->root.'/.multisuite-private/'.$this->entry('acta (2).txt')->upload_id.'.blob'));
-        $second = $this->entry('acta (2).txt');
-        $this->actingAs($this->owner)->from('/files/'.$second->id)->patch('/files/'.$second->id, ['name' => 'ACTA.txt'])->assertSessionHasErrors('file_name');
-        $this->patch('/files/'.$second->id, ['name' => 'acta firmada.txt'])->assertRedirect(route('files.show', $second));
-        $this->assertSame('acta firmada.txt', $second->fresh()?->name);
+        $this->upload($this->owner, 'Acta.txt', 'dos!')->assertOk();
+        $current = UserFile::whereNull('version_of_id')->whereNull('trashed_at')->sole();
+        $old = UserFile::whereNotNull('version_of_id')->sole();
+        $this->assertSame('Acta.txt', $current->name);
+        $this->assertSame($current->id, $old->version_of_id);
+        $this->assertNull($old->folder_id);
+        $this->assertSame(7, $this->used($this->owner));                 // versions keep counting
+
+        $this->actingAs($this->owner)->get('/files')->assertSee('Acta.txt')->assertSee('1 elemento · 4 B');
+        $this->get('/files/'.$current->id)->assertSee('Versiones anteriores');
+        $this->assertSame('uno', file_get_contents($this->get('/files/'.$old->id.'/content?download=1')->baseResponse->getFile()->getPathname()));
+
+        // Restoring the old version swaps them and keeps the visible name.
+        $this->post('/files/'.$old->id.'/promote')->assertRedirect(route('files.show', $old));
+        $this->assertTrue($old->fresh()?->isCurrent());
+        $this->assertSame('Acta.txt', $old->fresh()?->name);
+        $this->assertSame($old->id, $current->fresh()?->version_of_id);
+
+        // Purging a version deletes its bytes and returns quota; current files cannot be purged directly.
+        $this->delete('/files/'.$current->id.'/purge')->assertRedirect(route('files.show', $old));
+        $this->assertFileDoesNotExist($this->blob($current));
+        $this->assertSame(3, $this->used($this->owner));
+        $this->from('/files/'.$old->id)->delete('/files/'.$old->id.'/purge')->assertSessionHasErrors('file_purge');
+        $this->assertFileExists($this->blob($old));
+    }
+
+    public function test_trash_hides_restores_and_purge_returns_quota(): void
+    {
+        $folder = app(PersonalFiles::class)->createFolder($this->owner, null, 'Facturas');
+        $this->upload($this->owner, 'luz.txt', 'kWh 120', $folder->id)->assertOk();
+        $this->upload($this->owner, 'luz.txt', 'kWh 125', $folder->id)->assertOk();   // + one version
+        $file = UserFile::whereNull('version_of_id')->sole();
+        $version = UserFile::whereNotNull('version_of_id')->sole();
+
+        $this->actingAs($this->owner)->delete('/files/'.$file->id)->assertRedirect(route('files.folder', $folder));
+        // The flash message names the file, so check the listing links instead of the text.
+        $this->get('/files/folder/'.$folder->id)->assertDontSee('href="'.route('files.show', $file).'"', false)
+            ->assertSee('En esta carpeta: 0 elementos · 0 B');
+        $this->get('/files/trash')->assertSee('luz.txt')->assertSee('14 B');
+        $this->assertSame(14, $this->used($this->owner));
+        $this->delete('/files/folders/'.$folder->id)->assertRedirect();             // folder now empty
+        $this->assertModelMissing($folder);
+
+        // Original folder gone: restore to the root; a clashing name gets a numbered copy.
+        $this->upload($this->owner, 'luz.txt', 'otra')->assertOk();
+        $this->post('/files/'.$file->id.'/restore')->assertRedirect(route('files.show', $file));
+        $this->assertSame(['folder_id' => null, 'name' => 'luz (2).txt'], $file->fresh()?->only(['folder_id', 'name']));
+        $this->assertNull($file->fresh()?->trashed_at);
+
+        // Purge from the trash removes the file and its versions, and frees every byte.
+        $this->delete('/files/'.$file->id)->assertRedirect();
+        $this->delete('/files/'.$file->id.'/purge')->assertRedirect(route('files.trash'));
+        $this->assertFileDoesNotExist($this->blob($file));
+        $this->assertFileDoesNotExist($this->blob($version));
+        $this->assertModelMissing($file);
+        $this->assertModelMissing($version);
+        $this->assertSame(4, $this->used($this->owner));
+        $this->assertSame(4, StoragePool::findOrFail('disk')->used_bytes);
+        $this->assertDatabaseHas('private_uploads', ['id' => $file->upload_id, 'state' => 'purged']);
+    }
+
+    public function test_other_people_cannot_trash_restore_purge_or_promote(): void
+    {
+        $this->upload($this->owner, 'mio.txt', 'a')->assertOk();
+        $this->upload($this->owner, 'mio.txt', 'b')->assertOk();
+        $current = UserFile::whereNull('version_of_id')->sole();
+        $old = UserFile::whereNotNull('version_of_id')->sole();
+        app(PersonalFiles::class)->trash($this->owner, $current->id);
+        $intruder = User::factory()->create();
+
+        $this->actingAs($intruder)->delete('/files/'.$current->id)->assertNotFound();
+        $this->post('/files/'.$current->id.'/restore')->assertNotFound();
+        $this->delete('/files/'.$current->id.'/purge')->assertNotFound();
+        $this->post('/files/'.$old->id.'/promote')->assertNotFound();
+        $this->get('/files/trash')->assertDontSee('mio.txt');
+        $this->delete('/files/trash')->assertRedirect();
+        $this->assertFileExists($this->blob($current));
+        $this->assertFileExists($this->blob($old));
+    }
+
+    public function test_purge_fails_closed_when_the_volume_is_unavailable(): void
+    {
+        $this->upload($this->owner, 'seguro.txt', 'datos')->assertOk();
+        $file = $this->entry('seguro.txt');
+        app(PersonalFiles::class)->trash($this->owner, $file->id);
+        rename($this->root.'/.multisuite-volume-id', $this->root.'/.marker-off');
+        try {
+            $this->actingAs($this->owner)->from('/files/trash')->delete('/files/'.$file->id.'/purge')->assertSessionHasErrors('file_purge');
+            $this->assertSame(1, app(PersonalFiles::class)->emptyTrash($this->owner));
+        } finally {
+            rename($this->root.'/.marker-off', $this->root.'/.multisuite-volume-id');
+        }
+        $this->assertFileExists($this->blob($file));
+        $this->assertSame(5, $this->used($this->owner));
+        $this->assertNotNull($file->fresh());
+    }
+
+    public function test_retention_purges_old_trash_and_excess_versions(): void
+    {
+        config(['nas.trash_days' => 30, 'nas.max_versions' => 2]);
+        foreach (['v1', 'v2', 'v3', 'v4'] as $body) {
+            $this->upload($this->owner, 'informe.txt', $body)->assertOk();
+            $this->travel(1)->minutes();
+        }
+        $this->upload($this->owner, 'viejo.txt', 'zz')->assertOk();
+        $this->upload($this->owner, 'reciente.txt', 'yy')->assertOk();
+        app(PersonalFiles::class)->trash($this->owner, $this->entry('viejo.txt')->id);
+        $this->travel(31)->days();
+        app(PersonalFiles::class)->trash($this->owner, $this->entry('reciente.txt')->id);
+
+        $this->artisan('portal:files-purge')->assertSuccessful();
+        $this->assertNull(UserFile::where('name', 'viejo.txt')->first());
+        $this->assertNotNull(UserFile::where('name', 'reciente.txt')->first());
+        $versions = UserFile::whereNotNull('version_of_id')->orderByDesc('superseded_at')->get();
+        $this->assertCount(2, $versions);                                  // v3 and v2 kept, v1 purged
+        $this->assertSame(['v3', 'v2'], $versions->map(fn ($v) => file_get_contents($this->blob($v)))->all());
+        $this->assertSame(2 + 2 + 2 + 2, $this->used($this->owner));        // v4 + v3 + v2 + reciente
     }
 
     public function test_markdown_preview_is_sanitised(): void

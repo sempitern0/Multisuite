@@ -110,6 +110,62 @@ class FileController extends Controller
         return redirect()->route('files.show', $file)->with('status', 'Archivo renombrado.');
     }
 
+    public function trash(Request $request): Response
+    {
+        $user = $request->user();
+
+        return response()->view('files.trash', [
+            'entries' => $this->files->trashed($user),
+            'bytes' => $this->files->trashBytes($user),
+            'days' => (int) config('nas.trash_days'),
+        ]);
+    }
+
+    public function destroy(Request $request, int $fileId): RedirectResponse
+    {
+        Gate::authorize('update', $this->files->file($request->user(), $fileId));
+        $file = $this->guard('file_trash', fn () => $this->files->trash($request->user(), $fileId));
+        $back = $file->original_folder_id === null ? redirect()->route('files.index') : redirect()->route('files.folder', $file->original_folder_id);
+
+        return $back->with('status', '«'.$file->name.'» se ha movido a la papelera. Puedes restaurarlo durante '.(int) config('nas.trash_days').' días.');
+    }
+
+    public function restore(Request $request, int $fileId): RedirectResponse
+    {
+        Gate::authorize('update', $this->files->file($request->user(), $fileId));
+        $file = $this->guard('file_trash', fn () => $this->files->restore($request->user(), $fileId));
+
+        return redirect()->route('files.show', $file)->with('status', 'Archivo restaurado como «'.$file->name.'».');
+    }
+
+    public function purge(Request $request, int $fileId): RedirectResponse
+    {
+        $file = $this->files->file($request->user(), $fileId);
+        Gate::authorize('update', $file);
+        $current = $file->version_of_id;
+        $this->guard('file_purge', fn () => $this->files->purge($request->user(), $fileId));
+
+        return ($current === null ? redirect()->route('files.trash') : redirect()->route('files.show', $current))
+            ->with('status', 'Borrado definitivamente. El espacio ya está disponible.');
+    }
+
+    public function emptyTrash(Request $request): RedirectResponse
+    {
+        $failed = $this->files->emptyTrash($request->user());
+
+        return redirect()->route('files.trash')->with('status', $failed === 0
+            ? 'Papelera vaciada. El espacio ya está disponible.'
+            : $failed.' archivos no se pudieron borrar (el disco no está disponible) y siguen en la papelera.');
+    }
+
+    public function promote(Request $request, int $fileId): RedirectResponse
+    {
+        Gate::authorize('update', $this->files->file($request->user(), $fileId));
+        $file = $this->guard('file_version', fn () => $this->files->promote($request->user(), $fileId));
+
+        return redirect()->route('files.show', $file)->with('status', 'Versión restaurada. La anterior queda guardada como versión.');
+    }
+
     public function show(Request $request, int $fileId): Response
     {
         $file = $this->files->file($request->user(), $fileId);
@@ -139,9 +195,13 @@ class FileController extends Controller
             $error = $exception->getMessage();
         }
 
+        $current = $file->version_of_id === null ? null : $this->files->file($request->user(), $file->version_of_id);
+
         return response()->view('files.show', [
             'file' => $file,
-            'breadcrumbs' => $this->files->breadcrumbs($this->files->folder($request->user(), $file->folder_id)),
+            'current' => $current,
+            'versions' => $file->isCurrent() ? $this->files->versions($request->user(), $file) : collect(),
+            'breadcrumbs' => $this->files->breadcrumbs($this->files->folder($request->user(), ($current ?? $file)->folder_id)),
             'kind' => $kind,
             'mime' => $readable['mime'],
             'size' => $readable['size'],

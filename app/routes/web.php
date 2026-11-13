@@ -34,7 +34,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('folders/{folderId}', [FileController::class, 'updateFolder'])->whereNumber('folderId')->name('folders.update');
         Route::delete('folders/{folderId}', [FileController::class, 'destroyFolder'])->whereNumber('folderId')->name('folders.destroy');
         Route::post('/', [FileController::class, 'store'])->middleware('throttle:60,1')->name('store');
+        Route::get('trash', [FileController::class, 'trash'])->name('trash');
+        Route::delete('trash', [FileController::class, 'emptyTrash'])->name('trash.empty');
         Route::get('{fileId}', [FileController::class, 'show'])->whereNumber('fileId')->name('show');
+        Route::delete('{fileId}', [FileController::class, 'destroy'])->whereNumber('fileId')->name('destroy');
+        Route::post('{fileId}/restore', [FileController::class, 'restore'])->whereNumber('fileId')->name('restore');
+        Route::delete('{fileId}/purge', [FileController::class, 'purge'])->whereNumber('fileId')->name('purge');
+        Route::post('{fileId}/promote', [FileController::class, 'promote'])->whereNumber('fileId')->name('promote');
         Route::patch('{fileId}', [FileController::class, 'update'])->whereNumber('fileId')->name('update');
         Route::get('{fileId}/content', [FileController::class, 'content'])->whereNumber('fileId')->name('content');
     });
