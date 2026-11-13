@@ -48,7 +48,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Storage limits: same audience, but a higher rate so a family can be configured in one sitting.
-    Route::middleware(['can:view-storage', 'password.confirm', 'throttle:60,1'])->prefix('storage')->name('storage.')->group(function () {
+    // Never under /storage/: Nginx serves that prefix as the public disk (docker/nginx/site.conf).
+    Route::middleware(['can:view-storage', 'password.confirm', 'throttle:60,1'])->prefix('admin/storage')->name('storage.')->group(function () {
         Route::get('/', [StorageController::class, 'index'])->name('index');
         Route::put('default', [StorageController::class, 'updateDefault'])->name('default.update');
         Route::put('pools/{pool}', [StorageController::class, 'updatePool'])->where('pool', '[a-z][a-z0-9-]{0,63}')->name('pools.update');

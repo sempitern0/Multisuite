@@ -23,7 +23,7 @@ Instantánea a 2026-11-13. Historial detallado: git log y PRs #1–#11. Este arc
 - Documentación reorganizada: obsoletos eliminados, Foundry en `docs/foundry/`, almacenamiento consolidado en STORAGE.md, guía para agentes en AGENTS.md y ARCHITECTURE.md.
 
 ## Siguiente acción ejecutable
-1. QA visual de `/storage` por el usuario y revisión/merge manual de la PR #12.
+1. QA visual de `/admin/storage` por el usuario y revisión/merge manual de la PR #12.
 2. Checklist de QA en ROADMAP S02.3, con carpetas de prueba y nunca con bibliotecas reales.
 3. Empezar S03.2 (interfaz de subida) en rama nueva desde `main` actualizado.
 

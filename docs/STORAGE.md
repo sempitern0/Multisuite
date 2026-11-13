@@ -29,13 +29,15 @@ Recomendación de topología para el operador:
 
 ## 2. Uso desde la interfaz (propietario/administrador)
 
-Menú **Almacenamiento** (`/storage`, requiere confirmación reciente de contraseña):
+Menú **Almacenamiento** (`/admin/storage`, requiere confirmación reciente de contraseña):
 - **Discos**: barra con contenido del portal, otros datos, margen y libre; límite actual y máximo recomendado. El propietario elige el límite con opciones predefinidas («Todo lo recomendado», «No usar este disco», 1 GB…4 TB) u «Otra cantidad» (número + MB/GB/TB).
 - **Reparto**: total de límites, total prometido, reparto equitativo sugerido y aviso de sobreasignación.
 - **Espacio por defecto** para personas nuevas (solo propietario).
 - **Personas**: barra de uso y selector de espacio máximo. El propietario gestiona a cualquiera (incluido él mismo); un administrador solo a miembros. Reducir por debajo de lo usado/reservado se rechaza con mensaje junto al formulario.
 - Cada cambio queda en **Actividad** (`storage.user_quota`, `storage.pool_limit`, `storage.default_quota`) con tamaño anterior y nuevo; sin rutas.
 - Los miembros ven «Tu almacenamiento» en la portada cuando tienen espacio asignado. La ficha de usuario enlaza a su cuota.
+
+La página vive en `/admin/storage`: nunca colgar rutas de Laravel de `/storage/`, que Nginx sirve como disco público (`docker/nginx/site.conf`); un test lo impide.
 
 Unidades: binarias (1 GB = 1024³ bytes, como Windows). Entrada admitida: hasta 6 dígitos y 2 decimales, coma o punto. Límite interno 10^15 bytes.
 
