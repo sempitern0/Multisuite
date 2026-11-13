@@ -36,15 +36,26 @@ class DevBootstrap extends Command
 
             return self::FAILURE;
         }
-        $this->call('migrate', ['--force' => true]);
+        if ($this->call('migrate', ['--force' => true]) !== self::SUCCESS) {
+            $this->error('Las migraciones han fallado: el entorno no está listo. Revisa el error anterior.');
+
+            return self::FAILURE;
+        }
 
         try {
-            $groups = $inventory->inspect()['capacity_groups'];
+            $report = $inventory->inspect();
         } catch (InvalidArgumentException $exception) {
             $this->error('NAS_STORAGE_VOLUMES no es válido: '.$exception->getMessage());
 
             return self::FAILURE;
         }
+        // Make the effective storage visible: container env (dev overlay) wins over app/.env.
+        $locations = array_map(
+            fn (array $location): string => $location['id'].' (grupo '.$location['group'].')',
+            array_filter((array) $report['locations'], 'is_array'),
+        );
+        $this->line('Ubicaciones de almacenamiento: '.($locations === [] ? 'ninguna configurada' : implode(', ', $locations)).'.');
+        $groups = (array) $report['capacity_groups'];
         foreach ($groups as $group) {
             if (! is_array($group) || ! is_string($group['id'] ?? null)) {
                 continue;

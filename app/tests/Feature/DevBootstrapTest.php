@@ -17,7 +17,7 @@ class DevBootstrapTest extends TestCase
     {
         parent::setUp();
         $this->mock(StorageInventory::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('inspect')->andReturn(['capacity_groups' => [
+            $mock->shouldReceive('inspect')->andReturn(['locations' => [['id' => 'private', 'group' => 'dev-nas', 'status' => 'observed']], 'capacity_groups' => [
                 ['id' => 'dev-nas', 'status' => 'observed', 'headroom_bytes' => 5000],
                 ['id' => 'kept', 'status' => 'observed', 'headroom_bytes' => 9000],
                 ['id' => 'gone', 'status' => 'unavailable', 'headroom_bytes' => null],
@@ -30,7 +30,9 @@ class DevBootstrapTest extends TestCase
         config(['nas.bootstrap_default_quota_bytes' => 700]);
         app(StorageReservations::class)->setPoolLimit('kept', 123);
 
-        $this->artisan('portal:dev-bootstrap', ['--wait' => 0])->assertSuccessful();
+        $this->artisan('portal:dev-bootstrap', ['--wait' => 0])
+            ->expectsOutputToContain('Ubicaciones de almacenamiento: private (grupo dev-nas).')
+            ->assertSuccessful();
         $this->assertSame(5000, StoragePool::findOrFail('dev-nas')->limit_bytes);
         $this->assertSame(123, StoragePool::findOrFail('kept')->limit_bytes);
         $this->assertNull(StoragePool::find('gone'));
@@ -51,5 +53,21 @@ class DevBootstrapTest extends TestCase
         $this->artisan('portal:dev-bootstrap', ['--wait' => 0])->assertSuccessful();
         $this->assertNull(StoragePool::find('dev-nas'));
         $this->assertSame(0, app(StorageReservations::class)->defaultUserQuota());
+    }
+
+    public function test_unreachable_database_fails_loudly_without_touching_storage(): void
+    {
+        config(['nas.bootstrap_default_quota_bytes' => 700]);
+        config(['database.connections.unreachable' => ['driver' => 'sqlite', 'database' => '/nonexistent-'.uniqid().'/db.sqlite']]);
+        $default = config('database.default');
+        config(['database.default' => 'unreachable']);
+        try {
+            $this->artisan('portal:dev-bootstrap', ['--wait' => 0])
+                ->expectsOutputToContain('La base de datos no responde')
+                ->assertFailed();
+        } finally {
+            config(['database.default' => $default]);
+        }
+        $this->assertNull(StoragePool::find('dev-nas'));
     }
 }

@@ -44,10 +44,15 @@ with tempfile.TemporaryDirectory(prefix="multisuite-music-") as directory:
     assert any("-f deploy/compose.nas-dev.yaml" in c and c.endswith(" up -d") for c in calls), calls
     assert any(c.endswith("exec -T app php artisan portal:dev-bootstrap") for c in calls), calls
     assert any(c.endswith("exec -T app php artisan portal:dev-bootstrap") for c in run("up-wait")), "up-wait bootstrap"
+    # Storage overlay and bootstrap are independent switches.
     calls = run("up", "NAS_DEV=0")
-    assert all("nas-dev" not in c and "dev-bootstrap" not in c for c in calls), calls
-    calls = run("up", "NAS_DEV=0", "MUSIC_AUTO=0")
-    assert "compose up -d" in calls, calls
+    assert all("nas-dev" not in c for c in calls), calls
+    assert any(c.endswith("exec -T app php artisan portal:dev-bootstrap") for c in calls), calls
+    calls = run("up", "DEV_BOOTSTRAP=0")
+    assert any("nas-dev" in c for c in calls) and all("dev-bootstrap" not in c for c in calls), calls
+    calls = run("up", "NAS_DEV=0", "MUSIC_AUTO=0", "DEV_BOOTSTRAP=0")
+    assert "compose up -d" in calls and all("dev-bootstrap" not in c for c in calls), calls
+    assert any(c.endswith("exec -T app php artisan portal:dev-bootstrap") for c in run("rebuild", "HOST_PREPARE=true", "SETUP_SCRIPT=true")), "rebuild bootstrap"
     env["NETWORK_MISSING"] = "1"
     calls = run("up")
     assert calls[:2] == ["network inspect multisuite-accounts", "network create multisuite-accounts"], calls

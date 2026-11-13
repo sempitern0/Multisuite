@@ -50,7 +50,8 @@ Make aplica `deploy/compose.nas-dev.yaml` salvo `NAS_DEV=0`:
 - Volumen Docker `nas_private` montado en `/nas/private` en `app`, `worker` y `scheduler`. Vive en el sistema de archivos Linux de Docker, así que los permisos 0700 funcionan también con Docker Desktop en Windows.
 - El servicio de un solo uso `nas-init` (root, sin red) crea la marca `private` y `.multisuite-private` (0700, propietario `DEV_UID`). Es idempotente: no reescribe la marca ni toca archivos guardados. La aplicación sigue sin generar marcas.
 - Variables `NAS_*` inyectadas en los contenedores; tienen prioridad sobre `app/.env`.
-- `make up`/`up-wait`/`start`/`rebuild` ejecutan `portal:dev-bootstrap`: espera a la DB, migra, fija el límite de cada disco sin configurar (todo lo disponible) y el espacio por defecto (10 GB) solo si nunca se eligió. No hace nada en producción.
+- `make up`/`up-wait`/`start`/`rebuild` ejecutan `portal:dev-bootstrap` (independiente de `NAS_DEV`; `DEV_BOOTSTRAP=0` lo omite): espera a la DB, migra (si falla, termina con error), muestra las ubicaciones efectivas, fija el límite de cada disco sin configurar (todo lo disponible) y el espacio por defecto (10 GB) solo si nunca se eligió. No hace nada en producción.
+- Las variables del contenedor tienen prioridad sobre `app/.env`: con discos reales usa `NAS_DEV=0`.
 - Borrar el volumen (p. ej. `make reset-project`) elimina los archivos de desarrollo; la DB conserva referencias que fallarán al abrirlas. Recrear ambos juntos.
 
 ### Operador con discos reales (una vez por disco)
