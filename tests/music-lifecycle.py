@@ -30,15 +30,24 @@ with tempfile.TemporaryDirectory(prefix="multisuite-music-") as directory:
         assert all("-v" not in call.split() for call in calls), calls
     calls = run("up")
     assert calls[0] == "network inspect multisuite-accounts", calls
-    assert any("compose.portal-accounts.example.yaml up -d" in c for c in calls), calls
+    portal = "compose.portal-accounts.example.yaml"
+    assert any(portal in c and c.endswith(" up -d") for c in calls), calls
     (work / "compose.override.yaml").write_text("# host override")
     assert any("-f compose.override.yaml -f deploy/compose.portal-accounts.example.yaml" in c for c in run("up"))
-    assert any("compose.portal-accounts.example.yaml up -d" in c for c in run("start"))
+    assert any(portal in c and c.endswith(" up -d") for c in run("start"))
     assert all("--profile" not in c for c in run("up"))
     assert all("network" not in c for c in run("up", "MUSIC_AUTO=0"))
     calls = run("restart")
     assert sum("compose.music.yaml" in call for call in calls) == 2, calls
     assert all("compose.music.yaml" not in call for call in run("up", "MUSIC_AUTO=0"))
+    calls = run("up")
+    assert any("-f deploy/compose.nas-dev.yaml" in c and c.endswith(" up -d") for c in calls), calls
+    assert any(c.endswith("exec -T app php artisan portal:dev-bootstrap") for c in calls), calls
+    assert any(c.endswith("exec -T app php artisan portal:dev-bootstrap") for c in run("up-wait")), "up-wait bootstrap"
+    calls = run("up", "NAS_DEV=0")
+    assert all("nas-dev" not in c and "dev-bootstrap" not in c for c in calls), calls
+    calls = run("up", "NAS_DEV=0", "MUSIC_AUTO=0")
+    assert "compose up -d" in calls, calls
     env["NETWORK_MISSING"] = "1"
     calls = run("up")
     assert calls[:2] == ["network inspect multisuite-accounts", "network create multisuite-accounts"], calls
@@ -49,4 +58,4 @@ with tempfile.TemporaryDirectory(prefix="multisuite-music-") as directory:
     env.pop("NETWORK_CREATE_EXIT")
     env["MUSIC_EXIT"] = "7"
     run("up", fail=True)
-print("Music lifecycle: configured/unconfigured, opt-out, aliases, restart and failure propagation passed.")
+print("Make lifecycle: music configured/unconfigured, dev NAS overlay/bootstrap, opt-outs, aliases, restart and failure propagation passed.")

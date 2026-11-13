@@ -27,9 +27,14 @@ Instantánea a 2026-11-13. Historial detallado: git log y PRs #1–#11. Este arc
 - Carpetas privadas, subida web con progreso (reserva + PUT existente), listado, renombrado, descarga y vista previa de imágenes, PDF, Markdown saneado y texto. Tipos ampliados (ofimática, EPUB, imágenes). Nginx admite 110 MiB por petición.
 - Tests: `PersonalFilesTest` (flujo completo, aislamiento entre personas, carpetas, nombres, Markdown/XSS, PDF, cuota). CI verde: 128 tests, Pint, PHPStan, build e infraestructura. Un `.md` con `<script>`/`<html>` se detecta como HTML y se rechaza (documentado).
 
+## En revisión: automatización del entorno — rama `feat/dev-automation` (apilada sobre #13)
+- `make up` migra y prepara un NAS de desarrollo (volumen `nas_private`, marca y permisos por `nas-init`, límites iniciales con `portal:dev-bootstrap`) sin pasos manuales; `NAS_DEV=0` lo omite.
+- AGENTS.md revisado: entorno local desechable, migraciones editables dentro de una PR abierta, PRs apiladas, automatización por defecto y verificación manual solo para lo que CI no cubre. Se mantienen las protecciones de host, producción, datos reales y secretos.
+- Validado aquí: `tests/music-lifecycle.py` (Make con Docker simulado) y `docker compose config` de los overlays. App: `DevBootstrapTest` en CI.
+
 ## Siguiente acción ejecutable
 1. Merge manual de la PR #12 y después de la #13 (GitHub la reapunta a `main`).
-2. QA de Mis archivos con una ubicación privada de prueba: subir varios tipos, previsualizar en móvil y escritorio, comprobar que otra persona no ve nada.
+2. Tras fusionar, `make build && make up` y probar Mis archivos (ya no requiere preparar la ubicación a mano): varios tipos, móvil y escritorio, otra persona no ve nada.
 3. S03.3 Papelera y versiones.
 
 ## Límites conocidos

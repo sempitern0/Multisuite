@@ -25,6 +25,10 @@ return [
         'application/vnd.oasis.opendocument.presentation',
     ],
 
+    // Development only (portal:dev-bootstrap): default per-person space applied when
+    // none has been chosen yet. Production leaves this at 0.
+    'bootstrap_default_quota_bytes' => (int) env('NAS_BOOTSTRAP_DEFAULT_QUOTA_BYTES', 0),
+
     // Read-only previews (Mis archivos). Larger text is offered as download only.
     'preview_text_max_bytes' => 1048576,
 ];

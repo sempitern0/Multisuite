@@ -32,11 +32,24 @@ DC := docker compose
 # Override with MUSIC_AUTO=0 for Laravel-only operation.
 MUSIC_AUTO ?= $(if $(wildcard music.env),1,0)
 MUSIC_DC := docker compose --env-file music.env -f compose.music.yaml
+# Development NAS volume + automatic migrations/limits on up. NAS_DEV=0 opts out
+# (e.g. when NAS_STORAGE_VOLUMES points at real disks in app/.env).
+NAS_DEV ?= 1
+DC_FILES := -f compose.yaml $(if $(wildcard compose.override.yaml),-f compose.override.yaml)
 ifeq ($(MUSIC_AUTO),1)
 # Keep host-generated overrides; append service connectivity without rewriting them.
-DC := docker compose -f compose.yaml $(if $(wildcard compose.override.yaml),-f compose.override.yaml) -f deploy/compose.portal-accounts.example.yaml
+DC_FILES += -f deploy/compose.portal-accounts.example.yaml
 MUSIC_DC += -f deploy/compose.music-accounts.example.yaml
 endif
+ifeq ($(NAS_DEV),1)
+DC_FILES += -f deploy/compose.nas-dev.yaml
+endif
+ifneq ($(MUSIC_AUTO)$(NAS_DEV),00)
+DC := docker compose $(DC_FILES)
+endif
+# Waits for the database, migrates and fills unset storage limits. Never overwrites
+# choices made in the GUI and does nothing in production.
+DEV_BOOTSTRAP := $(DC) exec -T app php artisan portal:dev-bootstrap
 STARTER ?=
 # Explicit all-profiles stop also removes containers started manually through a
 # profile not included in the current .env.
@@ -56,6 +69,7 @@ help:
 	@echo "Optional:    make worker | scheduler | redis"
 	@echo "Music:       make music-up | music-stop | music-status | music-logs"
 	@echo "Auto music:  music.env enables Navidrome; use MUSIC_AUTO=0 to skip"
+	@echo "Dev NAS:     private volume + migrations on up; use NAS_DEV=0 to skip"
 	@echo "Operations:  make env-sync | backup | https-setup | reset-project"
 	@echo "SaaS:        make tenancy-check     Check local tenant hostname routing"
 	@echo ""
@@ -81,6 +95,9 @@ up: accounts-network
 ifeq ($(MUSIC_AUTO),1)
 	@$(MUSIC_DC) up -d
 endif
+ifeq ($(NAS_DEV),1)
+	-@$(DEV_BOOTSTRAP)
+endif
 	-@$(STATUS_SCRIPT)
 
 up-detached: up
@@ -91,6 +108,9 @@ up-wait: accounts-network
 	@$(DC) up -d --wait --wait-timeout 120
 ifeq ($(MUSIC_AUTO),1)
 	@$(MUSIC_DC) up -d --wait --wait-timeout 120
+endif
+ifeq ($(NAS_DEV),1)
+	-@$(DEV_BOOTSTRAP)
 endif
 	-$(HTTP_CHECK)
 	-@$(STATUS_SCRIPT)
@@ -113,6 +133,9 @@ else
 endif
 ifeq ($(MUSIC_AUTO),1)
 	@$(MUSIC_DC) up -d
+endif
+ifeq ($(NAS_DEV),1)
+	-@$(DEV_BOOTSTRAP)
 endif
 	-@$(STATUS_SCRIPT)
 
@@ -139,6 +162,9 @@ images:
 
 rebuild: build accounts-network
 	@$(DC) up -d --wait --wait-timeout 120 --force-recreate
+ifeq ($(NAS_DEV),1)
+	-@$(DEV_BOOTSTRAP)
+endif
 
 doctor:
 	@$(HOST_DOCTOR)

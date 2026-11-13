@@ -8,6 +8,7 @@ Portal Laravel/Livewire separado de servicios con interfaces propias.
 - No guardar música ni DB del servicio en app/storage. Los datos locales están ignorados en /local/; producción usará directorios durables configurados.
 - Windows con Docker Desktop; Linux con permisos UID/GID reales. Comprobar ambas plataformas, no asumir equivalencia.
 - PORTAL: versiones/lockfiles y PostgreSQL si el starter requiere persistencia. No añadir colas/Redis para simples enlaces.
+- Entorno local desechable mientras no haya producción: `make up` migra y prepara el NAS de desarrollo (`deploy/compose.nas-dev.yaml`, `NAS_DEV=0` para omitirlo); `make reset-project` + `make build` lo recrea desde cero.
 
 ## Producción pendiente
 Portal: imágenes inmutables de Foundry, APP_DEBUG=false, secretos propios, assets compilados, healthchecks y DB si se usa.

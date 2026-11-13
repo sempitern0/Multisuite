@@ -1,0 +1,45 @@
+# Development NAS, applied by Make unless NAS_DEV=0. Never part of production.
+# A named Docker volume lives on the Docker Linux filesystem, so the private
+# directory keeps real 0700 permissions even with Docker Desktop on Windows.
+# The marker and private directory are provisioned by this infrastructure step,
+# never by the application (docs/STORAGE.md).
+x-nas-runtime: &nas-runtime
+  depends_on:
+    nas-init:
+      condition: service_completed_successfully
+  volumes:
+    - nas_private:/nas/private
+  environment:
+    NAS_STORAGE_VOLUMES: '[{"id":"private","group":"dev-nas","path":"/nas/private","reserve_bytes":1073741824}]'
+    NAS_UPLOADS_ENABLED: "true"
+    NAS_UPLOAD_LOCATION: "private"
+    # Used only by portal:dev-bootstrap when no default has been chosen yet (10 GB).
+    NAS_BOOTSTRAP_DEFAULT_QUOTA_BYTES: "10737418240"
+services:
+  nas-init:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: development
+    user: "0:0"
+    network_mode: none
+    volumes:
+      - nas_private:/nas/private
+    # Idempotent: never rewrites an existing marker and never touches stored blobs.
+    command:
+      - sh
+      - -ec
+      - |
+        root=/nas/private
+        [ -f "$$root/.multisuite-volume-id" ] || printf 'private\n' > "$$root/.multisuite-volume-id"
+        mkdir -p "$$root/.multisuite-private"
+        chown ${DEV_UID:-1000}:${DEV_GID:-1000} "$$root" "$$root/.multisuite-volume-id" "$$root/.multisuite-private"
+        chmod 0755 "$$root"
+        chmod 0644 "$$root/.multisuite-volume-id"
+        chmod 0700 "$$root/.multisuite-private"
+        echo "Dev NAS ready at $$root"
+  app: *nas-runtime
+  worker: *nas-runtime
+  scheduler: *nas-runtime
+volumes:
+  nas_private:

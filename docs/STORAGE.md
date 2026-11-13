@@ -43,7 +43,17 @@ Unidades: binarias (1 GB = 1024³ bytes, como Windows). Entrada admitida: hasta 
 
 La GUI **no** acepta rutas, no monta ni formatea discos y no edita `NAS_STORAGE_VOLUMES`: añadir un disco es tarea del operador (sección 3) y después aparece en la página.
 
-## 3. Preparación del operador (una vez por disco)
+## 3. Preparación
+
+### Desarrollo (automático)
+Make aplica `deploy/compose.nas-dev.yaml` salvo `NAS_DEV=0`:
+- Volumen Docker `nas_private` montado en `/nas/private` en `app`, `worker` y `scheduler`. Vive en el sistema de archivos Linux de Docker, así que los permisos 0700 funcionan también con Docker Desktop en Windows.
+- El servicio de un solo uso `nas-init` (root, sin red) crea la marca `private` y `.multisuite-private` (0700, propietario `DEV_UID`). Es idempotente: no reescribe la marca ni toca archivos guardados. La aplicación sigue sin generar marcas.
+- Variables `NAS_*` inyectadas en los contenedores; tienen prioridad sobre `app/.env`.
+- `make up`/`up-wait`/`start`/`rebuild` ejecutan `portal:dev-bootstrap`: espera a la DB, migra, fija el límite de cada disco sin configurar (todo lo disponible) y el espacio por defecto (10 GB) solo si nunca se eligió. No hace nada en producción.
+- Borrar el volumen (p. ej. `make reset-project`) elimina los archivos de desarrollo; la DB conserva referencias que fallarán al abrirlas. Recrear ambos juntos.
+
+### Operador con discos reales (una vez por disco)
 
 `NAS_STORAGE_VOLUMES` en `app/.env`, lista JSON (máx. 64). Rutas vistas **dentro del contenedor Linux**, también con Docker Desktop:
 

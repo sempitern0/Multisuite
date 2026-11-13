@@ -24,7 +24,7 @@ NAS doméstico con portal privado Laravel + Livewire para el propietario, famili
 - Cada servicio conserva interfaz, cuentas, catálogo, reproductor, historial y datos. No implementar equivalentes propios (reproductor, lector de libros/cómics, catálogo multimedia, notas, descargador) ni adaptadores que dupliquen catálogos.
 - Excepción decidida por el usuario el 2026-11-13: **Mis archivos** es del portal (carpetas privadas, subida, descarga, ZIP, papelera/versiones y exportación) con **vista previa de solo lectura** de imágenes, PDF (visor nativo del navegador), Markdown saneado y texto. Sin editores, ofimática online, transcodificación ni galerías: eso sigue siendo de servicios de terceros. Ver docs/STORAGE.md.
 - Navidrome es la interfaz completa de música; `compose.music.yaml` es autónomo y se ejecuta separado de `compose.yaml`.
-- El portal no monta discos, no formatea, no recibe el socket Docker y nunca acepta rutas de usuarios. Las ubicaciones NAS las declara el operador (`NAS_STORAGE_VOLUMES`); la GUI solo reparte espacio. Ver docs/STORAGE.md.
+- El portal no monta discos, no formatea, no recibe el socket Docker y nunca acepta rutas de usuarios. Las ubicaciones NAS las declara el operador (`NAS_STORAGE_VOLUMES`); la GUI solo reparte espacio. En desarrollo, `deploy/compose.nas-dev.yaml` (aplicado por Make) prepara un volumen privado sin pasos manuales. Ver docs/STORAGE.md.
 - El portal aprovisiona cuentas y sincroniza contraseñas en servicios compatibles. Credenciales administrativas solo en configuración secreta; contraseñas de usuarios cifradas temporalmente para reintentos, con caducidad de una hora y borrado tras éxito (docs/SERVICE_ACCOUNTS.md).
 - Una ruta de redirección no es proxy ni SSO. Solo destinos configurados por el administrador; no aceptar redirects arbitrarios.
 - El puente de sesión musical usa un gateway Nginx y un pase cifrado breve; no es SSO, no copia tokens a Laravel ni revoca otros dispositivos. Mantener compatibilidad con Navidrome 0.64.2 y pruebas de proxy/Range (docs/MUSIC_SESSION_BRIDGE.md).
@@ -46,7 +46,7 @@ No usar betas, forks abandonados o dependencias de pago como base por defecto. U
 - PSR-12, PSR-4, Pint (preset laravel) y PHPStan nivel 7. Servicios/actions solo si resuelven complejidad real.
 - Policies/Gates en cada lectura, modificación, descarga y exportación; filtros de propiedad también en búsquedas, jobs, caché y APIs. Revalidar roles bajo bloqueo en operaciones administrativas.
 - Form Requests o validación explícita, consultas parametrizadas, CSRF y asignación masiva restringida.
-- Migraciones incrementales, índices, transacciones e idempotencia; no editar migraciones ya aplicadas.
+- Migraciones incrementales, índices, transacciones e idempotencia. No editar migraciones ya fusionadas en `main`; dentro de una PR abierta se pueden corregir.
 - Jobs reintentables, cancelación, backoff y timeouts coherentes con retry_after. No duplicar efectos externos.
 - Archivos privados fuera de public; nombres controlados, MIME/tamaño verificados, cuotas y extracción segura de comprimidos. Fallar cerrado ante capacidad desconocida.
 - Auditoría con lista blanca de campos; nunca payloads, rutas, contraseñas ni respuestas remotas.
@@ -61,19 +61,21 @@ No usar betas, forks abandonados o dependencias de pago como base por defecto. U
 ## Entornos y operación
 Leer docs/ENVIRONMENTS.md, docs/NAVIDROME.md y docs/foundry/DEPLOYMENT.md antes de cambiar despliegues.
 - Mantener desarrollo Windows/PowerShell y Linux/WSL; runtime y herramientas containerizados.
+- Automatizar por defecto: `make build`/`make up` deben dejar el entorno de desarrollo listo (migraciones, ubicación privada, límites iniciales) sin crear IDs, marcas ni permisos a mano. Lo que no se pueda automatizar se documenta en README como paso único.
 - Producción configurable por variables y perfiles, sin editar código. Secretos, dominio, TLS, VPN y destino de backup son configuración del operador.
 - Producción: imágenes inmutables, assets compilados, APP_DEBUG=false, volúmenes persistentes, worker/scheduler y healthchecks.
 - Ningún servicio de administración, base de datos o desarrollo expuesto públicamente. Entrada privada por VPN; comprobar firewall y puertos publicados.
 - No afirmar que la plantilla heredada está lista para producción hasta completar P03 y P05.
-- No hacer reset, down -v, cambios de secretos o migraciones destructivas como depuración. Despliegues reales y operaciones destructivas requieren autorización específica.
+- El entorno local de desarrollo es desechable mientras no exista producción (decisión del usuario 2026-11-13): se puede recrear (`make rebuild`, `make reset-project` + `make build`, `migrate:fresh` en la DB de desarrollo, borrar volúmenes Docker del propio proyecto) cuando acelere el trabajo, avisando de lo que se pierde. Nunca borrar bibliotecas o carpetas montadas desde el host, archivos fuera del repositorio ni recursos de otros proyectos o contenedores.
+- Producción, datos reales de personas, secretos reales y despliegues requieren autorización específica; ahí no se depura con reset, `down -v` ni migraciones destructivas.
 - No generar certificados de confianza del host ni modificar hosts sin permiso.
 
 ## Comandos y pruebas
 Consultar el Makefile antes de ejecutar comandos: `make up`, `make test CMD="--filter=…"`, `make artisan CMD="…"`, `make npm CMD="run build"`, `make lint`, `make music-*`. No ejecutar bootstrap (`make setup`) sobre la app existente.
-Tests proporcionales: autorización entre dos usuarios, recuperación, jobs y flujos críticos; no tests que solo repitan implementación. No inventar resultados: si el entorno no tiene PHP/Docker, decirlo y validar en CI.
+Tests proporcionales: autorización entre dos usuarios, recuperación, jobs y flujos críticos; no tests que solo repitan implementación. No inventar resultados: si el entorno no tiene PHP/Docker, decirlo y validar en CI. Pedir comprobaciones manuales al usuario solo para lo que CI no puede validar (visual, dispositivos reales, red local).
 Para Compose validar configuración renderizada; para scripts comprobar variantes Unix/PowerShell afectadas.
 CI: agrupar cambios coherentes, evitar pushes de prueba, no repetir jobs verdes sin causa. Construir una vez por versión y promover los mismos digests. No desactivar controles necesarios para conseguir verde.
-Cada hito o incremento revisable tiene su propia rama desde `main` actualizado y su propia pull request. No integrar directamente en `main` ni fusionar automáticamente. Nunca force-push ni sobrescribir cambios ajenos.
+Cada hito o incremento revisable tiene su propia rama desde `main` actualizado y su propia pull request. Si depende de una PR aún sin fusionar, se apila (base = rama de esa PR) y se indica en la descripción. No integrar directamente en `main` ni fusionar automáticamente. Nunca force-push ni sobrescribir cambios ajenos.
 
 ## Definición de terminado
 Código y docs coherentes; criterios del hito comprobados; pruebas relevantes registradas; permisos y exportación revisados; dependencia anotada; PROJECT_STATUS reescrito y ROADMAP actualizado. Un bloqueo debe incluir causa, trabajo preservado y acción concreta para resolverlo.
