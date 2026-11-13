@@ -22,13 +22,13 @@ Instantánea a 2026-11-13. Historial detallado: git log y PRs #1–#11. Este arc
 - Página en `/admin/storage` (Nginx reserva `/storage/` para el disco público; test de regresión). CI de eeb6fec verde: 120 tests / 580 aserciones, Pint, PHPStan nivel 7, build, PostgreSQL concurrente, Navidrome real e infraestructura Linux/Windows. Guardado validado por el usuario en su entorno HTTPS local.
 - Documentación reorganizada: obsoletos eliminados, Foundry en `docs/foundry/`, almacenamiento consolidado en STORAGE.md, guía para agentes en AGENTS.md y ARCHITECTURE.md.
 
-## En curso: S03.2 Mis archivos — rama `feat/s03-my-files` (depende de PR #12)
+## En revisión: S03.2 Mis archivos — PR #13, rama `feat/s03-my-files` (depende de PR #12)
 - Decisión del usuario 2026-11-13: gestor propio en el portal con carpetas; copias = exportar, papelera/versiones y backup del NAS (hitos S03.3, S03.4, S05.1). AGENTS.md recoge la excepción acotada.
 - Carpetas privadas, subida web con progreso (reserva + PUT existente), listado, renombrado, descarga y vista previa de imágenes, PDF, Markdown saneado y texto. Tipos ampliados (ofimática, EPUB, imágenes). Nginx admite 110 MiB por petición.
-- Tests: `PersonalFilesTest` (flujo completo, aislamiento entre personas, carpetas, nombres, Markdown/XSS, PDF, cuota). Pendiente de CI.
+- Tests: `PersonalFilesTest` (flujo completo, aislamiento entre personas, carpetas, nombres, Markdown/XSS, PDF, cuota). CI verde: 128 tests, Pint, PHPStan, build e infraestructura. Un `.md` con `<script>`/`<html>` se detecta como HTML y se rechaza (documentado).
 
 ## Siguiente acción ejecutable
-1. Merge manual de la PR #12 y después de la PR de S03.2 cuando su CI esté verde.
+1. Merge manual de la PR #12 y después de la #13 (GitHub la reapunta a `main`).
 2. QA de Mis archivos con una ubicación privada de prueba: subir varios tipos, previsualizar en móvil y escritorio, comprobar que otra persona no ve nada.
 3. S03.3 Papelera y versiones.
 
