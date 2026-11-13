@@ -97,7 +97,7 @@ class PrivateUploads
             $actual = filesize($part);
             $mime = (new finfo(FILEINFO_MIME_TYPE))->file($part);
             $hash = hash_file('sha256', $part);
-            if ($actual !== $reservation->bytes || $hash === false || ! in_array($mime, (array) config('nas.allowed_mimes', []), true)) {
+            if ($actual !== $reservation->bytes || $hash === false || $mime === false || ! in_array($mime, (array) config('nas.allowed_mimes', []), true)) {
                 throw new RuntimeException('Tamaño o formato no permitido.');
             }
             if (! rename($part, $final)) {

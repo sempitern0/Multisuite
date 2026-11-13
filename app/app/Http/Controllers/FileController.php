@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\StorageSetting;
-use App\Models\UserFile;
 use App\Models\UserStorageQuota;
 use App\Services\Files\PersonalFiles;
 use Illuminate\Database\RecordsNotFoundException;
@@ -125,7 +124,7 @@ class FileController extends Controller
             $kind = $this->kind($readable['mime'], $file->name);
             if (in_array($kind, ['text', 'markdown'], true)) {
                 $max = (int) config('nas.preview_text_max_bytes');
-                $raw = (string) file_get_contents($readable['path'], false, null, 0, $max + 1);
+                $raw = (string) file_get_contents($readable['path'], false, null, 0, max(1, $max + 1));
                 $truncated = strlen($raw) > $max;
                 $text = mb_scrub(substr($raw, 0, $max), 'UTF-8');
                 if ($kind === 'markdown' && ! $truncated) {

@@ -155,11 +155,13 @@ class PersonalFilesTest extends TestCase
 
     public function test_markdown_preview_is_sanitised(): void
     {
-        $markdown = "# Hola\n\n<script>alert(1)</script>\n\n[pulsa](javascript:alert(2)) y **negrita**\n";
+        // A .md containing <script> or <html> is detected as HTML and refused at upload;
+        // inline HTML that passes detection must still be stripped when rendering.
+        $markdown = "# Hola\n\nTexto con <span onclick=\"alert(1)\">HTML en línea</span>, [pulsa](javascript:alert(2)) y **negrita**\n";
         $this->upload($this->owner, 'nota.md', $markdown)->assertOk();
         $page = $this->actingAs($this->owner)->get('/files/'.$this->entry('nota.md')->id)->assertOk();
         $page->assertSee('<h1>Hola</h1>', false)->assertSee('<strong>negrita</strong>', false)
-            ->assertDontSee('<script>alert(1)</script>', false)->assertDontSee('javascript:alert', false);
+            ->assertDontSee('onclick', false)->assertDontSee('<span', false)->assertDontSee('javascript:alert', false);
         $this->assertSame("img-src 'self' data:", $page->headers->get('Content-Security-Policy'));
     }
 
