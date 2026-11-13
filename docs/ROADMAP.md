@@ -10,7 +10,7 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - Un incremento = una rama desde `main` + una PR. Sin merges automáticos.
 
 ## Orden vigente
-1. **S02.3** — GUI de almacenamiento (rama `feat/s02-storage-admin-gui`): pasar CI, QA visual y fusionar.
+1. **S02.3** — GUI de almacenamiento: PR #12 lista para merge.
 2. **S03.2** — Interfaz de subida privada y reconciliación de archivos confirmados.
 3. **S04** — Publicación/retirada administrativa.
 4. **S05** — Movimientos entre discos y backup/restore comprobado.
@@ -18,7 +18,7 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 6. **P04/P05** — Nuevos servicios (uno por PR), despliegue reproducible y piloto familiar.
 
 ## S02 — Almacenamiento y cuotas
-- [ ] S02.3 QA: móvil 360 px, teclado, zoom 200 %, disco desconectado, conflicto de grupos, sobreasignación, reducción por debajo de lo usado, admin frente a owner.
+- [ ] S02.3 QA ampliado (opcional antes del piloto): móvil 360 px, teclado, zoom 200 %, disco desconectado, conflicto de grupos, sobreasignación, admin frente a owner.
 - [ ] Probar con topología real: un disco con dos carpetas, dos discos, disco retirado, disco lleno (ENOSPC).
 - [ ] Reconciliación: comparar contabilidad con bytes reales y detectar reservas caducadas sin limpiar.
 - [x] Mostrar en la GUI reservas caducadas que siguen contando (limpieza automática frente a revisión manual) — en la rama S02.3.
