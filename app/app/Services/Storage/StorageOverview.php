@@ -125,8 +125,8 @@ class StorageOverview
     {
         $status = (string) $group['status'];
         $observed = $status === 'observed';
-        $used = (int) ($pool?->used_bytes ?? 0);
-        $reserved = (int) ($pool?->reserved_bytes ?? 0);
+        $used = (int) ($pool->used_bytes ?? 0);
+        $reserved = (int) ($pool->reserved_bytes ?? 0);
         $metric = fn (string $key): ?int => $observed && isset($group[$key]) && is_int($group[$key]) ? $group[$key] : null;
         $total = $metric('total_bytes');
         $free = $metric('free_bytes');
@@ -186,8 +186,8 @@ class StorageOverview
         foreach ($users->items() as $user) {
             $quota = $quotas[$user->id] ?? null;
             $limit = $quota === null ? $default : (int) $quota->limit_bytes;
-            $used = (int) ($quota?->used_bytes ?? 0);
-            $reserved = (int) ($quota?->reserved_bytes ?? 0);
+            $used = (int) ($quota->used_bytes ?? 0);
+            $reserved = (int) ($quota->reserved_bytes ?? 0);
             $rows[] = [
                 'user' => $user,
                 'followsDefault' => $quota === null,
