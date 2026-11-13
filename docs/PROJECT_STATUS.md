@@ -13,13 +13,17 @@ Instantánea a 2026-11-13. Historial detallado: git log y PRs #1–#14. Este arc
 | Música | `compose.music.yaml` autónomo, ciclo integrado con `make up` | Usuario |
 | Aislamiento | Laboratorio S01 (30 comprobaciones reales) | CI *Library isolation* |
 | Almacenamiento (S02) | Inventario, reservas/cuotas transaccionales, página **Almacenamiento** en `/admin/storage` (discos, reparto, cuota por defecto y por persona) | CI + guardado validado por el usuario |
-| Mis archivos (S03.1–S03.2) | Recepción privada, carpetas, subida web con progreso, descarga y vista previa de solo lectura (imágenes, PDF, Markdown saneado, texto) | CI (`PersonalFilesTest`); QA del usuario pendiente |
-| Entorno de desarrollo | `make up` prepara NAS de desarrollo (`deploy/compose.nas-dev.yaml`, `NAS_DEV`) y ejecuta `portal:dev-bootstrap` (migraciones + límites sin configurar, `DEV_BOOTSTRAP`) | CI (`DevBootstrapTest`, Make con Docker simulado); arranque real pendiente del usuario |
+| Mis archivos (S03.1–S03.2) | Recepción privada, carpetas, subida web con progreso, descarga y vista previa de solo lectura (imágenes, PDF, Markdown saneado, texto) | CI (`PersonalFilesTest`) + usuario |
+| Entorno de desarrollo | `make up` prepara NAS de desarrollo (`deploy/compose.nas-dev.yaml`, `NAS_DEV`) y ejecuta `portal:dev-bootstrap` (migraciones + límites sin configurar, `DEV_BOOTSTRAP`) | CI (`DevBootstrapTest`, Make con Docker simulado) + arranque real del usuario en Docker Desktop |
 
 Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md); entorno local desechable mientras no haya producción.
 
+## En revisión: rama `feat/s03-folder-info`
+- Mis archivos muestra en cada carpeta sus elementos y su tamaño exacto acumulado.
+- Almacenamiento y `portal:dev-bootstrap` avisan cuando la capacidad procede del disco virtual de Docker Desktop.
+
 ## Siguiente acción ejecutable
-1. Usuario: `git checkout main && git pull && make build && make up`; crear propietario si la DB es nueva (`make artisan CMD="portal:owner tu@correo --create"`); probar Almacenamiento y Mis archivos (varios tipos, móvil/escritorio, una segunda persona no ve nada).
+1. Usuario confirmó el 2026-11-13 que `main` funciona (Almacenamiento y Mis archivos). Revisar la PR de información de carpetas.
 2. S03.3 Papelera y versiones (rama nueva desde `main`).
 
 ## Límites conocidos

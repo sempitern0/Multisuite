@@ -39,6 +39,8 @@ Menú **Almacenamiento** (`/admin/storage`, requiere confirmación reciente de c
 
 La página vive en `/admin/storage`: nunca colgar rutas de Laravel de `/storage/`, que Nginx sirve como disco público (`docker/nginx/site.conf`); un test lo impide.
 
+**Docker Desktop (Windows/macOS):** los volúmenes viven en el disco virtual de la VM de Docker (`ext4.vhdx`, ~1 TB de máximo por defecto) y `statvfs` informa de ese disco, no del físico. La página y `portal:dev-bootstrap` lo avisan al detectar el kernel `microsoft-standard`/`linuxkit`. En un servidor Linux con discos montados las cifras son exactas.
+
 Unidades: binarias (1 GB = 1024³ bytes, como Windows). Entrada admitida: hasta 6 dígitos y 2 decimales, coma o punto. Límite interno 10^15 bytes.
 
 La GUI **no** acepta rutas, no monta ni formatea discos y no edita `NAS_STORAGE_VOLUMES`: añadir un disco es tarea del operador (sección 3) y después aparece en la página.
@@ -109,6 +111,7 @@ Decisión del usuario (2026-11-13): gestor de archivos propio del portal con car
 - **Vista previa**: imágenes (`<img>`), PDF (visor nativo del navegador en iframe del mismo origen), Markdown renderizado con `html_input=strip` y sin enlaces inseguros, texto escapado (máx. 1 MiB). El resto, solo descarga.
 - **Cabeceras de contenido**: `nosniff`, `Cache-Control: private, no-store`, `Cross-Origin-Resource-Policy: same-origin`, CSP `default-src 'none'` con `sandbox` (salvo PDF, porque los navegadores no abren su visor en sandbox). Descargas siempre `application/octet-stream` + `attachment`. Soporta peticiones Range.
 - **Límites**: `NAS_UPLOAD_MAX_BYTES` (100 MiB por defecto) debe ser ≤ `client_max_body_size` de Nginx (110 MiB). Subidas secuenciales con progreso; un fallo cancela su reserva al momento.
+- **Totales de carpeta**: cada carpeta muestra sus elementos directos y el tamaño exacto acumulado (incluye subcarpetas), calculados con los bytes verificados de la base de datos; las subidas sin terminar no cuentan.
 - **Pendiente**: borrar (S03.3, papelera), mover entre carpetas, ZIP (S03.4).
 
 ## 6. Contenido personal y publicación (contrato aprobado 2026-11-11)

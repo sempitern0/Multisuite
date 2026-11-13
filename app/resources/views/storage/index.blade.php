@@ -35,6 +35,13 @@
                 </div>
             @endif
 
+            @if ($virtualHost && $disks !== [])
+                <div role="note" class="space-y-1 rounded-lg bg-amber-50 p-4 text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                    <p class="font-semibold">Capacidad del disco virtual de Docker Desktop</p>
+                    <p class="text-sm">Este portal funciona dentro de Docker Desktop. La capacidad que ves es la del disco virtual de Docker (suele llegar a 1 TB), no la de tu disco físico. Los archivos sí ocupan espacio real en el disco del ordenador, así que fija un límite menor que el espacio libre de ese disco. En un servidor Linux con los discos montados directamente, estas cifras son exactas.</p>
+                </div>
+            @endif
+
             @foreach ($disks as $disk)
                 <article class="space-y-4 rounded-xl border border-zinc-200 p-5 dark:border-zinc-700" aria-labelledby="disk-{{ $disk['id'] }}">
                     <div class="flex flex-wrap items-baseline justify-between gap-2">

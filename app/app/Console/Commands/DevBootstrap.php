@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\StoragePool;
 use App\Models\StorageSetting;
 use App\Services\Storage\StorageInventory;
+use App\Services\Storage\StorageOverview;
 use App\Services\Storage\StorageReservations;
 use App\Support\Bytes;
 use Illuminate\Console\Command;
@@ -55,6 +56,9 @@ class DevBootstrap extends Command
             array_filter((array) $report['locations'], 'is_array'),
         );
         $this->line('Ubicaciones de almacenamiento: '.($locations === [] ? 'ninguna configurada' : implode(', ', $locations)).'.');
+        if (StorageOverview::runsInDesktopVm()) {
+            $this->warn('Docker Desktop: la capacidad detectada es la del disco virtual de Docker, no la del disco físico del PC. Ajusta el límite en Almacenamiento.');
+        }
         $groups = (array) $report['capacity_groups'];
         foreach ($groups as $group) {
             if (! is_array($group) || ! is_string($group['id'] ?? null)) {

@@ -19,6 +19,7 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 
 ## S02 — Almacenamiento y cuotas
 - [ ] S02.3 QA ampliado (opcional antes del piloto): móvil 360 px, teclado, zoom 200 %, disco desconectado, conflicto de grupos, sobreasignación, admin frente a owner.
+- [ ] S02.4 Descubrimiento de discos y particiones en el servidor Linux (pendiente de decisión del usuario; ver PROJECT_STATUS).
 - [ ] Probar con topología real: un disco con dos carpetas, dos discos, disco retirado, disco lleno (ENOSPC).
 - [ ] Reconciliación: comparar contabilidad con bytes reales y detectar reservas caducadas sin limpiar.
 - [x] Mostrar en la GUI reservas caducadas que siguen contando (limpieza automática frente a revisión manual) — en la rama S02.3.
@@ -26,7 +27,7 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - [ ] Opcional operador: guía de XFS project quota como defensa adicional.
 
 ## S03 — Mis archivos (decisión 2026-11-13: dentro del portal, carpetas propias)
-- [ ] S03.2 QA del usuario: subir varios tipos, previsualizar en móvil/escritorio, aislamiento con una segunda persona. Mover archivos entre carpetas.
+- [ ] Mover archivos y carpetas entre carpetas.
 - [ ] S03.3 Papelera (borrado lógico, restaurar, vaciado con borrado físico verificado y decremento de cuota) y versiones al subir un archivo con el mismo nombre.
 - [ ] S03.4 ZIP de selección o carpeta y «Exportar todo», generado por job con reserva temporal, caducidad y limpieza; nunca extraer ZIP subidos.
 - [ ] Revisar límites Nginx/PHP para archivos grandes; valorar subida por trozos/reanudable.

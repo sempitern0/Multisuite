@@ -89,9 +89,22 @@ class StorageOverview
             'rows' => $this->rows($viewer, $users, $quotas->all(), $default),
             'query' => $query,
             'canManagePools' => Gate::forUser($viewer)->allows('manage-storage-pools'),
+            'virtualHost' => self::runsInDesktopVm(),
             'presets' => Bytes::presets(),
             'units' => array_keys(Bytes::UNITS),
         ];
+    }
+
+    /**
+     * Docker Desktop (Windows/macOS) runs containers in a utility VM whose volumes live
+     * in a sparse virtual disk: statvfs reports that disk (often ~1 TB), not the host's
+     * physical drive. On a Linux server with bind-mounted disks the figures are exact.
+     */
+    public static function runsInDesktopVm(?string $kernelRelease = null): bool
+    {
+        $release = strtolower($kernelRelease ?? php_uname('r'));
+
+        return str_contains($release, 'microsoft-standard') || str_contains($release, 'linuxkit');
     }
 
     /**
