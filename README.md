@@ -15,11 +15,13 @@ Aún no desplegado en producción (VPN/TLS, backups y piloto pendientes). Estado
 Requisitos: Docker con Compose v2 y Make (Windows sin Make: `powershell -NoProfile -File scripts/setup.ps1`).
 
 ```sh
-make up                                   # portal (+ Navidrome si existe music.env)
-make artisan CMD="migrate"
-make artisan CMD="portal:owner tu@correo --create"   # primer propietario
+make build                                # primera vez o tras cambios de imágenes
+make up                                   # arranca todo, migra y prepara el almacenamiento
+make artisan CMD="portal:owner tu@correo --create"   # único paso manual: primer propietario
 make test                                 # tests de la aplicación
 ```
+
+`make up` aplica migraciones y prepara un **NAS de desarrollo**: volumen Docker privado con su marca y permisos, límite del disco y 10 GB por persona si nadie los ha elegido aún. Los cambios que hagas después en **Almacenamiento** se respetan. Usa `NAS_DEV=0` si `app/.env` apunta a discos reales (el arranque muestra qué ubicaciones están activas) y `DEV_BOOTSTRAP=0` para no migrar automáticamente. El entorno local es desechable: `make reset-project` + `make build` lo recrea desde cero (borra la DB y los archivos de desarrollo).
 
 Solo música, sin Laravel: copiar `music.env.example` a `music.env`, crear carpetas y `docker compose --env-file music.env -f compose.music.yaml up -d` ([guía](docs/NAVIDROME.md)). `make up MUSIC_AUTO=0` arranca solo el portal.
 

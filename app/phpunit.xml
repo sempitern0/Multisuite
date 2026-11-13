@@ -32,5 +32,15 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!-- The dev Compose overlay sets NAS_* in the container; tests start from a clean slate. -->
+        <env name="NAS_STORAGE_VOLUMES" value="[]" force="true"/>
+        <env name="NAS_UPLOADS_ENABLED" value="false" force="true"/>
+        <env name="NAS_UPLOAD_LOCATION" value="" force="true"/>
+        <env name="NAS_BOOTSTRAP_DEFAULT_QUOTA_BYTES" value="0" force="true"/>
+        <!-- Laravel reads $_SERVER before $_ENV: override both. -->
+        <server name="NAS_STORAGE_VOLUMES" value="[]" force="true"/>
+        <server name="NAS_UPLOADS_ENABLED" value="false" force="true"/>
+        <server name="NAS_UPLOAD_LOCATION" value="" force="true"/>
+        <server name="NAS_BOOTSTRAP_DEFAULT_QUOTA_BYTES" value="0" force="true"/>
     </php>
 </phpunit>

@@ -1,36 +1,26 @@
 # Estado de Multisuite
 
-Instantánea a 2026-11-13. Historial detallado: git log y PRs #1–#11. Este archivo se **reescribe** (no se acumula) al cerrar cada incremento.
+Instantánea a 2026-11-13. Historial detallado: git log y PRs #1–#14. Este archivo se **reescribe** (no se acumula) al cerrar cada incremento.
 
-## Integrado en `main` (3d98ca0)
+## Integrado en `main` (PRs #1–#14)
 | Área | Qué hay | Validación |
 | --- | --- | --- |
-| Portal | Starter Livewire, portada de servicios, `/services/{id}` con destinos administrados | CI verde; QA visual de portada pendiente |
-| Acceso | Registro libre retirado; invitaciones firmadas de un uso; roles owner/admin/member; alta manual con contraseña temporal; username o correo; 2FA/passkeys | CI + confirmación del usuario |
-| Cuentas de servicio | Aprovisionamiento Navidrome 0.64.2 (alta, cambio/reset, renombrado, baja) con reintentos cifrados efímeros | CI con Navidrome real desechable |
-| Sesión de Música | Gateway Nginx + pase cifrado de 60 s; no es SSO | CI (proxy/Range); QA navegador pendiente |
-| Administración | CRUD de usuarios, auditoría administrativa protegida | CI; QA visual del CRUD pendiente |
-| Música | `compose.music.yaml` autónomo, ciclo integrado con `make up` | Usuario confirma que funciona; checklist P01 sin evidencia |
-| Aislamiento | Laboratorio S01 con 30 comprobaciones reales | Workflow *Library isolation* verde |
-| Almacenamiento | Inventario de discos, reservas/cuotas transaccionales, recepción privada HTTP | CI + concurrencia PostgreSQL |
+| Portal | Starter Livewire, portada de servicios, `/services/{id}` con destinos administrados | CI; QA visual de portada pendiente |
+| Acceso | Invitaciones firmadas, roles owner/admin/member, alta manual, username o correo, 2FA/passkeys | CI + usuario |
+| Cuentas de servicio | Aprovisionamiento Navidrome 0.64.2 con reintentos cifrados efímeros | CI con Navidrome real |
+| Sesión de Música | Gateway Nginx + pase cifrado de 60 s; no es SSO | CI; QA navegador pendiente |
+| Administración | CRUD de usuarios, auditoría administrativa (incluye `storage.*`) | CI |
+| Música | `compose.music.yaml` autónomo, ciclo integrado con `make up` | Usuario |
+| Aislamiento | Laboratorio S01 (30 comprobaciones reales) | CI *Library isolation* |
+| Almacenamiento (S02) | Inventario, reservas/cuotas transaccionales, página **Almacenamiento** en `/admin/storage` (discos, reparto, cuota por defecto y por persona) | CI + guardado validado por el usuario |
+| Mis archivos (S03.1–S03.2) | Recepción privada, carpetas, subida web con progreso, descarga y vista previa de solo lectura (imágenes, PDF, Markdown saneado, texto) | CI (`PersonalFilesTest`); QA del usuario pendiente |
+| Entorno de desarrollo | `make up` prepara NAS de desarrollo (`deploy/compose.nas-dev.yaml`, `NAS_DEV`) y ejecuta `portal:dev-bootstrap` (migraciones + límites sin configurar, `DEV_BOOTSTRAP`) | CI (`DevBootstrapTest`, Make con Docker simulado); arranque real pendiente del usuario |
 
-## Lista para merge: S02.3 — PR #12, rama `feat/s02-storage-admin-gui`
-- Página **Almacenamiento** para owner/admin: estado y barra de cada disco, límite con opciones predefinidas o unidades humanas, reparto/sobreasignación, cuota por defecto y cuota por persona. Owner gestiona discos, defecto y a cualquiera; admin solo cuotas de miembros.
-- Cuota por defecto (`storage_settings`, migración incremental) aplicada de forma perezosa en la primera reserva; 0 conserva el comportamiento anterior.
-- Auditoría `storage.*`, «Tu almacenamiento» en portada, enlace desde la ficha de usuario.
-- Reservas caducadas visibles por disco, separando limpieza automática y revisión manual (solo lectura). `portal:storage-quota` acepta unidades (`50GB`, `1,5TB`).
-- Página en `/admin/storage` (Nginx reserva `/storage/` para el disco público; test de regresión). CI de eeb6fec verde: 120 tests / 580 aserciones, Pint, PHPStan nivel 7, build, PostgreSQL concurrente, Navidrome real e infraestructura Linux/Windows. Guardado validado por el usuario en su entorno HTTPS local.
-- Documentación reorganizada: obsoletos eliminados, Foundry en `docs/foundry/`, almacenamiento consolidado en STORAGE.md, guía para agentes en AGENTS.md y ARCHITECTURE.md.
-
-## En revisión: S03.2 Mis archivos — PR #13, rama `feat/s03-my-files` (depende de PR #12)
-- Decisión del usuario 2026-11-13: gestor propio en el portal con carpetas; copias = exportar, papelera/versiones y backup del NAS (hitos S03.3, S03.4, S05.1). AGENTS.md recoge la excepción acotada.
-- Carpetas privadas, subida web con progreso (reserva + PUT existente), listado, renombrado, descarga y vista previa de imágenes, PDF, Markdown saneado y texto. Tipos ampliados (ofimática, EPUB, imágenes). Nginx admite 110 MiB por petición.
-- Tests: `PersonalFilesTest` (flujo completo, aislamiento entre personas, carpetas, nombres, Markdown/XSS, PDF, cuota). CI verde: 128 tests, Pint, PHPStan, build e infraestructura. Un `.md` con `<script>`/`<html>` se detecta como HTML y se rechaza (documentado).
+Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md); entorno local desechable mientras no haya producción.
 
 ## Siguiente acción ejecutable
-1. Merge manual de la PR #12 y después de la #13 (GitHub la reapunta a `main`).
-2. QA de Mis archivos con una ubicación privada de prueba: subir varios tipos, previsualizar en móvil y escritorio, comprobar que otra persona no ve nada.
-3. S03.3 Papelera y versiones.
+1. Usuario: `git checkout main && git pull && make build && make up`; crear propietario si la DB es nueva (`make artisan CMD="portal:owner tu@correo --create"`); probar Almacenamiento y Mis archivos (varios tipos, móvil/escritorio, una segunda persona no ve nada).
+2. S03.3 Papelera y versiones (rama nueva desde `main`).
 
 ## Límites conocidos
 - Producción no desplegada; VPN/TLS, backups y piloto pendientes (P03/P05).
