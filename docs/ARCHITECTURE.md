@@ -36,16 +36,18 @@ El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada ser
 | Cuentas de servicio | `Services/ServiceAccounts`, `Services/NavidromeAccounts`, `config/provisioning.php`, `portal:sync-accounts`, `portal:accounts-status` | SERVICE_ACCOUNTS.md |
 | Sesión musical | `MusicSessionController`, `Services/MusicSessionBridge`, `docker/music-proxy/` | MUSIC_SESSION_BRIDGE.md |
 | Auditoría | `Services/AdminAudit`, `Enums/ServiceAuditAction`, `AdminAuditController` | ADMIN_AUDIT.md |
+| Mis archivos | `Services/Files/PersonalFiles`, `FileController`, `Models/{Folder,UserFile}`, `Policies/{FolderPolicy,UserFilePolicy}`, `resources/js/files.js`, `resources/views/files/` | STORAGE.md §5b |
 | Almacenamiento | `Services/Storage/{VolumeProbe,StorageInventory,StorageReservations,StorageOverview,PrivateUploads}`, `StorageController`, `PrivateUploadController`, `Support/Bytes`, `config/nas.php`, `portal:storage-status`, `portal:storage-quota`, `portal:uploads-cleanup` | STORAGE.md |
 
 Gates: `manage-invitations`, `view-admin-audit`, `view-storage` (owner/admin); `manage-storage-pools` (owner); `manage-storage-quota` (owner → todos; admin → miembros).
 
-Tablas propias: `invitations`, `service_accounts`, `admin_audit_events`, `storage_pools`, `user_storage_quotas`, `storage_reservations`, `private_uploads`, `storage_settings`.
+Tablas propias: `invitations`, `service_accounts`, `admin_audit_events`, `storage_pools`, `user_storage_quotas`, `storage_reservations`, `private_uploads`, `storage_settings`, `folders`, `user_files`.
 
 ## Invariantes que no se deben romper
 - Autorización en servidor en cada lectura/escritura; revalidar roles **bajo bloqueo** en operaciones administrativas (patrón `lockedUsers`).
 - Orden de bloqueo del almacenamiento: usuario → grupo → cuota → reserva.
-- Nunca aceptar rutas, URLs de redirección ni IDs de servicio no registrados desde la petición.
+- Nunca aceptar rutas, URLs de redirección ni IDs de servicio no registrados desde la petición. Nombres de archivo/carpeta son etiquetas, nunca rutas.
+- Ninguna ruta de Laravel bajo `/storage/`: Nginx la sirve como disco público.
 - Auditoría con lista blanca de campos: sin payloads, rutas, contraseñas ni respuestas remotas.
 - Migraciones solo incrementales; no editar las ya aplicadas.
 - Fallar cerrado: capacidad desconocida, marca ausente o conflicto bloquean escrituras.

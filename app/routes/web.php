@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminAuditController;
+use App\Http\Controllers\FileController;
 use App\Http\Controllers\InitialPasswordController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\ManualUserController;
@@ -25,7 +26,19 @@ Route::middleware(['auth'])->group(function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('settings/username', [UsernameController::class, 'update'])->middleware('throttle:5,1')->name('username.update');
-    Route::prefix('uploads')->middleware('throttle:20,1')->group(function () {
+    // Mis archivos: owner-scoped lookups and policies; never under /storage/ (Nginx public disk).
+    Route::prefix('files')->name('files.')->middleware('throttle:120,1')->group(function () {
+        Route::get('/', [FileController::class, 'index'])->name('index');
+        Route::get('folder/{folderId}', [FileController::class, 'index'])->whereNumber('folderId')->name('folder');
+        Route::post('folders', [FileController::class, 'storeFolder'])->name('folders.store');
+        Route::patch('folders/{folderId}', [FileController::class, 'updateFolder'])->whereNumber('folderId')->name('folders.update');
+        Route::delete('folders/{folderId}', [FileController::class, 'destroyFolder'])->whereNumber('folderId')->name('folders.destroy');
+        Route::post('/', [FileController::class, 'store'])->middleware('throttle:60,1')->name('store');
+        Route::get('{fileId}', [FileController::class, 'show'])->whereNumber('fileId')->name('show');
+        Route::patch('{fileId}', [FileController::class, 'update'])->whereNumber('fileId')->name('update');
+        Route::get('{fileId}/content', [FileController::class, 'content'])->whereNumber('fileId')->name('content');
+    });
+    Route::prefix('uploads')->middleware('throttle:60,1')->group(function () {
         Route::post('/', [PrivateUploadController::class, 'store']);
         Route::get('{key}', [PrivateUploadController::class, 'show'])->whereUuid('key');
         Route::put('{key}', [PrivateUploadController::class, 'update'])->whereUuid('key');

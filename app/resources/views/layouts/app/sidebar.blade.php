@@ -15,6 +15,9 @@
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Aplicaciones') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="folder" :href="route('files.index')" :current="request()->routeIs('files.*')">
+                        Mis archivos
+                    </flux:sidebar.item>
                     @can('manage-invitations')
                         <flux:sidebar.item icon="envelope" :href="route('invitations.index')" :current="request()->routeIs('invitations.*')">
                             Invitaciones
