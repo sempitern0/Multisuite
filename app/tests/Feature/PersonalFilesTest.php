@@ -161,7 +161,8 @@ class PersonalFilesTest extends TestCase
         $this->upload($this->owner, 'nota.md', $markdown)->assertOk();
         $page = $this->actingAs($this->owner)->get('/files/'.$this->entry('nota.md')->id)->assertOk();
         $page->assertSee('<h1>Hola</h1>', false)->assertSee('<strong>negrita</strong>', false)
-            ->assertDontSee('onclick', false)->assertDontSee('<span', false)->assertDontSee('javascript:alert', false);
+            ->assertSee('HTML en línea')->assertDontSee('HTML en línea</span>', false)
+            ->assertDontSee('onclick', false)->assertDontSee('javascript:alert', false);
         $this->assertSame("img-src 'self' data:", $page->headers->get('Content-Security-Policy'));
     }
 
