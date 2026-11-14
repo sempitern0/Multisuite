@@ -13,6 +13,7 @@ use App\Services\Storage\StorageReservations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
+use Tests\Concerns\UsesFilePages;
 use Tests\Concerns\UsesPrivateStorage;
 use Tests\TestCase;
 use ZipArchive;
@@ -20,6 +21,7 @@ use ZipArchive;
 class FileExportsTest extends TestCase
 {
     use RefreshDatabase;
+    use UsesFilePages;
     use UsesPrivateStorage;
 
     protected function setUp(): void
@@ -72,7 +74,7 @@ class FileExportsTest extends TestCase
         [$bills] = $this->seedFiles();
         $usedBefore = (int) UserStorageQuota::findOrFail($this->owner->id)->used_bytes;
 
-        $this->actingAs($this->owner)->post('/files/exports', ['scope' => 'folder', 'folder' => $bills->id])
+        $this->actingAs($this->owner)->requestExport(['scope' => 'folder', 'folder' => $bills->id])
             ->assertRedirect(route('files.exports.index'));
         $export = FileExport::sole();
         $this->assertSame('ready', $export->state);
@@ -111,10 +113,10 @@ class FileExportsTest extends TestCase
     {
         config(['nas.export_sync_max_bytes' => 1]);
         [$bills] = $this->seedFiles();
-        $this->actingAs($this->owner)->post('/files/exports', ['scope' => 'folder', 'folder' => $bills->id]);
+        $this->actingAs($this->owner)->requestExport(['scope' => 'folder', 'folder' => $bills->id]);
         $export = FileExport::sole();
         $this->assertSame('queued', $export->state);
-        $this->get('/files/exports')->assertSee('En cola')->assertSee('window.location.reload', false);
+        $this->get('/files/exports')->assertSee('En cola')->assertSee('wire:poll', false);
 
         $this->artisan('portal:exports-run')->assertSuccessful();
         $export->refresh();
@@ -147,7 +149,7 @@ class FileExportsTest extends TestCase
         $this->assertFileDoesNotExist($this->root.'/.multisuite-private/'.$export->id.'.zip.part');
         $this->assertSame(0, StoragePool::findOrFail('disk')->reserved_bytes);
         $this->actingAs($this->owner)->get('/files/exports')->assertSee('No se pudo generar');
-        $this->delete('/files/exports/'.$export->id)->assertRedirect(route('files.exports.index'));
+        $this->discardExport($export->id)->assertHasNoErrors();
         $this->assertSame('cleaned', $export->refresh()->state);
     }
 
@@ -159,11 +161,11 @@ class FileExportsTest extends TestCase
         app(StorageReservations::class)->setUserQuota($intruder, 1000);
 
         $this->actingAs($intruder)->get('/files/exports/'.$own->id.'/download')->assertNotFound();
-        $this->delete('/files/exports/'.$own->id)->assertNotFound();
+        $this->discardExport($own->id)->assertNotFound();
         $this->get('/files/exports')->assertDontSee('Mis archivos.zip');
         // Someone else's file IDs are simply not part of the intruder's files.
-        $this->from('/files')->post('/files/exports', ['scope' => 'selection', 'files' => [$this->entry('notas.md')->id]])
-            ->assertSessionHasErrors('export');
+        $this->from('/files')->requestExport(['scope' => 'selection', 'files' => [$this->entry('notas.md')->id]])
+            ->assertHasErrors('export');
 
         app(FileExports::class)->request($this->owner, 'all', null);
         app(FileExports::class)->request($this->owner, 'all', null);
@@ -183,7 +185,7 @@ class FileExportsTest extends TestCase
     {
         $this->seedFiles();
         app(StorageReservations::class)->setPoolLimit('disk', (int) StoragePool::findOrFail('disk')->used_bytes + 10);
-        $this->actingAs($this->owner)->from('/files')->post('/files/exports', ['scope' => 'all'])->assertSessionHasErrors('export');
+        $this->actingAs($this->owner)->from('/files')->requestExport(['scope' => 'all'])->assertHasErrors('export');
         $this->assertSame(0, FileExport::count());
     }
 }

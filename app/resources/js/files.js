@@ -63,16 +63,14 @@ const putBody = (url, file, csrf, onProgress) =>
         xhr.send(file);
     });
 
+// Rows carry only state (data-state); the active theme decides how they look.
 const row = (list, name) => {
     const item = document.createElement('li');
-    item.className = 'rounded-lg border border-zinc-200 p-3 dark:border-zinc-700';
     const label = document.createElement('p');
-    label.className = 'text-sm';
     label.textContent = name;
     const bar = document.createElement('progress');
     bar.max = 100;
     bar.value = 0;
-    bar.className = 'mt-2 w-full';
     bar.setAttribute('aria-label', `Progreso de ${name}`);
     item.append(label, bar);
     list.append(item);
@@ -83,7 +81,7 @@ const row = (list, name) => {
         done: (text, ok) => {
             bar.remove();
             label.textContent = `${name}: ${text}`;
-            label.className = ok ? 'text-sm text-teal-800 dark:text-teal-300' : 'text-sm text-red-700 dark:text-red-400';
+            item.dataset.state = ok ? 'ok' : 'bad';
             if (!ok) {
                 label.setAttribute('role', 'alert');
             }
@@ -119,27 +117,31 @@ const uploadOne = async (root, file, ui) => {
     }
 };
 
-document.querySelectorAll('[data-uploader]').forEach((root) => {
-    const input = root.querySelector('[data-uploader-input]');
-    const list = document.querySelector('[data-uploader-list]');
-    input?.addEventListener('change', async () => {
-        const files = [...input.files];
-        input.disabled = true;
-        let succeeded = 0;
-        for (const file of files) {
-            const ui = row(list, file.name);
-            try {
-                await uploadOne(root, file, ui);
-                ui.done('subido', true);
-                succeeded++;
-            } catch (error) {
-                ui.done(error.message, false);
-            }
+// Delegated: uploaders can appear later (SPA navigation, Livewire updates).
+document.addEventListener('change', async (event) => {
+    const input = event.target instanceof HTMLInputElement && event.target.matches('[data-uploader-input]') ? event.target : null;
+    const root = input?.closest('[data-uploader]');
+    const list = root?.querySelector('[data-uploader-list]');
+    if (!input || !root || !list) {
+        return;
+    }
+    const files = [...input.files];
+    input.disabled = true;
+    let succeeded = 0;
+    for (const file of files) {
+        const ui = row(list, file.name);
+        try {
+            await uploadOne(root, file, ui);
+            ui.done('subido', true);
+            succeeded++;
+        } catch (error) {
+            ui.done(error.message, false);
         }
-        input.value = '';
-        input.disabled = false;
-        if (succeeded > 0 && succeeded === files.length) {
-            window.location.reload();
-        }
-    });
+    }
+    input.value = '';
+    input.disabled = false;
+    if (succeeded > 0) {
+        // The page refreshes its listing in place; failed rows stay visible.
+        window.Livewire?.dispatch('files-uploaded');
+    }
 });

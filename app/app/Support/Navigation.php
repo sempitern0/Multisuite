@@ -21,7 +21,7 @@ class Navigation
     private const GROUPS = [
         ['group' => null, 'items' => [
             ['route' => 'dashboard', 'label' => 'Servicios', 'icon' => 'grid', 'gate' => null, 'active' => ['dashboard']],
-            ['route' => 'files.index', 'label' => 'Mis archivos', 'icon' => 'folder', 'gate' => null, 'active' => ['files.*'], 'spa' => false],
+            ['route' => 'files.index', 'label' => 'Mis archivos', 'icon' => 'folder', 'gate' => null, 'active' => ['files.*']],
         ]],
         ['group' => 'Administración', 'items' => [
             ['route' => 'users.index', 'label' => 'Personas', 'icon' => 'users', 'gate' => 'manage-invitations', 'active' => ['users.*']],
@@ -81,7 +81,6 @@ class Navigation
             'icon' => $item['icon'],
             'href' => route($item['route']),
             'active' => request()->routeIs(...$item['active']),
-            // Pages with their own scripts (uploads) load normally instead of SPA navigation.
             'spa' => $item['spa'] ?? true,
         ];
     }

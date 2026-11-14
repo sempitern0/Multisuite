@@ -1,6 +1,6 @@
 # Diseño de la interfaz (capa de tema)
 
-Estado: **D01, D02a y D02b.1 implementados** (fundación, shell, acceso, portada y toda la administración: listas, crear/editar personas y Almacenamiento; ajustes con preferencias). Mis archivos y el contenido de Perfil/Seguridad en D02b.2.
+Estado: **D01, D02a y D02b.1 implementados** (fundación, shell, acceso, portada y toda la administración: listas, crear/editar personas y Almacenamiento; ajustes con preferencias). Mis archivos migrado en D02b.2a; el contenido de Perfil/Seguridad en D02b.2b.
 Referencia visual: [design/nocturne-v2/GUIA.md](design/nocturne-v2/GUIA.md) y el prototipo estático `design/nocturne-v2/prototipo-28-pantallas.html` (abrir en el navegador; no forma parte de la app).
 
 ## Objetivo
@@ -45,6 +45,11 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | `stats` | `items` (etiqueta => valor) | Pocos datos resumidos. |
 | `segment-bar` | `segments`, `label` | Partes de un total con leyenda (portal/other/safety/free). |
 | `rows`, `row`, `list` | slot | Panel con filas separadas, línea con dos extremos y lista explicativa. |
+| `breadcrumbs` | `items` ({label, href}) | Ubicación; el último elemento es la página actual. |
+| `entry` | `href`, `icon`, `spa` | Nombre de archivo o carpeta con icono, como enlace. |
+| `uploader` | `store-url`, `upload-url`, `max-bytes`, `folder`, `hint` | Selector de archivos con lista de progreso; lo maneja `resources/js/files.js` (ganchos `data-uploader*`, estado en `data-state`) y emite `files-uploaded`. |
+| `preview` | `kind` image/pdf/text/rich/none, `src`, `title`, `note` | Superficie de vista previa de solo lectura. |
+| `prose` | slot | Contenido largo ya convertido a HTML seguro (Markdown saneado). |
 | `form` | `action`, `method` | Añade CSRF (y `@method` si no es POST) y el espaciado entre campos. |
 | `stack` | `gap` sm/md/lg | Ritmo vertical entre bloques. |
 | `text` | `tone` sub/muted, `as` | Texto secundario. |
@@ -63,7 +68,7 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | `icon` | `name` | Iconos SVG propios (sin peticiones externas); ver lista en el componente. |
 
 ## Interactividad y movimiento
-- Navegación SPA con `wire:navigate` en menú, subnavegación y enlaces internos; Mis archivos carga normal porque tiene scripts de subida propios.
+- Navegación SPA con `wire:navigate` en menú, subnavegación, carpetas y enlaces internos. La subida de archivos funciona por delegación de eventos (`files.js` va en `app.js`). Excepción: la vista previa de un archivo carga completa por su cabecera CSP.
 - Los componentes Livewire avisan con `NotifiesInterface::toast()` (evento `ui-toast`) solo tras confirmar el servidor; las preferencias cambian `<html>` al momento con el evento `ui-preferences`.
 - Preferencias (`Support/UserPreferences`) aplicadas como `data-motion` (system/on/off), `data-density` (comfortable/compact) y `data-sidebar` (full/compact). «Según el sistema» respeta `prefers-reduced-motion`; «Activadas» permite animaciones aunque el sistema pida reducirlas; «Desactivadas» las quita siempre.
 - Movimiento con intención: una entrada de página por navegación, aparición de avisos, indicador en el botón que espera respuesta (`data-loading`) y atenuado de la tabla mientras filtra. Nada de animaciones decorativas en cada tarjeta.
@@ -85,5 +90,6 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | Acceso, recuperar/guardar contraseña, confirmar, 2FA, verificar correo, invitación, contraseña inicial | Migradas (D01). Sin página de bienvenida: `/` lleva a entrar o a la página de inicio elegida |
 | Shell y portada de servicios | Migradas (D01) |
 | Personas (lista, crear, editar), Invitaciones, Actividad, Almacenamiento, Preferencias | Migradas (D02a, D02b.1) |
-| Mis archivos, papelera, exportaciones; contenido de Perfil y Seguridad | Pendiente (D02b.2); ya usan la paleta Nocturne |
+| Mis archivos, vista previa, papelera, descargas ZIP | Migradas (D02b.2a) |
+| Contenido de Perfil y Seguridad | Pendiente (D02b.2b); ya usan la paleta Nocturne |
 | Resumen de administración con métricas reales | Pendiente (D02, solo admin) |

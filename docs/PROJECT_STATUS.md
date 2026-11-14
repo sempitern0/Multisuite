@@ -1,12 +1,13 @@
 # Estado de Multisuite
 
-Instantánea a 2026-11-14. Historial detallado: git log y PRs #1–#21. Este archivo se **reescribe** (no se acumula) al cerrar cada incremento.
+Instantánea a 2026-11-14. Historial detallado: git log y PRs #1–#22. Este archivo se **reescribe** (no se acumula) al cerrar cada incremento.
 
-## Integrado en `main` (PRs #1–#21)
+## Integrado en `main` (PRs #1–#22)
 | Área | Qué hay | Validación |
 | --- | --- | --- |
 | Portal | Portada «Servicios» (`DashboardController` + `ServiceTiles`), `/services/{id}` con destinos administrados | CI; QA visual del usuario pendiente |
 | Modelo de datos | Índices de claves foráneas, consultas agregadas y `QueryPlanTest` en PostgreSQL; `/` redirige a entrar o a la página de inicio | CI |
+| Administración (D02b.1) | Personas (crear/editar/eliminar) y Almacenamiento como páginas Livewire sobre Actions de entrada única; diálogo de confirmación del tema | CI; QA del usuario pendiente |
 | Interfaz (D02a) | Listas Livewire (Personas, Invitaciones, Actividad), navegación SPA, avisos y Preferencias | CI; QA del usuario pendiente |
 | Diseño (D01) | Capa de tema Nocturne sustituible: `x-ui::` + `themes/nocturne` + `nocturne.css`; navegación calculada en `Support/Navigation`; acceso, 2FA, contraseñas, invitación y portada migrados; contraste AA y foco comprobados | CI (`DesignSystemTest`) + capturas estáticas 1440/768/390 px; pendiente revisión del usuario en la app real |
 | Acceso | Invitaciones firmadas, roles owner/admin/member, alta manual, username o correo, 2FA/passkeys | CI + usuario |
@@ -21,16 +22,16 @@ Instantánea a 2026-11-14. Historial detallado: git log y PRs #1–#21. Este arc
 
 Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md); entorno local desechable mientras no haya producción; el diseño va por delante para que lo nuevo nazca con el tema; sin librerías de tablas por ahora (D010 en DEPENDENCIES.md).
 
-## En revisión: D02b.1 administración completa en el tema — rama `feat/d02b-admin-forms`
-- Crear, editar y eliminar personas y **Almacenamiento** son páginas Livewire con componentes del tema: se guarda en el sitio con aviso, errores junto al control y sin recargas.
-- Operaciones extraídas a Actions (`Actions/Users/*`, `Actions/Storage/UpdateStorageLimits`) con una sola entrada, su página: se retiran `UserManagementController`, `ManualUserController`, `StorageController` y las rutas de formulario de invitaciones, que ya no usaba ninguna pantalla; `Support/LockedUsers` unifica el bloqueo ordenado y `Support/SizeInput` la lectura de tamaños.
-- Tema: diálogo de confirmación (`x-ui::confirm`, sustituye a `wire:confirm`), selector de tamaño, barra por segmentos, datos resumidos y aviso tras redirección (`session('toast')`).
-- `User::assignableRoles()` y `UserStorageQuota::summaryFor()` sustituyen reglas repetidas en varias pantallas.
-- Tests: los casos anteriores de personas, invitaciones y almacenamiento se ejecutan ahora contra las páginas (`tests/Concerns/UsesAdminPages`), más `AdminFormsTest`. Sin dependencias ni migraciones nuevas.
+## En revisión: D02b.2a Mis archivos en el tema — rama `feat/d02b2-files`
+- Explorador, vista previa, papelera y Descargas ZIP son páginas Livewire con componentes del tema: crear/renombrar/eliminar carpeta, mover a la papelera, restaurar, borrar, versiones y pedir un ZIP ocurren sin recargar; tras subir archivos la lista se actualiza sola; Descargas ZIP se refresca mientras hay algo en preparación.
+- Una sola entrada por operación: las páginas llaman a `PersonalFiles`/`FileExports`; los controladores conservan solo el registro de subida (JSON), el contenido binario y la descarga de ZIP. `FilePreview` y `Support/DomainErrors` recogen lógica antes repetida en controladores.
+- Seguridad sin cambios: búsquedas acotadas al propietario en cada petición, policies, mismos limitadores (`files`, `file-exports`) y CSP de la vista previa mediante middleware.
+- `files.js` ya no contiene clases de estilo ni recarga la página; va incluido en `app.js` y funciona tras la navegación SPA.
+- Tests: los casos anteriores se ejecutan contra las páginas (`tests/Concerns/UsesFilePages`). Sin dependencias ni migraciones nuevas.
 
 ## Siguiente acción ejecutable
-1. Usuario: revisar la PR D02b.1; tras fusionar, `make up` + `make npm CMD="run build"` y probar Personas (crear/editar/eliminar) y Almacenamiento.
-2. D02b.2: Mis archivos y contenido de Perfil/Seguridad.
+1. Usuario: revisar la PR D02b.2a; tras fusionar, `make up` + `make npm CMD="run build"` y probar Mis archivos de principio a fin (subida incluida).
+2. D02b.2b: contenido de Perfil y Seguridad.
 3. En el servidor Linux: `make nas-discover` y `make nas-apply TARGETS="…"`.
 
 ## Límites conocidos
