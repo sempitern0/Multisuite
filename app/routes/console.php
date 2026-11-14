@@ -11,3 +11,5 @@ Artisan::command('inspire', function () {
 Schedule::command('portal:sync-accounts')->everyMinute()->withoutOverlapping();
 
 Schedule::command('portal:uploads-cleanup')->everyTenMinutes()->withoutOverlapping();
+
+Schedule::command('portal:files-purge')->dailyAt('03:30')->withoutOverlapping();

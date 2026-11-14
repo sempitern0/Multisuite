@@ -6,6 +6,7 @@ use App\Models\Folder;
 use App\Models\User;
 use App\Models\UserFile;
 use App\Services\Storage\PrivateUploads;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -69,14 +70,38 @@ class PersonalFiles
      */
     public function files(User $user, ?Folder $folder): Collection
     {
-        return UserFile::query()
+        return $this->visible($user)
+            ->where('user_files.folder_id', $folder?->id)
+            ->orderBy('user_files.name')
+            ->get(['user_files.*', 'private_uploads.mime as mime', 'storage_reservations.actual_bytes as size']);
+    }
+
+    /**
+     * Confirmed entries of one person joined with their verified MIME and size.
+     * $scope: 'current' (listed in folders), 'trash' (trashed current files) or 'versions'.
+     *
+     * @return Builder<UserFile>
+     */
+    private function confirmed(User $user, string $scope): Builder
+    {
+        $query = UserFile::query()
             ->join('private_uploads', 'private_uploads.id', '=', 'user_files.upload_id')
             ->join('storage_reservations', 'storage_reservations.id', '=', 'user_files.upload_id')
             ->where('user_files.user_id', $user->id)
-            ->where('user_files.folder_id', $folder?->id)
-            ->where('private_uploads.state', 'ready')
-            ->orderBy('user_files.name')
-            ->get(['user_files.*', 'private_uploads.mime as mime', 'storage_reservations.actual_bytes as size']);
+            ->where('private_uploads.state', 'ready');
+
+        return match ($scope) {
+            'current' => $query->whereNull('user_files.trashed_at')->whereNull('user_files.version_of_id'),
+            'trash' => $query->whereNotNull('user_files.trashed_at')->whereNull('user_files.version_of_id'),
+            'versions' => $query->whereNotNull('user_files.version_of_id'),
+            default => throw new RuntimeException('Ámbito de archivos desconocido.'),
+        };
+    }
+
+    /** @return Builder<UserFile> */
+    private function visible(User $user): Builder
+    {
+        return $this->confirmed($user, 'current');
     }
 
     /**
@@ -93,11 +118,7 @@ class PersonalFiles
             $children[$folder->parent_id ?? 0][] = $folder->id;
         }
         $direct = [];
-        $rows = UserFile::query()
-            ->join('private_uploads', 'private_uploads.id', '=', 'user_files.upload_id')
-            ->join('storage_reservations', 'storage_reservations.id', '=', 'user_files.upload_id')
-            ->where('user_files.user_id', $user->id)
-            ->where('private_uploads.state', 'ready')
+        $rows = $this->visible($user)
             ->groupBy('user_files.folder_id')
             ->selectRaw('user_files.folder_id as folder_key, count(*) as files, coalesce(sum(storage_reservations.actual_bytes), 0) as bytes')
             ->toBase()->get();
@@ -203,7 +224,8 @@ class PersonalFiles
             $file->user_id = $user->id;
             $file->folder_id = $folder?->id;
             $file->upload_id = $upload->id;
-            $file->name = $this->freeFileName($user, $folder?->id, $name, null);
+            // Same name in the same folder: becomes the new version once its bytes are verified.
+            $file->name = $name;
             $file->save();
 
             return $file;
@@ -217,6 +239,9 @@ class PersonalFiles
         return DB::transaction(function () use ($user, $id, $name): UserFile {
             User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             $file = UserFile::where('user_id', $user->id)->lockForUpdate()->findOrFail($id);
+            if (! $file->isCurrent()) {
+                throw new RuntimeException('Solo se puede renombrar la versión actual de un archivo fuera de la papelera.');
+            }
             if (strcasecmp($file->name, $name) !== 0 && $this->nameTaken($user, $file->folder_id, $name, $file->id)) {
                 throw new RuntimeException('Ya existe un archivo con ese nombre en esta carpeta.');
             }
@@ -224,6 +249,201 @@ class PersonalFiles
             $file->save();
 
             return $file;
+        });
+    }
+
+    /** @return Collection<int, UserFile> */
+    public function trashed(User $user): Collection
+    {
+        return $this->confirmed($user, 'trash')->orderByDesc('user_files.trashed_at')
+            ->get(['user_files.*', 'private_uploads.mime as mime', 'storage_reservations.actual_bytes as size']);
+    }
+
+    /** Bytes held by the trash, including the versions of trashed files. */
+    public function trashBytes(User $user): int
+    {
+        $trashed = $this->confirmed($user, 'trash')->pluck('user_files.id');
+        $versions = $this->confirmed($user, 'versions')->whereIn('user_files.version_of_id', $trashed);
+
+        return (int) $this->confirmed($user, 'trash')->sum('storage_reservations.actual_bytes')
+            + (int) $versions->sum('storage_reservations.actual_bytes');
+    }
+
+    /** @return Collection<int, UserFile> Newest first. */
+    public function versions(User $user, UserFile $file): Collection
+    {
+        return $this->confirmed($user, 'versions')->where('user_files.version_of_id', $file->id)
+            ->orderByDesc('user_files.superseded_at')->orderByDesc('user_files.id')
+            ->get(['user_files.*', 'private_uploads.mime as mime', 'storage_reservations.actual_bytes as size']);
+    }
+
+    /** Moves a current file (and, implicitly, its versions) to the trash. Bytes stay counted. */
+    public function trash(User $user, int $id): UserFile
+    {
+        return DB::transaction(function () use ($user, $id): UserFile {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $file = UserFile::where('user_id', $user->id)->lockForUpdate()->findOrFail($id);
+            if (! $file->isCurrent()) {
+                throw new RuntimeException('Este archivo ya está en la papelera o es una versión anterior.');
+            }
+            $file->original_folder_id = $file->folder_id;
+            $file->folder_id = null;
+            $file->trashed_at = now();
+            $file->save();
+
+            return $file;
+        });
+    }
+
+    /** Back to its folder (root if it no longer exists); a name clash gets a numbered copy. */
+    public function restore(User $user, int $id): UserFile
+    {
+        return DB::transaction(function () use ($user, $id): UserFile {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $file = UserFile::where('user_id', $user->id)->lockForUpdate()->findOrFail($id);
+            if ($file->trashed_at === null || $file->version_of_id !== null) {
+                throw new RuntimeException('Este archivo no está en la papelera.');
+            }
+            $folder = $file->original_folder_id === null ? null
+                : Folder::where('user_id', $user->id)->find($file->original_folder_id);
+            $file->folder_id = $folder?->id;
+            $file->original_folder_id = null;
+            $file->trashed_at = null;
+            $file->name = $this->freeFileName($user, $folder?->id, $file->name, $file->id);
+            $file->save();
+
+            return $file;
+        });
+    }
+
+    /**
+     * Permanent deletion of a trashed file (with its versions) or of a single older
+     * version. Each blob is purged in its own transaction, versions first, so a
+     * failure never leaves a counted entry without bytes or bytes without an entry.
+     */
+    public function purge(User $user, int $id): void
+    {
+        $file = UserFile::where('user_id', $user->id)->findOrFail($id);
+        if ($file->isCurrent()) {
+            throw new RuntimeException('Mueve el archivo a la papelera antes de borrarlo definitivamente.');
+        }
+        if ($file->version_of_id === null) {
+            foreach (UserFile::where('user_id', $user->id)->where('version_of_id', $file->id)->orderBy('id')->get() as $version) {
+                $this->purgeOne($user, $version);
+            }
+        }
+        $this->purgeOne($user, $file);
+    }
+
+    /** @return int Number of files that could not be purged (kept and still counted). */
+    public function emptyTrash(User $user): int
+    {
+        $failed = 0;
+        foreach (UserFile::where('user_id', $user->id)->whereNotNull('trashed_at')->whereNull('version_of_id')->pluck('id') as $id) {
+            try {
+                $this->purge($user, (int) $id);
+            } catch (RuntimeException) {
+                $failed++;
+            }
+        }
+
+        return $failed;
+    }
+
+    /** Makes an older version current; the previous current becomes its newest version. */
+    public function promote(User $user, int $versionId): UserFile
+    {
+        return DB::transaction(function () use ($user, $versionId): UserFile {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $version = UserFile::where('user_id', $user->id)->lockForUpdate()->findOrFail($versionId);
+            $current = $version->version_of_id === null ? null
+                : UserFile::where('user_id', $user->id)->lockForUpdate()->find($version->version_of_id);
+            if ($current === null || ! $current->isCurrent()) {
+                throw new RuntimeException('Solo se puede restaurar una versión de un archivo que no esté en la papelera.');
+            }
+            $this->swap($current, $version, true);
+
+            return $version;
+        });
+    }
+
+    /**
+     * Listener of PrivateUploadReady (same transaction as the commit): if a confirmed
+     * file with the same name already exists in the folder, it becomes a version.
+     */
+    public function onUploadReady(string $uploadId, int $userId): void
+    {
+        $new = UserFile::where('upload_id', $uploadId)->where('user_id', $userId)->lockForUpdate()->first();
+        if ($new === null || ! $new->isCurrent()) {
+            return;
+        }
+        $user = User::findOrFail($userId);
+        $previous = $this->visible($user)
+            ->where('user_files.folder_id', $new->folder_id)
+            ->where('user_files.id', '!=', $new->id)
+            ->whereRaw('LOWER(user_files.name) = ?', [Str::lower($new->name)])
+            ->orderByDesc('user_files.id')->lockForUpdate()->first(['user_files.*']);
+        if ($previous !== null) {
+            $this->swap($previous, $new, false);
+        }
+    }
+
+    /**
+     * Retention (portal:files-purge): trash older than $trashDays and versions beyond the
+     * newest $keepVersions per file. Returns [purged, failed].
+     *
+     * @return array{int, int}
+     */
+    public function enforceRetention(int $trashDays, int $keepVersions): array
+    {
+        $purged = 0;
+        $failed = 0;
+        $run = function (UserFile $file) use (&$purged, &$failed): void {
+            try {
+                $this->purge(User::findOrFail($file->user_id), $file->id);
+                $purged++;
+            } catch (RuntimeException) {
+                $failed++;
+            }
+        };
+        // Collect first: purging deletes rows, which would shift chunked pagination.
+        UserFile::whereNotNull('trashed_at')->whereNull('version_of_id')
+            ->where('trashed_at', '<', now()->subDays(max(1, $trashDays)))->orderBy('id')->get()->each($run);
+        $heads = UserFile::whereNotNull('version_of_id')->select('version_of_id')->groupBy('version_of_id')
+            ->havingRaw('count(*) > ?', [max(0, $keepVersions)])->pluck('version_of_id');
+        foreach ($heads as $head) {
+            UserFile::where('version_of_id', $head)->orderByDesc('superseded_at')->orderByDesc('id')
+                ->offset(max(0, $keepVersions))->limit(100000)->get()->each($run);
+        }
+
+        return [$purged, $failed];
+    }
+
+    /**
+     * $old leaves the folder as newest version of $new, which inherits $old's versions.
+     * Restoring a version keeps the visible name; a new upload keeps its own spelling.
+     */
+    private function swap(UserFile $old, UserFile $new, bool $keepName): void
+    {
+        UserFile::where('version_of_id', $old->id)->where('id', '!=', $new->id)->update(['version_of_id' => $new->id]);
+        $new->version_of_id = null;
+        $new->superseded_at = null;
+        $new->folder_id = $old->folder_id;
+        if ($keepName) {
+            $new->name = $old->name;
+        }
+        $new->save();
+        $old->version_of_id = $new->id;
+        $old->superseded_at = now();
+        $old->folder_id = null;
+        $old->save();
+    }
+
+    private function purgeOne(User $user, UserFile $file): void
+    {
+        DB::transaction(function () use ($user, $file): void {
+            $this->uploads->purge($user, $file->upload_id);
+            UserFile::whereKey($file->id)->delete();
         });
     }
 
@@ -252,6 +472,7 @@ class PersonalFiles
         return UserFile::where('user_files.user_id', $user->id)->where('user_files.folder_id', $folderId)
             ->join('private_uploads', 'private_uploads.id', '=', 'user_files.upload_id')
             ->whereIn('private_uploads.state', ['pending', 'ready'])
+            ->whereNull('user_files.trashed_at')->whereNull('user_files.version_of_id')
             ->when($ignore !== null, fn ($query) => $query->where('user_files.id', '!=', $ignore))
             ->whereRaw('LOWER(user_files.name) = ?', [Str::lower($name)])->exists();
     }

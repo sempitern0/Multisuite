@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -14,9 +15,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $folder_id
  * @property string $upload_id
  * @property string $name
+ * @property int|null $original_folder_id
+ * @property int|null $version_of_id
+ * @property CarbonImmutable|null $trashed_at
+ * @property CarbonImmutable|null $superseded_at
  */
 class UserFile extends Model
 {
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return ['trashed_at' => 'immutable_datetime', 'superseded_at' => 'immutable_datetime'];
+    }
+
+    public function isCurrent(): bool
+    {
+        return $this->trashed_at === null && $this->version_of_id === null;
+    }
+
     /** @return BelongsTo<PrivateUpload, $this> */
     public function upload(): BelongsTo
     {

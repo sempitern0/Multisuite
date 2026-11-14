@@ -27,6 +27,28 @@
         @if (session('status'))
             <p role="status" class="rounded-lg border border-teal-300 p-4 dark:border-teal-800">{{ session('status') }}</p>
         @endif
+        @foreach (['file_trash', 'file_purge', 'file_version'] as $field)
+            @error($field)
+                <p role="alert" class="rounded-lg border border-red-300 p-4 text-red-700 dark:border-red-800 dark:text-red-400">{{ $message }}</p>
+            @enderror
+        @endforeach
+        @if ($file->trashed_at !== null)
+            <div role="note" class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-amber-50 p-4 text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                <p>En la papelera desde el {{ $file->trashed_at->format('d/m/Y') }}. Se borrará definitivamente a los {{ (int) config('nas.trash_days') }} días.</p>
+                <form method="POST" action="{{ route('files.restore', ['fileId' => $file->id]) }}">
+                    @csrf
+                    <flux:button type="submit" variant="primary">Restaurar</flux:button>
+                </form>
+            </div>
+        @elseif ($current !== null)
+            <div role="note" class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-zinc-100 p-4 dark:bg-zinc-800">
+                <p>Versión anterior de <a href="{{ route('files.show', $current) }}" class="underline">{{ $current->name }}</a>, guardada el {{ $file->superseded_at?->format('d/m/Y H:i') }}.</p>
+                <form method="POST" action="{{ route('files.promote', ['fileId' => $file->id]) }}">
+                    @csrf
+                    <flux:button type="submit" variant="primary">Restaurar esta versión</flux:button>
+                </form>
+            </div>
+        @endif
 
         <section aria-label="Vista previa" class="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
             @if ($error !== null)
@@ -47,6 +69,33 @@
             @endif
         </section>
 
+        @if ($versions->isNotEmpty())
+            <section aria-labelledby="versions" class="space-y-2">
+                <flux:heading id="versions">Versiones anteriores</flux:heading>
+                <flux:text>Se guardan las {{ (int) config('nas.max_versions') }} más recientes al subir un archivo con el mismo nombre. Ocupan espacio de tu cuota.</flux:text>
+                <ul class="divide-y rounded-xl border border-zinc-200 dark:border-zinc-700">
+                    @foreach ($versions as $version)
+                        <li class="flex flex-wrap items-center justify-between gap-3 p-4">
+                            <a href="{{ route('files.show', $version) }}" class="underline-offset-4 hover:underline">{{ $version->superseded_at?->format('d/m/Y H:i') }} · {{ \App\Support\Bytes::format((int) $version->size) }}</a>
+                            <div class="flex flex-wrap items-center gap-3 text-sm">
+                                <a href="{{ route('files.content', ['fileId' => $version->id, 'download' => 1]) }}" class="underline">Descargar</a>
+                                <form method="POST" action="{{ route('files.promote', ['fileId' => $version->id]) }}">
+                                    @csrf
+                                    <button type="submit" class="underline">Restaurar</button>
+                                </form>
+                                <form method="POST" action="{{ route('files.purge', ['fileId' => $version->id]) }}" onsubmit="return confirm('¿Borrar esta versión definitivamente? No se puede deshacer.')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-700 underline dark:text-red-400">Borrar</button>
+                                </form>
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
+            </section>
+        @endif
+
+        @if ($file->isCurrent())
         <form method="POST" action="{{ route('files.update', ['fileId' => $file->id]) }}" class="flex flex-wrap items-end gap-2">
             @csrf
             @method('PATCH')
@@ -56,5 +105,17 @@
                 <p role="alert" class="w-full text-red-700 dark:text-red-400">{{ $message }}</p>
             @enderror
         </form>
+        <form method="POST" action="{{ route('files.destroy', ['fileId' => $file->id]) }}">
+            @csrf
+            @method('DELETE')
+            <flux:button type="submit" variant="danger">Mover a la papelera</flux:button>
+        </form>
+        @elseif ($file->trashed_at !== null)
+        <form method="POST" action="{{ route('files.purge', ['fileId' => $file->id]) }}" onsubmit="return confirm('¿Borrar definitivamente este archivo y sus versiones? No se puede deshacer.')">
+            @csrf
+            @method('DELETE')
+            <flux:button type="submit" variant="danger">Borrar definitivamente</flux:button>
+        </form>
+        @endif
     </div>
 </x-layouts::app>

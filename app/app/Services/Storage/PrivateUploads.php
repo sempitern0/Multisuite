@@ -2,6 +2,7 @@
 
 namespace App\Services\Storage;
 
+use App\Events\PrivateUploadReady;
 use App\Models\PrivateUpload;
 use App\Models\StorageReservation;
 use App\Models\User;
@@ -109,6 +110,8 @@ class PrivateUploads
             $upload->mime = $mime;
             $upload->sha256 = $hash;
             $upload->save();
+            // Synchronous, inside this transaction: consumers (e.g. file versions) apply atomically.
+            event(new PrivateUploadReady($upload->id, $user->id));
 
             return $upload;
         });
@@ -136,6 +139,35 @@ class PrivateUploads
             }
             $this->reservations->release($user, $key);
             $upload->state = 'cancelled';
+            $upload->save();
+        });
+    }
+
+    /**
+     * Permanent deletion of a confirmed blob: unlink, verify it is gone, then return the
+     * bytes to the quota in the same transaction. A missing blob is treated as already
+     * deleted; an unavailable volume or a symlink keeps everything counted (fail closed).
+     */
+    public function purge(User $user, string $key): void
+    {
+        DB::transaction(function () use ($user, $key): void {
+            [$upload, , $base] = $this->locked($user, $key);
+            if ($upload->state === 'purged') {
+                return;
+            }
+            if ($upload->state !== 'ready') {
+                throw new RuntimeException('Solo se puede borrar contenido confirmado.');
+            }
+            $path = $base.'.blob';
+            if (is_link($path) || (file_exists($path) && (! is_file($path) || ! unlink($path)))) {
+                throw new RuntimeException('No se pudo borrar el archivo del disco; se conserva y sigue contando en la cuota.');
+            }
+            clearstatcache(true, $path);
+            if (file_exists($path) || is_link($path)) {
+                throw new RuntimeException('No se ha podido confirmar el borrado en el disco.');
+            }
+            $this->reservations->releaseCommitted($user, $key);
+            $upload->state = 'purged';
             $upload->save();
         });
     }

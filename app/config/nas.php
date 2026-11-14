@@ -31,6 +31,10 @@ return [
     // none has been chosen yet. Production leaves this at 0.
     'bootstrap_default_quota_bytes' => (int) env('NAS_BOOTSTRAP_DEFAULT_QUOTA_BYTES', 0),
 
+    // Mis archivos retention, applied daily by portal:files-purge.
+    'trash_days' => (int) env('NAS_TRASH_DAYS', 30),
+    'max_versions' => (int) env('NAS_MAX_VERSIONS', 5),
+
     // Read-only previews (Mis archivos). Larger text is offered as download only.
     'preview_text_max_bytes' => 1048576,
 ];
