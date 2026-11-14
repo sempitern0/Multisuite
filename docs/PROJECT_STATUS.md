@@ -25,6 +25,7 @@ Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md
 - Índices nuevos para las claves foráneas que PostgreSQL no indexa solo (`folders.parent_id`, `user_files.folder_id`, `user_files.original_folder_id`, `user_files(version_of_id, superseded_at)`, `invitations.invited_by`, `users.created_by_admin_id`, `storage_reservations.pool_id`).
 - Consultas: reservas caducadas de Almacenamiento agregadas en SQL (antes cargaba todos los IDs pendientes en PHP); `portal:uploads-cleanup` filtra con subconsulta (antes una consulta por reserva).
 - `QueryPlanTest` en el paso PostgreSQL de CI exige el índice esperado en cada consulta.
+- Incluido aparte (petición del usuario): se retira la página de bienvenida; `/` redirige a entrar o, con sesión, a la página de inicio elegida en Preferencias.
 
 ## Siguiente acción ejecutable
 1. Usuario: probar Personas, Invitaciones, Actividad y Preferencias (D02a, ya en `main`); tras fusionar esta revisión, `make up` aplica los índices.

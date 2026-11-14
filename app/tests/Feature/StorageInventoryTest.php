@@ -75,7 +75,7 @@ class StorageInventoryTest extends TestCase
     {
         config(['nas.volumes' => '{invalid']);
         $this->artisan('portal:storage-status')->assertExitCode(1);
-        $this->get('/')->assertOk();
+        $this->get(route('login'))->assertOk();
         config(['nas.volumes' => json_encode([['id' => 'bad', 'group' => 'pool', 'path' => '../relative', 'reserve_bytes' => -1]])]);
         $this->expectException(InvalidArgumentException::class);
         app(StorageInventory::class)->inspect();
