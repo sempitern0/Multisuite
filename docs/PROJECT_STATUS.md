@@ -1,11 +1,12 @@
 # Estado de Multisuite
 
-Instantánea a 2026-11-14. Historial detallado: git log y PRs #1–#20. Este archivo se **reescribe** (no se acumula) al cerrar cada incremento.
+Instantánea a 2026-11-14. Historial detallado: git log y PRs #1–#21. Este archivo se **reescribe** (no se acumula) al cerrar cada incremento.
 
-## Integrado en `main` (PRs #1–#20)
+## Integrado en `main` (PRs #1–#21)
 | Área | Qué hay | Validación |
 | --- | --- | --- |
 | Portal | Portada «Servicios» (`DashboardController` + `ServiceTiles`), `/services/{id}` con destinos administrados | CI; QA visual del usuario pendiente |
+| Modelo de datos | Índices de claves foráneas, consultas agregadas y `QueryPlanTest` en PostgreSQL; `/` redirige a entrar o a la página de inicio | CI |
 | Interfaz (D02a) | Listas Livewire (Personas, Invitaciones, Actividad), navegación SPA, avisos y Preferencias | CI; QA del usuario pendiente |
 | Diseño (D01) | Capa de tema Nocturne sustituible: `x-ui::` + `themes/nocturne` + `nocturne.css`; navegación calculada en `Support/Navigation`; acceso, 2FA, contraseñas, invitación y portada migrados; contraste AA y foco comprobados | CI (`DesignSystemTest`) + capturas estáticas 1440/768/390 px; pendiente revisión del usuario en la app real |
 | Acceso | Invitaciones firmadas, roles owner/admin/member, alta manual, username o correo, 2FA/passkeys | CI + usuario |
@@ -20,16 +21,16 @@ Instantánea a 2026-11-14. Historial detallado: git log y PRs #1–#20. Este arc
 
 Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md); entorno local desechable mientras no haya producción; el diseño va por delante para que lo nuevo nazca con el tema; sin librerías de tablas por ahora (D010 en DEPENDENCIES.md).
 
-## En revisión: revisión del modelo de datos — rama `feat/db-review`
-- Esquema analizado (ARCHITECTURE § Modelo de datos): normalizado salvo desnormalizaciones deliberadas y documentadas; sin cambios de estructura.
-- Índices nuevos para las claves foráneas que PostgreSQL no indexa solo (`folders.parent_id`, `user_files.folder_id`, `user_files.original_folder_id`, `user_files(version_of_id, superseded_at)`, `invitations.invited_by`, `users.created_by_admin_id`, `storage_reservations.pool_id`).
-- Consultas: reservas caducadas de Almacenamiento agregadas en SQL (antes cargaba todos los IDs pendientes en PHP); `portal:uploads-cleanup` filtra con subconsulta (antes una consulta por reserva).
-- `QueryPlanTest` en el paso PostgreSQL de CI exige el índice esperado en cada consulta.
-- Incluido aparte (petición del usuario): se retira la página de bienvenida; `/` redirige a entrar o, con sesión, a la página de inicio elegida en Preferencias.
+## En revisión: D02b.1 administración completa en el tema — rama `feat/d02b-admin-forms`
+- Crear, editar y eliminar personas y **Almacenamiento** son páginas Livewire con componentes del tema: se guarda en el sitio con aviso, errores junto al control y sin recargas.
+- Operaciones extraídas a Actions (`Actions/Users/*`, `Actions/Storage/UpdateStorageLimits`) con una sola entrada, su página: se retiran `UserManagementController`, `ManualUserController`, `StorageController` y las rutas de formulario de invitaciones, que ya no usaba ninguna pantalla; `Support/LockedUsers` unifica el bloqueo ordenado y `Support/SizeInput` la lectura de tamaños.
+- Tema: diálogo de confirmación (`x-ui::confirm`, sustituye a `wire:confirm`), selector de tamaño, barra por segmentos, datos resumidos y aviso tras redirección (`session('toast')`).
+- `User::assignableRoles()` y `UserStorageQuota::summaryFor()` sustituyen reglas repetidas en varias pantallas.
+- Tests: los casos anteriores de personas, invitaciones y almacenamiento se ejecutan ahora contra las páginas (`tests/Concerns/UsesAdminPages`), más `AdminFormsTest`. Sin dependencias ni migraciones nuevas.
 
 ## Siguiente acción ejecutable
-1. Usuario: probar Personas, Invitaciones, Actividad y Preferencias (D02a, ya en `main`); tras fusionar esta revisión, `make up` aplica los índices.
-2. D02b: Mis archivos, Almacenamiento, crear/editar persona y contenido de Perfil/Seguridad.
+1. Usuario: revisar la PR D02b.1; tras fusionar, `make up` + `make npm CMD="run build"` y probar Personas (crear/editar/eliminar) y Almacenamiento.
+2. D02b.2: Mis archivos y contenido de Perfil/Seguridad.
 3. En el servidor Linux: `make nas-discover` y `make nas-apply TARGETS="…"`.
 
 ## Límites conocidos

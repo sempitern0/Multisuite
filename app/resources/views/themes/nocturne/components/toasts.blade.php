@@ -1,7 +1,9 @@
-{{-- Listens to `ui-toast` (App\Livewire\Concerns\NotifiesInterface) and shows short confirmations. --}}
+@props(['flash' => null])
+{{-- `flash` shows one confirmation carried across a redirect. Listens to `ui-toast` (App\Livewire\Concerns\NotifiesInterface) and shows short confirmations. --}}
 <div class="ui-toasts" aria-live="polite" aria-atomic="false"
     x-data="{
         items: [],
+        init() { const flash = @js($flash); if (flash) this.push({ text: flash }); },
         push(detail) {
             const id = Date.now() + Math.random();
             this.items.push({ id, text: detail.text, tone: detail.tone || 'ok' });

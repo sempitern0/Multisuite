@@ -12,11 +12,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Mockery\MockInterface;
 use RuntimeException;
+use Tests\Concerns\UsesAdminPages;
 use Tests\TestCase;
 
 class StorageReservationsTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, UsesAdminPages;
 
     private function service(int $free = 1000): StorageReservations
     {
@@ -124,10 +125,10 @@ class StorageReservationsTest extends TestCase
         $key = (string) Str::uuid();
         $service->reserve($member, 'disk', 100, $key);
         $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])
-            ->delete('/users/'.$member->id, ['confirm_email' => $member->email])->assertSessionHasErrors('deletion');
+            ->deletePerson($member, $member->email)->assertHasErrors('deletion');
         $this->assertModelExists($member);
         $service->release($member, $key);
-        $this->delete('/users/'.$member->id, ['confirm_email' => $member->email])->assertRedirect();
+        $this->deletePerson($member, $member->email)->assertRedirect();
         $this->assertModelMissing($member);
         $this->assertNull(StorageReservation::findOrFail($key)->user_id);
     }

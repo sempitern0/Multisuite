@@ -1,4 +1,4 @@
-@props(['title' => null, 'navigation', 'htmlAttributes' => []])
+@props(['title' => null, 'navigation', 'htmlAttributes' => [], 'flash' => null])
 {{--
     Application shell. Draws App\Support\Navigation::for(): groups already filtered by
     gates and the account block. No permission or route logic lives in the theme.
@@ -57,9 +57,7 @@
             </div>
         </div>
 
-        @persist('ui-toasts')
-            <x-ui::toasts />
-        @endpersist
+        <x-ui::toasts :flash="$flash" />
 
         @fluxScripts
     </body>

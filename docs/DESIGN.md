@@ -1,6 +1,6 @@
 # Diseño de la interfaz (capa de tema)
 
-Estado: **D01 y D02a implementados** (fundación, shell, acceso, portada, listas de administración, ajustes con preferencias). Mis archivos, Almacenamiento y edición de personas en D02b.
+Estado: **D01, D02a y D02b.1 implementados** (fundación, shell, acceso, portada y toda la administración: listas, crear/editar personas y Almacenamiento; ajustes con preferencias). Mis archivos y el contenido de Perfil/Seguridad en D02b.2.
 Referencia visual: [design/nocturne-v2/GUIA.md](design/nocturne-v2/GUIA.md) y el prototipo estático `design/nocturne-v2/prototipo-28-pantallas.html` (abrir en el navegador; no forma parte de la app).
 
 ## Objetivo
@@ -39,7 +39,12 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | `subnav` | `items`, `label` | Navegación secundaria (ajustes) con `wire:navigate`. |
 | `container` | `width` form/text | Limita el ancho de formularios y textos. |
 | `sr` | slot | Texto solo para lectores de pantalla. |
-| `toasts` | — | Avisos breves; escucha el evento `ui-toast`. |
+| `toasts` | `flash` | Avisos breves; escucha `ui-toast` y muestra el aviso `session('toast')` que llega tras una redirección. |
+| `confirm` | `title`, slots `trigger`, `action` | Diálogo de confirmación (`<dialog>` nativo: foco atrapado y Escape). |
+| `size-picker` | `id`, `presets`, `units`, `selected`, `extra`, `label`, `submit-label`, `error` | Tamaño por opciones u «otra cantidad»; emite `size-chosen` con `{preset, amount, unit}`. |
+| `stats` | `items` (etiqueta => valor) | Pocos datos resumidos. |
+| `segment-bar` | `segments`, `label` | Partes de un total con leyenda (portal/other/safety/free). |
+| `rows`, `row`, `list` | slot | Panel con filas separadas, línea con dos extremos y lista explicativa. |
 | `form` | `action`, `method` | Añade CSRF (y `@method` si no es POST) y el espaciado entre campos. |
 | `stack` | `gap` sm/md/lg | Ritmo vertical entre bloques. |
 | `text` | `tone` sub/muted, `as` | Texto secundario. |
@@ -49,7 +54,7 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | `notice` | `tone` ok/warn/bad/info | Resultados confirmados por el servidor o errores. |
 | `status` | `tone` ok/warn/bad/muted | Punto + texto corto. |
 | `tag` | `tone` grey/red/blue | |
-| `panel` | `pad` | Superficie. |
+| `panel` | `pad`, `tone` danger/dashed | Superficie; `danger` marca acciones irreversibles. |
 | `page-header` | `title`, `eyebrow`, `description`, slot `actions` | Un `h1` por página. |
 | `service-grid` | `label` | Rejilla de tarjetas (3 / 2 columnas). |
 | `service-tile` | `name`, `icon`, `status` ready/pending/soon/offline, `status-label`, `href`, `note`, `detail` | Sin `href` es informativa (no se puede abrir). El título queda alineado entre tarjetas. |
@@ -79,5 +84,6 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 |---|---|
 | Acceso, recuperar/guardar contraseña, confirmar, 2FA, verificar correo, invitación, contraseña inicial | Migradas (D01). Sin página de bienvenida: `/` lleva a entrar o a la página de inicio elegida |
 | Shell y portada de servicios | Migradas (D01) |
-| Mis archivos, papelera, exportaciones, personas, invitaciones, almacenamiento, actividad, ajustes | Pendiente (D02); ya usan la paleta Nocturne |
+| Personas (lista, crear, editar), Invitaciones, Actividad, Almacenamiento, Preferencias | Migradas (D02a, D02b.1) |
+| Mis archivos, papelera, exportaciones; contenido de Perfil y Seguridad | Pendiente (D02b.2); ya usan la paleta Nocturne |
 | Resumen de administración con métricas reales | Pendiente (D02, solo admin) |

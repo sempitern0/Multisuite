@@ -5,11 +5,8 @@ use App\Http\Controllers\FileController;
 use App\Http\Controllers\FileExportController;
 use App\Http\Controllers\InitialPasswordController;
 use App\Http\Controllers\InvitationController;
-use App\Http\Controllers\ManualUserController;
 use App\Http\Controllers\PrivateUploadController;
 use App\Http\Controllers\ServiceController;
-use App\Http\Controllers\StorageController;
-use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\UsernameController;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -67,26 +64,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('services/{service}', ServiceController::class)->where('service', '[a-z0-9-]+')->name('services.open');
 
     Route::middleware(['can:manage-invitations', 'password.confirm', 'throttle:admin'])->group(function () {
-        // Lists are Livewire pages: search, filters and pages change without reloading.
+        // Administration is Livewire: each page authorises on every request and calls the Actions.
+        // The route middleware guards opening the page; actions use ThrottlesActions with the same limiter.
         Route::livewire('admin/activity', 'pages::admin.activity')->middleware('can:view-admin-audit')->name('audit.index');
         Route::livewire('users', 'pages::admin.users')->name('users.index');
-        Route::get('users/{user}/edit', [UserManagementController::class, 'edit'])->name('users.edit');
-        Route::put('users/{user}', [UserManagementController::class, 'update'])->name('users.update');
-        Route::delete('users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
-        Route::get('users/create', [ManualUserController::class, 'create'])->name('users.create');
-        Route::post('users', [ManualUserController::class, 'store'])->name('users.store');
+        Route::livewire('users/{user}/edit', 'pages::admin.user-edit')->name('users.edit');
+        Route::livewire('users/create', 'pages::admin.user-create')->name('users.create');
         Route::livewire('invitations', 'pages::admin.invitations')->name('invitations.index');
-        Route::post('invitations', [InvitationController::class, 'store'])->name('invitations.store');
-        Route::delete('invitations/{invitation}', [InvitationController::class, 'revoke'])->name('invitations.revoke');
     });
 
     // Storage limits: same audience, but a higher rate so a family can be configured in one sitting.
     // Never under /storage/: Nginx serves that prefix as the public disk (docker/nginx/site.conf).
     Route::middleware(['can:view-storage', 'password.confirm', 'throttle:admin-storage'])->prefix('admin/storage')->name('storage.')->group(function () {
-        Route::get('/', [StorageController::class, 'index'])->name('index');
-        Route::put('default', [StorageController::class, 'updateDefault'])->name('default.update');
-        Route::put('pools/{pool}', [StorageController::class, 'updatePool'])->where('pool', '[a-z][a-z0-9-]{0,63}')->name('pools.update');
-        Route::put('users/{user}', [StorageController::class, 'updateUser'])->name('users.update');
+        Route::livewire('/', 'pages::admin.storage')->name('index');
     });
 });
 
