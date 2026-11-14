@@ -6,7 +6,7 @@
 --}}
 <span x-data>
     <span x-on:click="$refs.dialog.showModal()">{{ $trigger }}</span>
-    <dialog x-ref="dialog" class="ui-dialog" aria-label="{{ $title }}" x-on:click.self="$refs.dialog.close()">
+    <dialog wire:ignore.self x-ref="dialog" class="ui-dialog" aria-label="{{ $title }}" x-on:click.self="$refs.dialog.close()">
         <div class="ui-dialog-body">
             <h2 class="ui-h2">{{ $title }}</h2>
             <p class="ui-sub">{{ $slot }}</p>

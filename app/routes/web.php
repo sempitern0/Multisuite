@@ -7,7 +7,6 @@ use App\Http\Controllers\InitialPasswordController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\PrivateUploadController;
 use App\Http\Controllers\ServiceController;
-use App\Http\Controllers\UsernameController;
 use App\Http\Middleware\RestrictPreviewImages;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -32,7 +31,6 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::post('settings/username', [UsernameController::class, 'update'])->middleware('throttle:account-change')->name('username.update');
     // Mis archivos: owner-scoped lookups and policies; never under /storage/ (Nginx public disk).
     // Pages are Livewire and the only entry to file operations (actions use ThrottlesActions).
     // The controller keeps the non-page endpoints: upload registration (JSON) and binary content.

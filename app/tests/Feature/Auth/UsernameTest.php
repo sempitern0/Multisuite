@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Fortify\Features;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class UsernameTest extends TestCase
@@ -58,21 +59,19 @@ class UsernameTest extends TestCase
     {
         $user = User::factory()->create();
         $this->actingAs($user);
-        $this->post(route('username.update'), ['username' => 'tony', 'current_password' => 'wrong'])
-            ->assertSessionHasErrors('current_password');
+        $choose = fn (string $username, string $password) => Livewire::test('pages::settings.profile')
+            ->set('username', $username)->set('current_password', $password)->call('saveUsername');
+        $choose('tony', 'wrong')->assertHasErrors('current_password')->assertSet('current_password', '');
         foreach (['UPPER', 'ab', 'tony@example.com', 'has spaces'] as $invalid) {
-            $this->post(route('username.update'), ['username' => $invalid, 'current_password' => 'password'])
-                ->assertSessionHasErrors('username');
+            $choose($invalid, 'password')->assertHasErrors('username');
         }
         $this->travel(61)->seconds();
-        $this->post(route('username.update'), ['username' => 'tony', 'current_password' => 'password'])
-            ->assertRedirect()->assertSessionHasNoErrors();
+        $choose('tony', 'password')->assertHasNoErrors()->assertDispatched('ui-toast');
         $this->assertSame('tony', $user->fresh()->username);
-        $this->post(route('username.update'), ['username' => 'another', 'current_password' => 'password'])
-            ->assertSessionHasErrors('username');
+        $choose('another', 'password')->assertHasErrors('username');
         $other = User::factory()->create();
-        $this->actingAs($other)->post(route('username.update'), ['username' => 'tony', 'current_password' => 'password'])
-            ->assertSessionHasErrors('username');
+        $this->actingAs($other);
+        $choose('tony', 'password')->assertHasErrors('username');
         $this->assertNull($other->fresh()->username);
     }
 }

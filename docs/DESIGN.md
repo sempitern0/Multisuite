@@ -1,6 +1,6 @@
 # Diseño de la interfaz (capa de tema)
 
-Estado: **D01, D02a y D02b.1 implementados** (fundación, shell, acceso, portada y toda la administración: listas, crear/editar personas y Almacenamiento; ajustes con preferencias). Mis archivos migrado en D02b.2a; el contenido de Perfil/Seguridad en D02b.2b.
+Estado: **D01, D02a y D02b.1 implementados** (fundación, shell, acceso, portada y toda la administración: listas, crear/editar personas y Almacenamiento; ajustes con preferencias). Todas las pantallas están migradas (D02b.2b); de Flux solo queda el campo de código de un solo uso (`flux:otp`).
 Referencia visual: [design/nocturne-v2/GUIA.md](design/nocturne-v2/GUIA.md) y el prototipo estático `design/nocturne-v2/prototipo-28-pantallas.html` (abrir en el navegador; no forma parte de la app).
 
 ## Objetivo
@@ -45,6 +45,12 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | `stats` | `items` (etiqueta => valor) | Pocos datos resumidos. |
 | `segment-bar` | `segments`, `label` | Partes de un total con leyenda (portal/other/safety/free). |
 | `rows`, `row`, `list` | slot | Panel con filas separadas, línea con dos extremos y lista explicativa. |
+| `dialog` | `name`, `title`, `description` | Diálogo modal con contenido propio; se abre y cierra por nombre con los eventos `ui-dialog-open` / `ui-dialog-close` (también desde Livewire) y sobrevive a las actualizaciones. |
+| `actions` | slot | Fila final de botones (diálogos, formularios). |
+| `separator` | slot | Línea divisoria con texto opcional. |
+| `copy-field` | `value`, `label` | Valor de solo lectura con botón de copiar. |
+| `code-list` | `items`, `label` | Lista corta de códigos para copiar a mano. |
+| `qr` | `label`, slot (SVG) | Código QR sobre fondo claro para que la cámara lo lea en tema oscuro. |
 | `breadcrumbs` | `items` ({label, href}) | Ubicación; el último elemento es la página actual. |
 | `entry` | `href`, `icon`, `spa` | Nombre de archivo o carpeta con icono, como enlace. |
 | `uploader` | `store-url`, `upload-url`, `max-bytes`, `folder`, `hint` | Selector de archivos con lista de progreso; lo maneja `resources/js/files.js` (ganchos `data-uploader*`, estado en `data-state`) y emite `files-uploaded`. |
@@ -76,7 +82,7 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 ## Reglas
 - Vistas nuevas o modificadas: solo componentes `x-ui::`; sin clases `ui-*`, `style`, colores, sombras ni radios. Si falta algo, se añade un componente al tema (en todos los temas) en vez de estilar la vista.
 - Las pruebas comprueban `data-layout="app|auth"`, no clases del tema.
-- Las vistas aún no migradas (Flux + Tailwind) heredan la paleta del tema porque `nocturne.css` reasigna `zinc`, `teal` y el acento de Flux; se migran en D02.
+- No quedan vistas Flux. `nocturne.css` conserva la reasignación de `zinc`, `teal` y el acento solo para `flux:otp`.
 - Nombres de servicio de una palabra (Música, Archivos…); no mostrar nombres técnicos (Navidrome) en la portada.
 - Ocultar un enlace no es autorización: cada ruta mantiene middleware/policies. Los miembros no ven estadísticas globales.
 - Avisos de éxito solo tras confirmación del servidor; sin barras de vista previa en la app.
@@ -91,5 +97,5 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | Shell y portada de servicios | Migradas (D01) |
 | Personas (lista, crear, editar), Invitaciones, Actividad, Almacenamiento, Preferencias | Migradas (D02a, D02b.1) |
 | Mis archivos, vista previa, papelera, descargas ZIP | Migradas (D02b.2a) |
-| Contenido de Perfil y Seguridad | Pendiente (D02b.2b); ya usan la paleta Nocturne |
+| Perfil (nombre, correo, nombre de usuario, eliminar cuenta) y Seguridad (contraseña, verificación en dos pasos, llaves de acceso) | Migradas (D02b.2b) |
 | Resumen de administración con métricas reales | Pendiente (D02, solo admin) |
