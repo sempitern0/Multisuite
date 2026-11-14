@@ -27,7 +27,7 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 
 ## S03 — Mis archivos (decisión 2026-11-13: dentro del portal, carpetas propias)
 - [ ] Mover archivos y carpetas entre carpetas.
-- [ ] S03.3 QA del usuario: papelera, restaurar, vaciar, versiones (rama `feat/s03-trash-versions`).
+- [ ] S03.3 QA del usuario: papelera, restaurar, vaciar, versiones.
 - [ ] S03.4 ZIP de selección o carpeta y «Exportar todo», generado por job con reserva temporal, caducidad y limpieza; nunca extraer ZIP subidos.
 - [ ] Revisar límites Nginx/PHP para archivos grandes; valorar subida por trozos/reanudable.
 - [ ] Reconciliar archivos `ready` ausentes, corruptos o restaurados desde backup.

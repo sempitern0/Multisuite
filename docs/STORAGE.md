@@ -141,8 +141,8 @@ Decisión del usuario (2026-11-13): gestor de archivos propio del portal con car
 | Reservas y cuotas transaccionales (S02.2) | Integrado (PR #10), concurrencia PostgreSQL en CI |
 | Recepción privada HTTP (S03.1) | Integrado (PR #11) |
 | Mis archivos: carpetas, subida web, vista previa y descarga (S03.2) | Integrado (PR #13) |
-| Descubrimiento de discos del servidor y panel de solo lectura (S02.4) | Rama `feat/s02-disk-discovery` (PR #16) |
-| Papelera, borrado verificado, versiones y retención (S03.3) | Rama `feat/s03-trash-versions` |
+| Descubrimiento de discos del servidor y panel de solo lectura (S02.4) | Integrado (PR #16); pendiente prueba en servidor real |
+| Papelera, borrado verificado, versiones y retención (S03.3) | Integrado (PR #17) |
 | GUI de almacenamiento y cuota por defecto (S02.3) | Rama `feat/s02-storage-admin-gui`, pendiente de CI y QA visual |
 | ZIP, mover entre carpetas, reconciliación, bibliotecas por usuario, publicación, movimientos y backup | Pendiente (ROADMAP S03–S05) |
 
