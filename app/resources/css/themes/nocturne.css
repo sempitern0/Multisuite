@@ -261,6 +261,39 @@
     .ui-pager { display: flex; align-items: center; gap: 8px; }
     .ui-pager-status { color: var(--ui-sub); font-size: 12px; white-space: nowrap; }
 
+    /* Dialog */
+    @keyframes ui-dialog-in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+    .ui-dialog { background: var(--ui-panel); color: var(--ui-text); border: 1px solid #40503f; border-radius: var(--ui-radius); padding: 0; width: min(440px, calc(100vw - 30px)); box-shadow: var(--ui-shadow); }
+    .ui-dialog[open] { animation: ui-dialog-in .2s cubic-bezier(.2, .7, .2, 1) both; }
+    .ui-dialog::backdrop { background: #070908c7; }
+    .ui-dialog-body { display: flex; flex-direction: column; gap: 12px; padding: 24px; text-align: left; white-space: normal; }
+    .ui-dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 8px; flex-wrap: wrap; }
+
+    /* Facts, parts of a whole, size picker */
+    .ui-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin: 0; }
+    .ui-stats dt { font-size: 12px; color: var(--ui-muted); }
+    .ui-stats dd { margin: 2px 0 0; font-size: 15px; font-weight: 650; }
+    .ui-segments { display: flex; flex-direction: column; gap: 9px; }
+    .ui-segments-bar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: #283028; }
+    .ui-segments-legend { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--ui-sub); }
+    .ui-segments-legend li { display: flex; align-items: center; gap: 7px; }
+    .ui-segments-legend span { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+    .ui-segments [data-key="portal"] { background: var(--ui-accent); }
+    .ui-segments [data-key="other"] { background: #8b978a; }
+    .ui-segments [data-key="safety"] { background: var(--ui-warn); }
+    .ui-segments [data-key="free"] { background: #323c33; }
+    .ui-size-picker { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+    .ui-size-picker .ui-field { flex: 0 1 230px; }
+    .ui-size-picker .ui-field + .ui-field { flex-basis: 130px; }
+    .ui-size-picker-error { flex-basis: 100%; margin: 0; }
+    .ui-panel-danger { border-color: #6a3b3b; }
+    .ui-panel-dashed { border-style: dashed; background: transparent; }
+    .ui-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; color: var(--ui-sub); font-size: 13px; }
+    .ui-list strong { color: var(--ui-text); }
+    .ui-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .ui-rows > * + * { border-top: 1px solid #29322a; }
+    .ui-rows > * { padding: 18px 24px; }
+
     /* Loading feedback: Livewire 4 marks the element that started a request with data-loading. */
     @keyframes ui-spin { to { transform: rotate(360deg); } }
     .ui-btn[data-loading] { position: relative; color: transparent !important; pointer-events: none; }

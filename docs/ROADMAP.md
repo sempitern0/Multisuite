@@ -10,7 +10,7 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - Un incremento = una rama desde `main` + una PR (apilada si depende de otra). Se fusiona solo con indicación del usuario.
 
 ## Orden vigente
-1. **D02b** — Terminar la migración al tema y a Livewire (decisión 2026-11-14: el diseño va primero para que lo siguiente nazca con él).
+1. **D02b.2** — Terminar la migración al tema y a Livewire (decisión 2026-11-14: el diseño va primero para que lo siguiente nazca con él).
 2. **S05.1** — Backup del NAS (DB, servicios y archivos) a destino externo con restauración ensayada.
 3. **S04** — Publicación/retirada administrativa y movimientos entre discos.
 4. **P03** — Cuentas existentes, baja integral, VPN/TLS y segundo dispositivo.
@@ -18,8 +18,8 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 
 ## D — Diseño Nocturne (docs/DESIGN.md)
 - [ ] D01/D02a QA del usuario: acceso, portada, Personas, Invitaciones, Actividad y Preferencias en 360/768/1440 px, teclado, zoom 200 % y animaciones activadas/desactivadas.
-- [ ] D02b Migrar a `x-ui::` y Livewire: Mis archivos (+ papelera y exportaciones, sin romper la subida privada de `files.js`), Almacenamiento (guardar sin recargar), crear/editar persona y el contenido de Perfil/Seguridad (2FA, passkeys; el QR de 2FA usa `$flux.appearance`).
-- [ ] D02b Componente de diálogo modal del tema para confirmaciones (hoy `wire:confirm` nativo).
+- [ ] D02b.1 QA del usuario: crear/editar/eliminar persona, Almacenamiento (guardar límites sin recargar, selector «otra cantidad») y diálogo de revocar invitación.
+- [ ] D02b.2 Migrar a `x-ui::` y Livewire: Mis archivos (+ papelera y exportaciones, sin romper la subida privada de `files.js`) y el contenido de Perfil/Seguridad (2FA, passkeys; el QR de 2FA usa `$flux.appearance`).
 - [ ] Resumen de administración con métricas reales (solo gates de admin).
 - [ ] Retirar la reasignación de paleta `zinc`/`teal` y los avisos de Flux cuando no queden vistas Flux.
 

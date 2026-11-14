@@ -14,6 +14,7 @@ use App\Support\Bytes;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Mockery\MockInterface;
 use RuntimeException;
 use Tests\TestCase;
@@ -219,5 +220,40 @@ class StorageAdminTest extends TestCase
             $uri = (string) Route::getRoutes()->getByName($name)?->uri();
             $this->assertStringStartsWith('admin/storage', $uri, $name);
         }
+    }
+
+    public function test_livewire_page_saves_in_place_with_the_same_rules(): void
+    {
+        $owner = $this->actor('owner');
+        $member = $this->actor('member');
+        $this->confirmed($owner);
+
+        Livewire::test('pages::admin.storage')
+            ->call('savePool', 'disk', ['preset' => (string) (100 * self::GB)])
+            ->assertHasNoErrors()->assertDispatched('ui-toast')
+            ->call('saveUser', $member->id, ['preset' => 'custom', 'amount' => '2,5', 'unit' => 'GB'])
+            ->assertHasNoErrors()
+            ->call('saveUser', $member->id, ['preset' => 'custom', 'amount' => 'mucho', 'unit' => 'GB'])
+            ->assertHasErrors('quota_'.$member->id)
+            ->call('saveDefault', ['preset' => ['x']])
+            ->assertHasErrors('default')
+            ->call('savePool', '../etc', ['preset' => '0'])
+            ->assertNotFound();
+        $this->assertSame(100 * self::GB, StoragePool::findOrFail('disk')->limit_bytes);
+        $this->assertSame((int) (2.5 * self::GB), UserStorageQuota::findOrFail($member->id)->limit_bytes);
+        $this->assertDatabaseHas('admin_audit_events', ['action' => 'storage.user_quota', 'actor_id' => $owner->id, 'subject_id' => $member->id]);
+    }
+
+    public function test_livewire_page_enforces_roles_on_every_action(): void
+    {
+        $this->confirmed($this->actor('member'));
+        Livewire::test('pages::admin.storage')->assertForbidden();
+
+        $admin = $this->actor('admin');
+        $this->confirmed($admin);
+        Livewire::test('pages::admin.storage')->call('savePool', 'disk', ['preset' => (string) self::GB])->assertForbidden();
+        Livewire::test('pages::admin.storage')->call('saveDefault', ['preset' => (string) self::GB])->assertForbidden();
+        Livewire::test('pages::admin.storage')->call('saveUser', $this->actor('owner')->id, ['preset' => (string) self::GB])->assertForbidden();
+        $this->assertDatabaseMissing('admin_audit_events', ['actor_id' => $admin->id]);
     }
 }

@@ -137,9 +137,15 @@ new #[Title('Invitaciones')] class extends Component {
                         <x-ui::td label="Caduca">{{ $pending ? $invitation->expires_at->format('d/m/Y') : '—' }}</x-ui::td>
                         <x-ui::td align="end">
                             @if ($pending)
-                                <x-ui::button variant="ghost" size="sm" wire:click="revoke({{ $invitation->id }})"
-                                    wire:confirm="¿Revocar la invitación de {{ $invitation->email }}? El enlace dejará de funcionar."
-                                    :aria-label="'Revocar invitación de '.$invitation->email">Revocar</x-ui::button>
+                                <x-ui::confirm title="¿Revocar esta invitación?">
+                                    <x-slot:trigger>
+                                        <x-ui::button variant="ghost" size="sm" :aria-label="'Revocar invitación de '.$invitation->email">Revocar</x-ui::button>
+                                    </x-slot:trigger>
+                                    El enlace enviado a {{ $invitation->email }} dejará de funcionar. Podrás invitar de nuevo a esta persona cuando quieras.
+                                    <x-slot:action>
+                                        <x-ui::button variant="danger" wire:click="revoke({{ $invitation->id }})">Revocar invitación</x-ui::button>
+                                    </x-slot:action>
+                                </x-ui::confirm>
                             @endif
                         </x-ui::td>
                     </tr>

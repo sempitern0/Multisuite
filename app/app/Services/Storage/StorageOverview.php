@@ -27,7 +27,7 @@ class StorageOverview
     public function __construct(private StorageInventory $inventory, private StorageReservations $reservations, private HardwareSnapshot $hardware) {}
 
     /** @return array<string, mixed> */
-    public function build(User $viewer, string $query): array
+    public function build(User $viewer, string $query, int $perPage = 25): array
     {
         $inventoryError = null;
         $groups = [];
@@ -62,7 +62,7 @@ class StorageOverview
         $poolLimitTotal = (int) $pools->sum('limit_bytes');
         $assigned = (int) $quotas->sum('limit_bytes') + $default * max(0, $userCount - $quotas->count());
 
-        $users = User::query()->search($query)->orderBy('name')->orderBy('id')->paginate(25)->withQueryString();
+        $users = User::query()->search($query)->orderBy('name')->orderBy('id')->paginate($perPage);
 
         return [
             'inventoryError' => $inventoryError,
