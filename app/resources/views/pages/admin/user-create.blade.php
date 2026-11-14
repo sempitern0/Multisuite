@@ -1,18 +1,18 @@
 <?php
 
 use App\Actions\Users\CreateUser;
+use App\Livewire\Concerns\ForgetsSecrets;
 use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
 use App\Services\ServiceAccounts;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('Crear cuenta')] class extends Component {
-    use NotifiesInterface, ThrottlesActions;
+    use ForgetsSecrets, NotifiesInterface, ThrottlesActions;
 
     public string $name = '';
 
@@ -56,16 +56,13 @@ new #[Title('Crear cuenta')] class extends Component {
     public function create(CreateUser $create): void
     {
         $this->throttle('admin');
-        try {
+        $user = $this->forgetting(['password', 'password_confirmation'], function () use ($create) {
             /** @var array{name: string, username?: ?string, email: string, role: string, password: string, services?: list<string>} $data */
             $data = $this->validate($create->rules());
-        } catch (ValidationException $exception) {
-            // Never send a rejected password back to the browser.
-            $this->reset('password', 'password_confirmation');
-            throw $exception;
-        }
-        $user = $create->handle(Auth::user(), $data);
-        $this->reset('name', 'username', 'email', 'password', 'password_confirmation');
+
+            return $create->handle(Auth::user(), $data);
+        });
+        $this->reset('name', 'username', 'email');
         $this->role = 'member';
         $this->services = $this->availableServices;
         $this->toast('Cuenta de '.$user->name.' creada. Entrégale la contraseña temporal por un canal seguro');

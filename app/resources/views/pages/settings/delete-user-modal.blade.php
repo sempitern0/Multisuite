@@ -2,6 +2,7 @@
 
 use App\Concerns\PasswordValidationRules;
 use App\Livewire\Actions\Logout;
+use App\Livewire\Concerns\ForgetsSecrets;
 use App\Models\User;
 use App\Services\Storage\StorageReservations;
 use Illuminate\Support\Facades\Auth;
@@ -9,18 +10,14 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 new class extends Component {
-    use PasswordValidationRules;
+    use ForgetsSecrets, PasswordValidationRules;
 
     public string $password = '';
 
-    /**
-     * Delete the currently authenticated user.
-     */
+    /** Deletes the signed-in person's own account after confirming their password. */
     public function deleteUser(Logout $logout): void
     {
-        $this->validate([
-            'password' => $this->currentPasswordRules(),
-        ]);
+        $this->forgetting(['password'], fn () => $this->validate(['password' => $this->currentPasswordRules()]));
 
         DB::transaction(function (): void {
             $user = User::whereKey(Auth::id())->lockForUpdate()->firstOrFail();
@@ -33,28 +30,21 @@ new class extends Component {
     }
 }; ?>
 
-<flux:modal name="confirm-user-deletion" :show="$errors->isNotEmpty()" focusable class="max-w-lg">
-    <form method="POST" wire:submit="deleteUser" class="space-y-6">
-        <div>
-            <flux:heading size="lg">{{ __('Are you sure you want to delete your account?') }}</flux:heading>
+<x-ui::panel tone="danger" aria-labelledby="delete-account">
+    <x-ui::stack gap="sm">
+        <x-ui::heading id="delete-account">Eliminar mi cuenta</x-ui::heading>
+        <x-ui::text>Se borran tu cuenta y tus archivos de Multisuite. No se puede deshacer.</x-ui::text>
+        <x-ui::button variant="danger" icon="trash" data-test="delete-user-button" x-on:click="$dispatch('ui-dialog-open', 'delete-account')">Eliminar mi cuenta</x-ui::button>
+    </x-ui::stack>
 
-            <flux:subheading>
-                {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
-            </flux:subheading>
-        </div>
-
-        <flux:input wire:model="password" :label="__('Password')" type="password" viewable />
-
-        <flux:error name="deletion" />
-
-        <div class="flex justify-end space-x-2 rtl:space-x-reverse">
-            <flux:modal.close>
-                <flux:button variant="filled">{{ __('Cancel') }}</flux:button>
-            </flux:modal.close>
-
-            <flux:button variant="danger" type="submit" data-test="confirm-delete-user-button">
-                {{ __('Delete account') }}
-            </flux:button>
-        </div>
-    </form>
-</flux:modal>
+    <x-ui::dialog name="delete-account" title="¿Eliminar tu cuenta?" description="Todos tus datos de Multisuite se borrarán definitivamente. Escribe tu contraseña para confirmarlo.">
+        <x-ui::form wire:submit="deleteUser">
+            <x-ui::password name="password" label="Contraseña" wire:model="password" required autocomplete="current-password" />
+            @error('deletion')<x-ui::notice tone="bad">{{ $message }}</x-ui::notice>@enderror
+            <x-ui::actions>
+                <x-ui::button variant="ghost" x-on:click="$dispatch('ui-dialog-close', 'delete-account')">Cancelar</x-ui::button>
+                <x-ui::button type="submit" variant="danger" data-test="confirm-delete-user-button">Eliminar mi cuenta</x-ui::button>
+            </x-ui::actions>
+        </x-ui::form>
+    </x-ui::dialog>
+</x-ui::panel>

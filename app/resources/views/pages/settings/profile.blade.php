@@ -1,142 +1,116 @@
 <?php
 
+use App\Actions\Users\SetUsername;
 use App\Concerns\ProfileValidationRules;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Livewire\Concerns\ForgetsSecrets;
+use App\Livewire\Concerns\NotifiesInterface;
+use App\Livewire\Concerns\ThrottlesActions;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
-use App\Livewire\Concerns\NotifiesInterface;
 use Livewire\Component;
 
-new #[Title('Profile settings')] class extends Component {
-    use NotifiesInterface;
-
-    use ProfileValidationRules;
+new #[Title('Perfil')] class extends Component {
+    use ForgetsSecrets, NotifiesInterface, ProfileValidationRules, ThrottlesActions;
 
     public string $name = '';
+
     public string $email = '';
 
-    /**
-     * Mount the component.
-     */
+    public string $username = '';
+
+    public string $current_password = '';
+
+    public bool $verificationSent = false;
+
     public function mount(): void
     {
         $this->name = Auth::user()->name;
         $this->email = Auth::user()->email;
     }
 
-    /**
-     * Update the profile information for the currently authenticated user.
-     */
     public function updateProfileInformation(): void
     {
         $user = Auth::user();
-
         $validated = $this->validate($this->profileRules($user->id));
-
         $user->fill($validated);
-
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
         }
-
         $user->save();
-
         $this->toast('Perfil actualizado');
     }
 
-    /**
-     * Send an email verification notification to the current user.
-     */
     public function resendVerificationNotification(): void
     {
         $user = Auth::user();
-
         if ($user->hasVerifiedEmail()) {
             $this->redirectIntended(default: route('dashboard', absolute: false));
 
             return;
         }
-
         $user->sendEmailVerificationNotification();
+        $this->verificationSent = true;
+    }
 
-        Session::flash('status', 'verification-link-sent');
+    public function saveUsername(SetUsername $setUsername): void
+    {
+        $this->throttle('account-change');
+        $this->forgetting(['current_password'], function () use ($setUsername): void {
+            $data = $this->validate($setUsername->rules());
+            $setUsername->handle(Auth::user(), $data['username'], $data['current_password']);
+        });
+        $this->reset('username');
+        $this->toast('Nombre de usuario guardado. Consulta el estado de Música en Servicios');
     }
 
     #[Computed]
     public function hasUnverifiedEmail(): bool
     {
-        return Auth::user() instanceof MustVerifyEmail && ! Auth::user()->hasVerifiedEmail();
-    }
-
-    #[Computed]
-    public function showDeleteUser(): bool
-    {
-        return ! Auth::user() instanceof MustVerifyEmail
-            || (Auth::user() instanceof MustVerifyEmail && Auth::user()->hasVerifiedEmail());
+        return ! Auth::user()->hasVerifiedEmail();
     }
 }; ?>
 
-<section class="w-full">
-    <flux:heading level="2" class="sr-only">{{ __('Profile settings') }}</flux:heading>
-
-    <x-pages::settings.layout heading="Perfil" subheading="Tu nombre y tu correo.">
-        <form wire:submit="updateProfileInformation" class="my-6 w-full space-y-6">
-            <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
-
-            <div>
-                <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
-
-                @if ($this->hasUnverifiedEmail)
-                    <div>
-                        <flux:text class="mt-4">
-                            {{ __('Your email address is unverified.') }}
-
-                            <flux:link class="text-sm cursor-pointer" wire:click.prevent="resendVerificationNotification">
-                                {{ __('Click here to re-send the verification email.') }}
-                            </flux:link>
-                        </flux:text>
-
-                        @if (session('status') === 'verification-link-sent')
-                            <flux:text class="mt-2 font-medium !dark:text-green-400 !text-green-600">
-                                {{ __('A new verification link has been sent to your email address.') }}
-                            </flux:text>
+<div>
+    <x-pages::settings.layout heading="Perfil" subheading="Tu nombre, tu correo y tu nombre de usuario.">
+        <x-ui::stack gap="lg">
+            <x-ui::panel>
+                <x-ui::form wire:submit="updateProfileInformation">
+                    <x-ui::field name="name" label="Nombre" wire:model="name" required autocomplete="name" />
+                    <x-ui::field name="email" type="email" label="Correo electrónico" wire:model="email" required autocomplete="email" />
+                    @if ($this->hasUnverifiedEmail)
+                        <x-ui::notice tone="warn">
+                            Tu correo está sin verificar.
+                            <x-ui::link wire:click="resendVerificationNotification">Reenviar el correo de verificación</x-ui::link>
+                        </x-ui::notice>
+                        @if ($verificationSent)
+                            <x-ui::notice>Te hemos enviado un nuevo enlace de verificación.</x-ui::notice>
                         @endif
-                    </div>
-                @endif
-            </div>
+                    @endif
+                    <x-ui::button type="submit" data-test="update-profile-button">Guardar</x-ui::button>
+                </x-ui::form>
+            </x-ui::panel>
 
-            <div class="flex items-center gap-4">
-                <div class="flex items-center justify-end">
-                    <flux:button variant="primary" type="submit" class="w-full" data-test="update-profile-button">
-                        {{ __('Save') }}
-                    </flux:button>
-                </div>
+            <x-ui::panel aria-labelledby="username-heading">
+                <x-ui::stack gap="md">
+                    <x-ui::heading id="username-heading">Nombre de usuario</x-ui::heading>
+                    @if (auth()->user()->username)
+                        <x-ui::text><strong>{{ auth()->user()->username }}</strong> · Puedes entrar a Multisuite con este usuario o con tu correo.</x-ui::text>
+                    @else
+                        <x-ui::text tone="muted">Se elige una sola vez. Tu cuenta de Música conservará sus datos y pasará a usar este usuario cuando termine la sincronización.</x-ui::text>
+                        <x-ui::form wire:submit="saveUsername">
+                            <x-ui::field name="username" label="Nombre de usuario" wire:model="username" required minlength="3" maxlength="32" autocomplete="username"
+                                help="De 3 a 32 caracteres: minúsculas, números, punto, guion o guion bajo." />
+                            <x-ui::password name="current_password" label="Contraseña actual" wire:model="current_password" required autocomplete="current-password" />
+                            <x-ui::button type="submit" variant="secondary">Guardar usuario</x-ui::button>
+                        </x-ui::form>
+                    @endif
+                </x-ui::stack>
+            </x-ui::panel>
 
-            </div>
-        </form>
-
-        <div class="my-6 space-y-4">
-            <flux:heading>Nombre de usuario</flux:heading>
-            @if (session('status'))
-                <p role="status">{{ session('status') }}</p>
+            @if (! $this->hasUnverifiedEmail)
+                <livewire:pages::settings.delete-user-modal />
             @endif
-            @if (auth()->user()->username)
-                <flux:text>{{ auth()->user()->username }} · Puedes entrar a Multisuite con este usuario o con tu correo.</flux:text>
-            @else
-                <form method="POST" action="{{ route('username.update') }}" class="space-y-4">
-                    @csrf
-                    <flux:input name="username" label="Nombre de usuario" :value="old('username')" required minlength="3" maxlength="32" autocomplete="username" />
-                    <flux:text>Minúsculas, números, punto, guion o guion bajo. Se elige una sola vez. Tu cuenta de Música conservará sus datos y pasará a utilizar este usuario cuando termine la sincronización.</flux:text>
-                    <flux:input name="current_password" type="password" label="Contraseña actual" required autocomplete="current-password" />
-                    <flux:button type="submit" variant="primary">Guardar usuario</flux:button>
-                </form>
-            @endif
-        </div>
-
-        @if ($this->showDeleteUser)
-            <livewire:pages::settings.delete-user-form />
-        @endif
+        </x-ui::stack>
     </x-pages::settings.layout>
-</section>
+</div>

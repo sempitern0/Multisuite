@@ -30,7 +30,7 @@ El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada ser
 | Dominio | Código clave | Doc |
 | --- | --- | --- |
 | Portada y servicios | `config/portal.php`, `DashboardController` + `Support/ServiceTiles` (qué ve cada persona), `ServiceController`, `resources/views/dashboard.blade.php` | NAVIDROME.md |
-| Administración (páginas) | Livewire en `resources/views/pages/admin/{users,user-create,user-edit,invitations,activity,storage}`: única entrada a estas operaciones; autorizan en cada petición y delegan en Actions (`Actions/Users/{CreateUser,UpdateUser,DeleteUser}`, `Actions/Invitations/*`, `Actions/Storage/UpdateStorageLimits`). Apoyos: `Support/LockedUsers` (bloqueo ordenado actor/objetivo), `Support/SizeInput`, `User::assignableRoles()`, `Invitation::status()`/`scopeInStatus()`, `User::scopeSearch()`, `UserStorageQuota::summaryFor()`, `Livewire/Concerns/ThrottlesActions`. Pruebas con `tests/Concerns/UsesAdminPages` | USER_MANAGEMENT.md, INVITATIONS.md, STORAGE.md |
+| Administración (páginas) | Livewire en `resources/views/pages/admin/{users,user-create,user-edit,invitations,activity,storage}`: única entrada a estas operaciones; autorizan en cada petición y delegan en Actions (`Actions/Users/{CreateUser,UpdateUser,DeleteUser,SetUsername}`, `Actions/Invitations/*`, `Actions/Storage/UpdateStorageLimits`). Apoyos: `Support/LockedUsers` (bloqueo ordenado actor/objetivo), `Support/SizeInput`, `User::assignableRoles()`, `Invitation::status()`/`scopeInStatus()`, `User::scopeSearch()`, `UserStorageQuota::summaryFor()`, `Livewire/Concerns/ThrottlesActions`. Pruebas con `tests/Concerns/UsesAdminPages` | USER_MANAGEMENT.md, INVITATIONS.md, STORAGE.md |
 | Preferencias | `Support/UserPreferences` (columna `users.preferences`), página `pages::settings.preferences`, `Http/Responses/LoginResponse` (página de inicio) | DESIGN.md |
 | Diseño (tema) | `config/ui.php`, `resources/views/themes/nocturne/components` (`x-ui::`, layouts), `resources/css/themes/nocturne.css`, delegadores `resources/views/layouts/{app,auth}.blade.php` | DESIGN.md |
 | Roles y permisos | `User::canInviteRole`, `Policies/UserPolicy`, gates en `Providers/AppServiceProvider` | USER_MANAGEMENT.md |
@@ -67,6 +67,7 @@ Motor: PostgreSQL 17 en desarrollo y producción; SQLite en los tests (CI ejecut
 **Pendiente** (ver ROADMAP): enums PHP + `CHECK` para roles y estados escritos como texto; mover `location_id`/`root_hash` (hoy repetidos en `private_uploads` y `file_exports`) a la reserva común si aparece un tercer subtipo.
 
 ## Invariantes que no se deben romper
+- Una contraseña escrita en una página Livewire nunca vuelve al navegador: las acciones que la reciben se envuelven en `ForgetsSecrets::forgetting()`.
 - Las acciones Livewire que modifican datos llaman a `ThrottlesActions::throttle()` con el limitador con nombre de su ruta: `/livewire/update` no pasa por `throttle:` y así ambos caminos comparten contador y definición.
 - Los componentes Livewire de un solo archivo (`resources/views/pages`) no los analiza PHPStan: solo orquestan. Consultas en scopes de modelo (`User::search`, `Invitation::inStatus`) y mutaciones en Actions.
 - Autorización en servidor en cada lectura/escritura; revalidar roles **bajo bloqueo** en operaciones administrativas (`Support/LockedUsers::pair`).
