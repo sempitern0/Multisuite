@@ -16,6 +16,7 @@ trait UsesAdminPages
     /** @param array<string, mixed> $input */
     protected function updatePerson(User $target, array $input)
     {
+        $target = User::findOrFail($target->id); // as route binding does: never a stale instance
         $page = Livewire::test('pages::admin.user-edit', ['user' => $target]);
         if (Gate::denies('update', $target)) {
             return $page;
@@ -29,6 +30,7 @@ trait UsesAdminPages
 
     protected function deletePerson(User $target, string $confirmEmail = '')
     {
+        $target = User::findOrFail($target->id);
         $page = Livewire::test('pages::admin.user-edit', ['user' => $target]);
 
         return Gate::denies('delete', $target) ? $page : $page->set('confirm_email', $confirmEmail)->call('delete');
@@ -37,13 +39,13 @@ trait UsesAdminPages
     /** @param array<string, mixed> $input */
     protected function createPerson(array $input)
     {
-        return $this->fillAndCall('pages::admin.user-create', 'manage-invitations', ['services' => []] + $input, 'create');
+        return $this->fillAndCall('pages::admin.user-create', 'manage-invitations', $input + ['services' => []], 'create');
     }
 
     /** @param array<string, mixed> $input */
     protected function invite(array $input)
     {
-        return $this->fillAndCall('pages::admin.invitations', 'manage-invitations', ['services' => []] + $input, 'invite');
+        return $this->fillAndCall('pages::admin.invitations', 'manage-invitations', $input + ['services' => []], 'invite');
     }
 
     protected function revokeInvitation(int $invitationId)
