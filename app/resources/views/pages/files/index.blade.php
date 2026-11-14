@@ -174,11 +174,12 @@ new #[Title('Mis archivos')] class extends Component {
             <x-ui::notice tone="info">Aún no tienes espacio asignado. Pide a un administrador que te asigne espacio en Almacenamiento.</x-ui::notice>
         @endif
 
+        @if ($l['enabled'] && $l['limit'] > 0)
+            <x-ui::uploader :store-url="route('files.store')" :upload-url="url('uploads')" :folder="$folder->id ?? null" :max-bytes="$l['maxBytes']"
+                :hint="'Hasta '.$fmt($l['maxBytes']).' por archivo. Documentos, PDF, imágenes, texto y audio.'" />
+        @endif
+
         <x-ui::toolbar>
-            @if ($l['enabled'] && $l['limit'] > 0)
-                <x-ui::uploader :store-url="route('files.store')" :upload-url="url('uploads')" :folder="$folder->id ?? null" :max-bytes="$l['maxBytes']"
-                    :hint="'Hasta '.$fmt($l['maxBytes']).' por archivo. Documentos, PDF, imágenes, texto y audio.'" />
-            @endif
             <x-ui::form wire:submit="createFolder">
                 <x-ui::field name="newFolder" label="Nueva carpeta" wire:model="newFolder" maxlength="120" required placeholder="Ej. Facturas 2026" />
                 <x-ui::button type="submit" variant="secondary" icon="plus">Crear carpeta</x-ui::button>

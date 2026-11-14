@@ -223,7 +223,7 @@
     .ui-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
     .ui-toolbar > .ui-field { flex: 1 1 220px; max-width: 360px; }
     .ui-toolbar > .ui-form { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
-    .ui-toolbar > .ui-form > .ui-btn { margin-top: 0; }
+    .ui-toolbar > .ui-form > .ui-btn { margin-top: 0; min-height: 46px; }
     .ui-stack > .ui-btn { align-self: flex-start; }
     .ui-toolbar-end { margin-left: auto; display: flex; gap: 9px; align-items: center; }
     .ui-select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--ui-sub) 50%), linear-gradient(135deg, var(--ui-sub) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 36px; }
@@ -409,7 +409,7 @@
         .ui-table td:first-child { display: block; text-align: left; padding-bottom: 6px; }
         .ui-table td:first-child::before { content: none; }
         .ui-table td[data-check] { float: left; width: auto; padding: 2px 12px 0 0; }
-        .ui-table td[data-check] + td { display: block; text-align: left; padding-bottom: 6px; }
+        .ui-table td[data-check] + td { display: block; overflow: hidden; text-align: left; padding-bottom: 6px; }
         .ui-table td[data-align="end"] { justify-content: flex-start; padding-top: 8px; }
         .ui-sidebar { position: fixed; inset: 0 auto 0 0; width: 272px; z-index: 50; transform: translateX(-105%); transition: transform .2s ease; padding: 23px 14px 14px; }
         .ui-sidebar .ui-hide-compact { display: block; }
