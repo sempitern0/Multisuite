@@ -51,7 +51,7 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - [ ] Auditoría de transiciones e idempotencia ante reintentos. Sin duplicar bytes.
 
 ## S05 — Copias de seguridad y movimientos
-- [ ] S05.1 Backup programado de DB del portal, datos de servicios y archivos privados a destino externo (herramienta a evaluar en DEPENDENCIES, p. ej. restic), retención, verificación y restauración ensayada en destino limpio. Otra partición del mismo disco no es backup.
+- [ ] S05.1 Validar en el servidor real `make nas-backup` y `make nas-backup-verify` con un destino externo, y dejarla programada (implementado con restic y probado con Docker simulado; STORAGE.md).
 - [ ] Copia entre discos con reserva en destino, verificación de integridad, cambio de referencias y borrado del origen solo tras confirmación.
 
 ## S01 — Restos de validación de Navidrome

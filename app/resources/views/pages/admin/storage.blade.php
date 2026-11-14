@@ -194,6 +194,18 @@ new #[Title('Almacenamiento')] class extends Component {
             @endif
         </x-ui::stack>
 
+        <x-ui::stack gap="sm" aria-labelledby="backup">
+            <x-ui::heading id="backup">Copia de seguridad</x-ui::heading>
+            @php($backupAt = $o['backup']['at'] ?? null)
+            @switch($o['backup']['state'] ?? null)
+                @case('ok') <x-ui::notice>Última copia terminada y comprobada el {{ $backupAt->format('d/m/Y H:i') }}.</x-ui::notice> @break
+                @case('running') <x-ui::notice tone="info">Hay una copia en curso{{ $backupAt ? ' desde el '.$backupAt->format('d/m/Y H:i') : '' }}.</x-ui::notice> @break
+                @case('stale') <x-ui::notice tone="warn">La última copia es del {{ $backupAt->format('d/m/Y H:i') }}. Revisa en el servidor que la copia programada sigue funcionando.</x-ui::notice> @break
+                @case('failed') <x-ui::notice tone="bad">La última copia falló{{ $backupAt ? ' el '.$backupAt->format('d/m/Y H:i') : '' }}. Los archivos nuevos no están protegidos hasta que se repita en el servidor con <code>make nas-backup</code>.</x-ui::notice> @break
+                @default <x-ui::text>Todavía no se ha hecho ninguna copia a un disco externo o a otro lugar. Se configura en el servidor (<code>backup.env</code> y <code>make nas-backup</code>); el portal solo muestra el resultado.</x-ui::text>
+            @endswitch
+        </x-ui::stack>
+
         <x-ui::panel aria-labelledby="sharing">
             <x-ui::stack gap="md">
                 <x-ui::heading id="sharing">Reparto</x-ui::heading>

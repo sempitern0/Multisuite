@@ -69,10 +69,12 @@ tmp=$(mktemp ./.compose-nas.XXXXXX)
     printf '# Re-run make nas-apply to change it. Replaces the dev NAS overlay automatically.\n'
     printf 'x-nas: &nas\n  volumes:%b\n' "$mounts"
     printf '    - "./local/nas-hardware.json:/opt/multisuite/nas-hardware.json:ro"\n'
+    printf '    - "./local/backup-status.json:/opt/multisuite/backup-status.json:ro"\n'
     printf '  environment:\n'
     printf "    NAS_STORAGE_VOLUMES: '[%s]'\n" "$json"
     printf '    NAS_UPLOADS_ENABLED: "true"\n    NAS_UPLOAD_LOCATION: "%s"\n' "$upload"
     printf '    NAS_HARDWARE_SNAPSHOT: "/opt/multisuite/nas-hardware.json"\n'
+    printf '    NAS_BACKUP_STATUS: "/opt/multisuite/backup-status.json"\n'
     printf 'services:\n  app: *nas\n  worker: *nas\n  scheduler: *nas\n'
 } > "$tmp"
 mv "$tmp" compose.nas.yaml
@@ -80,4 +82,5 @@ mkdir -p local
 printf '%s\n' $TARGETS > local/nas-targets
 sh scripts/nas-discover.sh >/dev/null 2>&1 || true
 [ -f local/nas-hardware.json ] || printf '{}\n' > local/nas-hardware.json
+[ -f local/backup-status.json ] || printf '{}\n' > local/backup-status.json
 echo "Listo: compose.nas.yaml creado. Ejecuta make up; los límites se fijan solos y puedes ajustarlos en Almacenamiento."

@@ -37,3 +37,13 @@ Alternativas evaluadas y descartadas por ahora:
 Además, el entorno del agente no alcanza Packagist, así que no puede generar lockfiles verificables. Revisar PowerGrid si una lista supera miles de filas o necesita exportación/edición en línea.
 Fuente tipográfica: se retira Instrument Sans (bunny, heredada de la plantilla y sin uso en el tema Nocturne, que usa la pila del sistema); desaparece la descarga de ~50 KB por página y el aviso de `fontaine`.
 
+
+## D011 — restic para la copia de seguridad del NAS (2026-11-14, S05.1)
+Necesidad: copia cifrada, incremental y verificable de la DB del portal, los archivos privados y los datos de Navidrome a un disco externo o un destino remoto, con retención y restauración ensayada.
+Se adopta **restic** como contenedor efímero (`restic/restic:0.19.1`, fijado en `scripts/nas-backup.sh` y `backup.env.example`), no como paquete PHP/JS ni instalación en el host. Lo ejecuta el operador con `make nas-backup`; el portal no lo invoca ni recibe el socket Docker.
+- Versión: 0.19.0 publicada el 2026-06-09 (https://restic.net/blog/2026-06-09/restic-0.19.0-released/) y 0.19.1 de corrección en julio de 2026 (https://github.com/restic/restic/releases/tag/v0.19.1; Debian la aceptó el 2026-07-06: https://tracker.debian.org/restic). Consultado 2026-11-14.
+- Licencia BSD de 2 cláusulas (https://github.com/instrumentisto/restic-docker-image, sección License, consultado 2026-11-14). Binarios reproducibles y proyecto con actividad continua en 2026.
+- Motivos: cifrado obligatorio en el cliente, deduplicación, `forget --prune` para la retención, `check --read-data-subset` para detectar corrupción y destinos locales, SFTP, REST y S3/B2 con la misma herramienta.
+- Alternativas: BorgBackup (equivalente en funciones, pero sin destinos de objetos nativos y con servidor Borg en el remoto); `rsync`/`tar` (sin cifrado, deduplicación ni verificación); Backrest o similares (interfaz web y servicio permanente que el portal no necesita).
+- Coste: una imagen más que actualizar a mano (cambiar la etiqueta y repetir `make nas-backup-verify`) y la custodia de la contraseña del repositorio fuera del servidor.
+- Pendiente de validar: el entorno del agente no tiene Docker ni red hacia el registro, así que la etiqueta `0.19.1` de la imagen y una copia real no se han ejecutado; se comprueban con `make nas-backup` y `make nas-backup-verify` en el servidor. Retirada: borrar `backup.env` y la tarea programada; el repositorio sigue siendo legible con cualquier restic.

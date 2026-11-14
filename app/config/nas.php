@@ -9,6 +9,9 @@ return [
     'volumes' => env('NAS_STORAGE_VOLUMES', '[]'),
     // lsblk inventory written on the server by `make nas-discover` (read-only display).
     'hardware_snapshot' => env('NAS_HARDWARE_SNAPSHOT', ''),
+    // Result of the last `make nas-backup` (read-only display); older than this is flagged.
+    'backup_status' => env('NAS_BACKUP_STATUS', ''),
+    'backup_max_age_hours' => (int) env('NAS_BACKUP_MAX_AGE_HOURS', 48),
 
     // Detected (never client-declared) types accepted for private files. Archives,
     // executables, HTML and SVG are deliberately absent: they are never extracted,

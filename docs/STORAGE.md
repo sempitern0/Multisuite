@@ -151,6 +151,30 @@ Decisión del usuario (2026-11-13): gestor de archivos propio del portal con car
 | Papelera, borrado verificado, versiones y retención (S03.3) | Integrado (PR #17) |
 | Descargas ZIP: selección, carpeta y exportar todo (S03.4) | Rama `feat/s03-zip-exports` |
 | GUI de almacenamiento y cuota por defecto (S02.3) | Rama `feat/s02-storage-admin-gui`, pendiente de CI y QA visual |
-| Mover entre carpetas, reconciliación, bibliotecas por usuario, publicación, movimientos y backup | Pendiente (ROADMAP S03–S05) |
+| Copia de seguridad externa con restic, retención, comprobación y ensayo de restauración (S05.1) | Rama `feat/s05-nas-backup`; probado con Docker simulado, pendiente de una copia real en el servidor |
+| Mover entre carpetas, reconciliación, bibliotecas por usuario, publicación y movimientos | Pendiente (ROADMAP S03–S05) |
 
-Tests: `make test CMD="--filter=Storage"`, `--filter=PrivateUploadsTest`, `--filter=PersonalFilesTest`, `--filter=BytesTest`.
+## Copia de seguridad (S05.1)
+
+La hace el operador en el servidor Linux con restic (DEPENDENCIES D011) en un contenedor de un solo uso. El portal no la ejecuta, no la programa y no recibe el socket Docker: solo muestra el resultado en **Almacenamiento → Copia de seguridad** (reciente, en curso, antigua —más de `NAS_BACKUP_MAX_AGE_HOURS`, 48 h— o fallida).
+
+Qué se copia en cada `make nas-backup`:
+1. Volcado `pg_dump -Fc` de la base de datos del portal (se crea en `local/backup-staging`, 0700, y se borra al terminar).
+2. Los archivos privados de cada disco preparado por `make nas-apply` (`<montaje>/multisuite`, en solo lectura) y las carpetas de `BACKUP_EXTRA_PATHS` (p. ej. la biblioteca de música). En desarrollo, el volumen `nas_private`.
+3. Los datos de Navidrome (`NAVIDROME_DATA_PATH`): Navidrome se detiene durante esa instantánea incremental para copiar su SQLite en reposo y vuelve a arrancar aunque la copia falle.
+4. Retención (`forget --prune`: 7 diarias, 4 semanales y 6 mensuales por defecto) y comprobación (`check --read-data-subset 10%`).
+
+Configuración, una vez:
+1. `cp backup.env.example backup.env` y rellenar `RESTIC_PASSWORD` (guardar una copia **fuera del servidor**: sin ella la copia es ilegible) y un destino: `BACKUP_REPOSITORY_PATH` (disco externo ya montado) o `RESTIC_REPOSITORY` (sftp, rest, s3, b2…) con sus credenciales. Formato `CLAVE=valor` sin comillas; el script lo deja en modo 600 y Git lo ignora.
+2. `make nas-backup` (la primera vez crea el repositorio) y `make nas-backup-verify`.
+3. Programarla, por ejemplo con cron del usuario que administra Docker: `30 3 * * * cd /ruta/a/multisuite && make nas-backup >> local/backup.log 2>&1`.
+4. Si `compose.nas.yaml` se generó antes de este cambio, repetir `make nas-apply` (mismos `TARGETS`) y `make up` para que el portal vea el resultado.
+
+Reglas que aplica el script: se niega si el destino local está en el mismo disco físico que los datos o el repositorio (otra partición del mismo disco no es backup; `BACKUP_ALLOW_SAME_DISK=1` solo para ensayos), no monta ni formatea nada, monta los orígenes en solo lectura, usa red solo con destino remoto, no permite dos copias a la vez (`local/backup.lock`) y escribe `local/backup-status.json` sin rutas ni secretos.
+
+### Ensayo y restauración
+- `make nas-backup-verify`: restaura la última copia en un volumen temporal, carga el volcado en un PostgreSQL limpio y sin red, cuenta personas y migraciones, comprueba las marcas de los discos y borra el volumen. `FILES=0` ensaya solo la base de datos cuando no hay espacio para todos los archivos. No toca datos reales.
+- `make nas-backup-snapshots` lista las copias; `make nas-backup-restore TARGET=/carpeta/vacía [SNAPSHOT=id]` restaura solo en una carpeta vacía (`TARGET/source/portal-db/portal.dump`, `source/nas/<montaje>` y `source/navidrome`).
+- Restaurar: volver a poner en servicio un servidor nuevo es una operación de producción y se hace a mano y con autorización: preparar discos (`make nas-apply`), copiar `source/nas/<montaje>/` a `<montaje>/multisuite/` conservando propietario y permisos (`cp -a`), `make up`, cargar el volcado (`docker compose cp` + `pg_restore --clean --if-exists --no-owner` en el contenedor `postgres`) y, con Música detenida, copiar `source/navidrome` a `NAVIDROME_DATA_PATH`. Los secretos (`.env`, `app/.env`, `music.env`, `backup.env`) no van en la copia: guardarlos aparte.
+
+Tests: `python3 tests/nas-backup.py`, `make test CMD="--filter=BackupStatusTest"`, `make test CMD="--filter=Storage"`, `--filter=PrivateUploadsTest`, `--filter=PersonalFilesTest`, `--filter=BytesTest`.

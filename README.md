@@ -9,7 +9,7 @@ NAS doméstico autoalojado con un portal privado (Laravel 13 + Livewire 4 + Flux
 - **Administración**: usuarios, invitaciones y registro de actividad.
 - **Almacenamiento**: inventario de discos, cuotas por persona con reservas atómicas, recepción privada de archivos y página **Almacenamiento** para repartir el espacio sin conocimientos técnicos ([STORAGE.md](docs/STORAGE.md)).
 
-Aún no desplegado en producción (VPN/TLS, backups y piloto pendientes). Estado exacto en [PROJECT_STATUS.md](docs/PROJECT_STATUS.md); trabajo pendiente en [ROADMAP.md](docs/ROADMAP.md).
+Aún no desplegado en producción (VPN/TLS, copia de seguridad real y piloto pendientes). Estado exacto en [PROJECT_STATUS.md](docs/PROJECT_STATUS.md); trabajo pendiente en [ROADMAP.md](docs/ROADMAP.md).
 
 ## Arranque rápido (desarrollo)
 Requisitos: Docker con Compose v2 y Make (Windows sin Make: `powershell -NoProfile -File scripts/setup.ps1`).

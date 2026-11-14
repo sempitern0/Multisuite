@@ -33,7 +33,9 @@ trap 'rm -f "$tmp"' EXIT HUP INT TERM
     "$LSBLK" -J -b -o "$columns"
     printf '}\n'
 } > "$tmp"
-mv "$tmp" local/nas-hardware.json
+# In place: the file is bind-mounted into the portal and a rename would detach it.
+cat "$tmp" > local/nas-hardware.json
+rm -f "$tmp"
 trap - EXIT HUP INT TERM
 
 echo "== Discos y particiones (solo lectura) =="

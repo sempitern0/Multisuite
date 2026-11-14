@@ -21,7 +21,7 @@ El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada ser
 | `compose.music.yaml`, `music.env.example` | Navidrome independiente |
 | `deploy/*.yaml` | Overlays que aplica Make: cuentas/red compartida con Música y NAS de desarrollo (`compose.nas-dev.yaml`). En el servidor, `compose.nas.yaml` (local, generado por `make nas-apply`) lo sustituye |
 | `docker/` | Imágenes PHP/Nginx, Caddy, gateway musical (`docker/music-proxy`) |
-| `scripts/` | Setup/preflight/backup en Bash y PowerShell (paridad obligatoria) |
+| `scripts/` | Setup/preflight/backup en Bash y PowerShell (paridad obligatoria); `nas-backup.sh` (restic, solo servidor Linux) con `backup.env` |
 | `tests/` | Pruebas de infraestructura (Python/Bash/PowerShell/Node) y laboratorio `tests/isolation/` |
 | `docs/` | Documentación del producto; `docs/foundry/` = guías heredadas de la plantilla |
 | `Makefile` | Punto de entrada: `make up`, `make test`, `make artisan CMD=…`, `make npm CMD=…`, `music-*` |
@@ -40,7 +40,7 @@ El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada ser
 | Sesión musical | `MusicSessionController`, `Services/MusicSessionBridge`, `docker/music-proxy/` | MUSIC_SESSION_BRIDGE.md |
 | Auditoría | `Services/AdminAudit`, `Enums/ServiceAuditAction`, página Livewire `pages::admin.activity` | ADMIN_AUDIT.md |
 | Mis archivos | Páginas Livewire `resources/views/pages/files/{index,show,trash,exports}` (única entrada a las operaciones; búsquedas acotadas al propietario en cada petición) sobre `Services/Files/PersonalFiles` (carpetas, papelera, versiones, retención), `Services/Files/FileExports` y `Services/Files/FilePreview` (vista previa de solo lectura). `FileController` y `FileExportController` conservan solo lo que no es página: registro de subida (JSON para `resources/js/files.js`), contenido binario y descarga de ZIP. `Livewire/Concerns/ManagesOwnFiles` (papelera, restaurar, versiones y borrado compartidos por las páginas), `Middleware/RestrictPreviewImages` (CSP de la vista previa), `Support/DomainErrors`, `Policies/{UserFilePolicy,FolderPolicy}`, `portal:files-purge`, `portal:exports-run`. Pruebas con `tests/Concerns/UsesFilePages` | STORAGE.md |
-| Almacenamiento | `Services/Storage/{VolumeProbe,StorageInventory,StorageReservations,StorageOverview,PrivateUploads}`, `StorageController`, `PrivateUploadController`, `Support/Bytes`, `config/nas.php`, `portal:storage-status`, `portal:storage-quota`, `portal:uploads-cleanup`, `portal:dev-bootstrap`, `Services/Storage/HardwareSnapshot`, `scripts/nas-discover.*`, `scripts/nas-apply.*` | STORAGE.md |
+| Almacenamiento | `Services/Storage/{VolumeProbe,StorageInventory,StorageReservations,StorageOverview,PrivateUploads,HardwareSnapshot,BackupStatus}`, `StorageController`, `PrivateUploadController`, `Support/Bytes`, `config/nas.php`, `portal:storage-status`, `portal:storage-quota`, `portal:uploads-cleanup`, `portal:dev-bootstrap`, `Services/Storage/HardwareSnapshot`, `scripts/nas-discover.*`, `scripts/nas-apply.*` | STORAGE.md |
 
 Gates: `manage-invitations`, `view-admin-audit`, `view-storage` (owner/admin); `manage-storage-pools` (owner); `manage-storage-quota` (owner → todos; admin → miembros).
 
