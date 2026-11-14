@@ -110,4 +110,58 @@ class AdminListsTest extends TestCase
             ->call('invite')
             ->assertHasErrors(['email' => 'unique']);
     }
+
+    public function test_livewire_actions_share_the_admin_rate_limit(): void
+    {
+        Notification::fake();
+        $this->actor('owner');
+        $component = Livewire::test('pages::admin.invitations');
+
+        for ($attempt = 1; $attempt <= 10; $attempt++) {
+            $component->set('email', "guest{$attempt}@example.com")->call('invite')->assertHasNoErrors();
+        }
+        $component->set('email', 'one-too-many@example.com')->call('invite')->assertStatus(429);
+        $this->assertDatabaseMissing('invitations', ['email' => 'one-too-many@example.com']);
+    }
+
+    public function test_invitation_status_follows_the_model_rule_in_list_and_filters(): void
+    {
+        $owner = $this->actor('owner');
+        $former = User::factory()->create(['role' => 'member']);
+        $make = function (string $email, User $issuer, array $changes = []): Invitation {
+            $invitation = new Invitation;
+            $invitation->email = $email;
+            $invitation->role = 'member';
+            $invitation->services = [];
+            $invitation->invited_by = $issuer->id;
+            $invitation->token_hash = hash('sha256', $email);
+            $invitation->expires_at = now()->addDay();
+            foreach ($changes as $key => $value) {
+                $invitation->{$key} = $value;
+            }
+            $invitation->save();
+
+            return $invitation;
+        };
+        $pending = $make('pending@example.com', $owner);
+        // Issued by someone who can no longer invite: the link does not work, so it is not pending.
+        $orphan = $make('orphan@example.com', $former);
+        $make('accepted@example.com', $owner, ['used_at' => now()]);
+        $make('expired@example.com', $owner, ['expires_at' => now()->subMinute()]);
+
+        $this->assertSame('pending', $pending->status());
+        $this->assertSame('expired', $orphan->status());
+        $emails = fn (string $status): array => Invitation::status($status)->orderBy('email')->pluck('email')->all();
+        $this->assertSame(['pending@example.com'], $emails('pending'));
+        $this->assertSame(['accepted@example.com'], $emails('accepted'));
+        $this->assertSame(['expired@example.com', 'orphan@example.com'], $emails('expired'));
+        $this->assertCount(4, $emails(''));
+
+        Livewire::withQueryParams(['status' => 'pending'])->test('pages::admin.invitations')
+            ->assertSee('pending@example.com')
+            ->assertDontSee('orphan@example.com');
+        Livewire::test('pages::admin.invitations')
+            ->assertSeeHtml('aria-label="Revocar invitación de pending@example.com"')
+            ->assertDontSeeHtml('aria-label="Revocar invitación de orphan@example.com"');
+    }
 }

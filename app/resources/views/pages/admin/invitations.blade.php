@@ -3,12 +3,12 @@
 use App\Actions\Invitations\IssueInvitation;
 use App\Actions\Invitations\RevokeInvitation;
 use App\Livewire\Concerns\NotifiesInterface;
+use App\Livewire\Concerns\ThrottlesActions;
 use App\Models\Invitation;
 use App\Services\ServiceAccounts;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -16,7 +16,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 new #[Title('Invitaciones')] class extends Component {
-    use NotifiesInterface, WithPagination;
+    use NotifiesInterface, ThrottlesActions, WithPagination;
 
     public string $email = '';
 
@@ -61,16 +61,15 @@ new #[Title('Invitaciones')] class extends Component {
     public function invitations(): LengthAwarePaginator
     {
         return Invitation::whereIn('role', $this->roles)
-            ->when($this->status === 'pending', fn ($query) => $query->whereNull('used_at')->where('expires_at', '>', now()))
-            ->when($this->status === 'accepted', fn ($query) => $query->whereNotNull('used_at'))
-            ->when($this->status === 'expired', fn ($query) => $query->whereNull('used_at')->where('expires_at', '<=', now()))
+            ->with('inviter')
+            ->status($this->status)
             ->latest()
             ->paginate(Auth::user()->preferences()->perPage());
     }
 
     public function invite(IssueInvitation $issue): void
     {
-        $this->throttle();
+        $this->throttle('admin');
         /** @var array{email: string, role: string, services?: list<string>} $data */
         $data = $this->validate($issue->rules());
         $issue->handle(Auth::user(), $data);
@@ -82,18 +81,10 @@ new #[Title('Invitaciones')] class extends Component {
 
     public function revoke(int $invitationId, RevokeInvitation $revoke): void
     {
-        $this->throttle();
+        $this->throttle('admin');
         $invitation = Invitation::whereIn('role', $this->roles)->findOrFail($invitationId);
         $revoke->handle(Auth::user(), $invitation);
         $this->toast('Invitación revocada');
-    }
-
-    /** Livewire actions do not pass through the route throttle: apply the same budget here. */
-    private function throttle(): void
-    {
-        $key = 'admin-actions:'.Auth::id();
-        abort_if(RateLimiter::tooManyAttempts($key, 10), 429);
-        RateLimiter::hit($key, 60);
     }
 }; ?>
 
@@ -122,7 +113,7 @@ new #[Title('Invitaciones')] class extends Component {
         <x-ui::stack gap="md">
             <x-ui::toolbar>
                 <x-ui::choice-group name="status" label="Mostrar" wire:model.live="status"
-                    :options="['' => 'Todas', 'pending' => 'Pendientes', 'accepted' => 'Aceptadas', 'expired' => 'Caducadas o revocadas']" />
+                    :options="['' => 'Todas', 'pending' => 'Pendientes', 'accepted' => 'Aceptadas', 'expired' => 'Caducadas o anuladas']" />
             </x-ui::toolbar>
 
             <x-ui::table label="Invitaciones emitidas" :paginator="$this->invitations">
@@ -130,17 +121,17 @@ new #[Title('Invitaciones')] class extends Component {
                     <tr><th>Correo</th><th>Rol</th><th>Estado</th><th>Caduca</th><th data-align="end"><x-ui::sr>Acciones</x-ui::sr></th></tr>
                 </x-slot:head>
                 @forelse ($this->invitations as $invitation)
-                    @php($pending = ! $invitation->used_at && $invitation->expires_at->isFuture())
+                    @php($pending = $invitation->status() === 'pending')
                     <tr wire:key="invitation-{{ $invitation->id }}">
                         <x-ui::td primary>{{ $invitation->email }}</x-ui::td>
                         <x-ui::td label="Rol">{{ $invitation->role === 'admin' ? 'Administrador' : 'Miembro' }}</x-ui::td>
                         <x-ui::td label="Estado">
-                            @if ($invitation->used_at)
+                            @if ($invitation->status() === 'accepted')
                                 <x-ui::status>Aceptada</x-ui::status>
                             @elseif ($pending)
                                 <x-ui::status tone="warn">Pendiente</x-ui::status>
                             @else
-                                <x-ui::status tone="muted">Caducada o revocada</x-ui::status>
+                                <x-ui::status tone="muted">Caducada o anulada</x-ui::status>
                             @endif
                         </x-ui::td>
                         <x-ui::td label="Caduca">{{ $pending ? $invitation->expires_at->format('d/m/Y') : '—' }}</x-ui::td>

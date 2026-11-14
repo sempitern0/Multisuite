@@ -31,17 +31,8 @@ new #[Title('Personas')] class extends Component {
     #[Computed]
     public function users(): LengthAwarePaginator
     {
-        $query = Str::limit(trim($this->search), 100, '');
-
         return User::query()
-            ->when($query !== '', function ($builder) use ($query): void {
-                $pattern = '%'.Str::lower($query).'%';
-                $builder->where(function ($search) use ($pattern): void {
-                    $search->whereRaw('LOWER(name) LIKE ?', [$pattern])
-                        ->orWhereRaw('LOWER(email) LIKE ?', [$pattern])
-                        ->orWhereRaw('LOWER(username) LIKE ?', [$pattern]);
-                });
-            })
+            ->search(Str::limit(trim($this->search), 100, ''))
             ->orderBy('name')->orderBy('id')
             ->paginate(Auth::user()->preferences()->perPage());
     }

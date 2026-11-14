@@ -16,4 +16,6 @@ parameters:
         # Used by Livewire single-file components (resources/views/pages), which PHPStan does not analyse.
         -
             identifier: trait.unused
-            path: app/Livewire/Concerns/NotifiesInterface.php
+            paths:
+                - app/Livewire/Concerns/NotifiesInterface.php
+                - app/Livewire/Concerns/ThrottlesActions.php

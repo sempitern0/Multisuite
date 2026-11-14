@@ -10,7 +10,6 @@ use App\Models\UserStorageQuota;
 use App\Support\Bytes;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 /**
@@ -64,15 +63,7 @@ class StorageOverview
         $poolLimitTotal = (int) $pools->sum('limit_bytes');
         $assigned = (int) $quotas->sum('limit_bytes') + $default * max(0, $userCount - $quotas->count());
 
-        $users = User::query()
-            ->when($query !== '', function ($builder) use ($query): void {
-                $pattern = '%'.Str::lower($query).'%';
-                $builder->where(function ($search) use ($pattern): void {
-                    $search->whereRaw('LOWER(name) LIKE ?', [$pattern])
-                        ->orWhereRaw('LOWER(email) LIKE ?', [$pattern])
-                        ->orWhereRaw('LOWER(username) LIKE ?', [$pattern]);
-                });
-            })->orderBy('name')->orderBy('id')->paginate(25)->withQueryString();
+        $users = User::query()->search($query)->orderBy('name')->orderBy('id')->paginate(25)->withQueryString();
 
         return [
             'inventoryError' => $inventoryError,
