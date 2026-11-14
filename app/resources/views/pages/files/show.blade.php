@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Concerns\ManagesOwnFiles;
 use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
 use App\Models\UserFile;
@@ -15,7 +16,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('Archivo')] class extends Component {
-    use NotifiesInterface, ThrottlesActions;
+    use ManagesOwnFiles, NotifiesInterface, ThrottlesActions;
 
     #[Locked]
     public int $fileId;
@@ -83,20 +84,16 @@ new #[Title('Archivo')] class extends Component {
         $this->changed('Nombre guardado');
     }
 
-    public function trash(PersonalFiles $files): void
+    public function trash(): void
     {
-        $this->throttle('files');
-        Gate::authorize('update', $this->file);
-        $file = DomainErrors::guard('file_trash', fn () => $files->trash(Auth::user(), $this->fileId));
-        session()->flash('toast', '«'.$file->name.'» está en la papelera. Puedes restaurarlo durante '.(int) config('nas.trash_days').' días');
+        $file = $this->trashOwnFile($this->fileId);
+        session()->flash('toast', $this->trashedMessage($file));
         $this->redirect($file->original_folder_id === null ? route('files.index') : route('files.folder', $file->original_folder_id), navigate: true);
     }
 
-    public function restore(PersonalFiles $files): void
+    public function restore(): void
     {
-        $this->throttle('files');
-        Gate::authorize('update', $this->file);
-        $file = DomainErrors::guard('file_trash', fn () => $files->restore(Auth::user(), $this->fileId));
+        $file = $this->restoreOwnFile($this->fileId);
         $this->name = $file->name;
         $this->changed('Archivo restaurado como «'.$file->name.'»');
     }
@@ -104,11 +101,7 @@ new #[Title('Archivo')] class extends Component {
     /** Makes a version current again: this file when it is a version, or one from the list. */
     public function promote(?int $versionId = null): void
     {
-        $this->throttle('files');
-        $files = app(PersonalFiles::class);
-        $id = $versionId ?? $this->fileId;
-        Gate::authorize('update', $files->file(Auth::user(), $id));
-        $file = DomainErrors::guard('file_version', fn () => $files->promote(Auth::user(), $id));
+        $file = $this->promoteOwnFile($versionId ?? $this->fileId);
         if ($file->id !== $this->fileId) {
             session()->flash('toast', 'Versión restaurada. La anterior queda guardada como versión');
             $this->redirectRoute('files.show', $file);
@@ -121,13 +114,8 @@ new #[Title('Archivo')] class extends Component {
     /** Deletes for good: this file (from the trash or as a version) or a version from the list. */
     public function purge(?int $targetId = null): void
     {
-        $this->throttle('files');
-        $files = app(PersonalFiles::class);
         $id = $targetId ?? $this->fileId;
-        $target = $files->file(Auth::user(), $id);
-        Gate::authorize('update', $target);
-        $current = $target->version_of_id;
-        DomainErrors::guard('file_purge', fn () => $files->purge(Auth::user(), $id));
+        $current = $this->purgeOwnFile($id);
         if ($id !== $this->fileId) {
             $this->changed('Versión borrada. El espacio ya está disponible');
 

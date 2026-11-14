@@ -4,12 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Services\Files\FilePreview;
 use App\Services\Files\PersonalFiles;
-use Illuminate\Database\RecordsNotFoundException;
+use App\Support\DomainErrors;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -30,14 +29,14 @@ class FileController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'folder' => ['nullable', 'integer'],
         ]);
-        try {
-            $file = $this->files->begin($request->user(), isset($data['folder']) ? (int) $data['folder'] : null, $data['name'], (int) $data['bytes'], $data['key']);
-        } catch (RecordsNotFoundException $exception) {
-            throw $exception; // Foreign or missing folder: 404, never a validation message.
-        } catch (RuntimeException $exception) {
-            // Domain messages are written for people and never contain paths.
-            throw ValidationException::withMessages(['upload' => $exception->getMessage()]);
-        }
+        // A foreign or missing folder stays a 404; domain refusals are written for people.
+        $file = DomainErrors::guard('upload', fn () => $this->files->begin(
+            $request->user(),
+            isset($data['folder']) ? (int) $data['folder'] : null,
+            $data['name'],
+            (int) $data['bytes'],
+            $data['key'],
+        ));
 
         return response()->json(['id' => $file->id, 'upload' => $file->upload_id, 'name' => $file->name], 201);
     }

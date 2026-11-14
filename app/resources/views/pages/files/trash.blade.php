@@ -1,18 +1,17 @@
 <?php
 
+use App\Livewire\Concerns\ManagesOwnFiles;
 use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
 use App\Services\Files\PersonalFiles;
-use App\Support\DomainErrors;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('Papelera')] class extends Component {
-    use NotifiesInterface, ThrottlesActions;
+    use ManagesOwnFiles, NotifiesInterface, ThrottlesActions;
 
     /** @return Collection<int, \App\Models\UserFile> */
     #[Computed]
@@ -27,19 +26,14 @@ new #[Title('Papelera')] class extends Component {
         return app(PersonalFiles::class)->trashBytes(Auth::user());
     }
 
-    public function restore(int $fileId, PersonalFiles $files): void
+    public function restore(int $fileId): void
     {
-        $this->throttle('files');
-        Gate::authorize('update', $files->file(Auth::user(), $fileId));
-        $file = DomainErrors::guard('file_trash', fn () => $files->restore(Auth::user(), $fileId));
-        $this->changed('Archivo restaurado como «'.$file->name.'»');
+        $this->changed('Archivo restaurado como «'.$this->restoreOwnFile($fileId)->name.'»');
     }
 
-    public function purge(int $fileId, PersonalFiles $files): void
+    public function purge(int $fileId): void
     {
-        $this->throttle('files');
-        Gate::authorize('update', $files->file(Auth::user(), $fileId));
-        DomainErrors::guard('file_purge', fn () => $files->purge(Auth::user(), $fileId));
+        $this->purgeOwnFile($fileId);
         $this->changed('Borrado definitivamente. El espacio ya está disponible');
     }
 

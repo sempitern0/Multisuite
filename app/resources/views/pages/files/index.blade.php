@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Concerns\ManagesOwnFiles;
 use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
 use App\Models\Folder;
@@ -17,7 +18,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('Mis archivos')] class extends Component {
-    use NotifiesInterface, ThrottlesActions;
+    use ManagesOwnFiles, NotifiesInterface, ThrottlesActions;
 
     #[Locked]
     public ?int $folderId = null;
@@ -109,14 +110,12 @@ new #[Title('Mis archivos')] class extends Component {
         $this->redirect($parent === null ? route('files.index') : route('files.folder', $parent), navigate: true);
     }
 
-    public function trash(int $fileId, PersonalFiles $files): void
+    public function trash(int $fileId): void
     {
-        $this->throttle('files');
-        Gate::authorize('update', $files->file(Auth::user(), $fileId));
-        $file = DomainErrors::guard('file_trash', fn () => $files->trash(Auth::user(), $fileId));
+        $file = $this->trashOwnFile($fileId);
         $this->selectedFiles = array_values(array_diff($this->selectedFiles, [$fileId, (string) $fileId]));
         unset($this->listing);
-        $this->toast('«'.$file->name.'» está en la papelera. Puedes restaurarlo durante '.(int) config('nas.trash_days').' días');
+        $this->toast($this->trashedMessage($file));
     }
 
     public function export(string $scope, FileExports $exports): void
