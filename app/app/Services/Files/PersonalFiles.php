@@ -79,6 +79,50 @@ class PersonalFiles
             ->get(['user_files.*', 'private_uploads.mime as mime', 'storage_reservations.actual_bytes as size']);
     }
 
+    /**
+     * Exact item counts and sizes for every folder of a person, computed from the
+     * verified bytes stored for each file (not estimated from the disk).
+     * Key 0 is the root; "items" counts direct children, "bytes" includes subfolders.
+     *
+     * @return array<int, array{items: int, bytes: int}>
+     */
+    public function summaries(User $user): array
+    {
+        $children = [];
+        foreach (Folder::where('user_id', $user->id)->get(['id', 'parent_id']) as $folder) {
+            $children[$folder->parent_id ?? 0][] = $folder->id;
+        }
+        $direct = [];
+        $rows = UserFile::query()
+            ->join('private_uploads', 'private_uploads.id', '=', 'user_files.upload_id')
+            ->join('storage_reservations', 'storage_reservations.id', '=', 'user_files.upload_id')
+            ->where('user_files.user_id', $user->id)
+            ->where('private_uploads.state', 'ready')
+            ->groupBy('user_files.folder_id')
+            ->selectRaw('user_files.folder_id as folder_key, count(*) as files, coalesce(sum(storage_reservations.actual_bytes), 0) as bytes')
+            ->toBase()->get();
+        foreach ($rows as $row) {
+            $direct[(int) ($row->folder_key ?? 0)] = ['files' => (int) $row->files, 'bytes' => (int) $row->bytes];
+        }
+
+        $summaries = [];
+        $walk = function (int $id, int $depth) use (&$walk, &$summaries, $children, $direct): int {
+            $bytes = $direct[$id]['bytes'] ?? 0;
+            // Depth guard: the tree is acyclic by construction, this only bounds the walk.
+            if ($depth <= self::MAX_DEPTH) {
+                foreach ($children[$id] ?? [] as $child) {
+                    $bytes += $walk($child, $depth + 1);
+                }
+            }
+            $summaries[$id] = ['items' => count($children[$id] ?? []) + ($direct[$id]['files'] ?? 0), 'bytes' => $bytes];
+
+            return $bytes;
+        };
+        $walk(0, 0);
+
+        return $summaries;
+    }
+
     public function pendingCount(User $user): int
     {
         return UserFile::where('user_files.user_id', $user->id)

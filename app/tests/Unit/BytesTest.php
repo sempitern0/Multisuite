@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Services\Storage\StorageOverview;
 use App\Support\Bytes;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
@@ -37,5 +38,12 @@ class BytesTest extends TestCase
         $this->assertSame('Desconocido', Bytes::format(null));
         $this->assertSame(50.0, Bytes::percent(5, 10));
         $this->assertSame(0.0, Bytes::percent(5, 0));
+    }
+
+    public function test_detects_docker_desktop_virtual_machines_by_kernel_release(): void
+    {
+        $this->assertTrue(StorageOverview::runsInDesktopVm('6.18.33.2-microsoft-standard-WSL2'));
+        $this->assertTrue(StorageOverview::runsInDesktopVm('6.10.14-linuxkit'));
+        $this->assertFalse(StorageOverview::runsInDesktopVm('6.8.0-49-generic'));
     }
 }

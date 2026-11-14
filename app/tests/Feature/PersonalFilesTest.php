@@ -188,4 +188,27 @@ class PersonalFilesTest extends TestCase
         $this->get('/files')->assertOk()->assertSee('todavía no están activados')->assertDontSee('data-uploader-input', false);
         $this->assertDatabaseCount('user_files', 0);
     }
+
+    public function test_folder_summaries_count_direct_items_and_exact_recursive_bytes(): void
+    {
+        $service = app(PersonalFiles::class);
+        $docs = $service->createFolder($this->owner, null, 'Documentos');
+        $year = $service->createFolder($this->owner, $docs->id, '2026');
+        $service->createFolder($this->owner, $year->id, 'Vacía');
+        $this->upload($this->owner, 'raiz.txt', '12345')->assertOk();            // 5 bytes at root
+        $this->upload($this->owner, 'a.txt', 'abc', $docs->id)->assertOk();      // 3 bytes
+        $this->upload($this->owner, 'b.txt', 'abcdefg', $year->id)->assertOk();  // 7 bytes
+        $this->actingAs($this->owner)->postJson('/files', ['key' => (string) Str::uuid(), 'bytes' => 9, 'name' => 'pendiente.txt', 'folder' => $docs->id])->assertCreated();
+        $other = User::factory()->create();
+        app(StorageReservations::class)->setUserQuota($other, 1000);
+        $this->upload($other, 'ajeno.txt', 'xxxxxxxxxx')->assertOk();
+
+        $summaries = $service->summaries($this->owner);
+        $this->assertSame(['items' => 2, 'bytes' => 15], $summaries[0]);           // Documentos + raiz.txt
+        $this->assertSame(['items' => 2, 'bytes' => 10], $summaries[$docs->id]);   // 2026 + a.txt; pending ignored
+        $this->assertSame(['items' => 2, 'bytes' => 7], $summaries[$year->id]);    // Vacía + b.txt
+
+        $this->actingAs($this->owner)->get('/files')->assertSee('En esta carpeta: 2 elementos · 15 B')->assertSee('2 elementos · 10 B');
+        $this->get('/files/folder/'.$year->id)->assertSee('En esta carpeta: 2 elementos · 7 B')->assertSee('0 elementos · 0 B');
+    }
 }

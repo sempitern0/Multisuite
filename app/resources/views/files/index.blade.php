@@ -1,5 +1,6 @@
 @php
     $fmt = fn (?int $bytes): string => \App\Support\Bytes::format($bytes);
+    $describe = fn (array $summary): string => $summary['items'].' '.($summary['items'] === 1 ? 'elemento' : 'elementos').' · '.\App\Support\Bytes::format($summary['bytes']);
     $icon = fn (?string $mime): string => match (true) {
         str_starts_with((string) $mime, 'image/') => '🖼️',
         $mime === 'application/pdf' => '📕',
@@ -20,6 +21,7 @@
                         <a href="{{ route('files.folder', $crumb) }}" class="underline-offset-4 hover:underline" @if ($loop->last) aria-current="page" @endif>{{ $crumb->name }}</a>
                     @endforeach
                 </nav>
+                <flux:text>En esta carpeta: {{ $describe($summaries[$folder?->id ?? 0] ?? ['items' => 0, 'bytes' => 0]) }}</flux:text>
             </div>
             @if ($limit > 0)
                 <div class="min-w-56 space-y-1 text-sm">
@@ -75,7 +77,7 @@
                     <a href="{{ route('files.folder', $child) }}" class="flex min-w-0 items-center gap-3 font-medium underline-offset-4 hover:underline">
                         <span aria-hidden="true">📁</span><span class="truncate">{{ $child->name }}</span>
                     </a>
-                    <flux:text>Carpeta</flux:text>
+                    <flux:text>{{ $describe($summaries[$child->id] ?? ['items' => 0, 'bytes' => 0]) }}</flux:text>
                 </li>
             @endforeach
             @foreach ($entries as $entry)

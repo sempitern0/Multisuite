@@ -44,6 +44,7 @@ class FileController extends Controller
             'folders' => $this->files->folders($user, $folder),
             'entries' => $this->files->files($user, $folder),
             'pending' => $this->files->pendingCount($user),
+            'summaries' => $this->files->summaries($user),
             'enabled' => (bool) config('nas.uploads_enabled'),
             'maxBytes' => (int) config('nas.upload_max_bytes'),
             'used' => (int) ($quota->used_bytes ?? 0),
