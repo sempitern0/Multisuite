@@ -67,6 +67,7 @@ Motor: PostgreSQL 17 en desarrollo y producción; SQLite en los tests (CI ejecut
 **Pendiente** (ver ROADMAP): enums PHP + `CHECK` para roles y estados escritos como texto; mover `location_id`/`root_hash` (hoy repetidos en `private_uploads` y `file_exports`) a la reserva común si aparece un tercer subtipo.
 
 ## Invariantes que no se deben romper
+- Una contraseña escrita en una página Livewire nunca vuelve al navegador: las acciones que la reciben se envuelven en `ForgetsSecrets::forgetting()`.
 - Las acciones Livewire que modifican datos llaman a `ThrottlesActions::throttle()` con el limitador con nombre de su ruta: `/livewire/update` no pasa por `throttle:` y así ambos caminos comparten contador y definición.
 - Los componentes Livewire de un solo archivo (`resources/views/pages`) no los analiza PHPStan: solo orquestan. Consultas en scopes de modelo (`User::search`, `Invitation::inStatus`) y mutaciones en Actions.
 - Autorización en servidor en cada lectura/escritura; revalidar roles **bajo bloqueo** en operaciones administrativas (`Support/LockedUsers::pair`).

@@ -2,16 +2,16 @@
 
 use App\Actions\Users\SetUsername;
 use App\Concerns\ProfileValidationRules;
+use App\Livewire\Concerns\ForgetsSecrets;
 use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('Perfil')] class extends Component {
-    use NotifiesInterface, ProfileValidationRules, ThrottlesActions;
+    use ForgetsSecrets, NotifiesInterface, ProfileValidationRules, ThrottlesActions;
 
     public string $name = '';
 
@@ -56,13 +56,10 @@ new #[Title('Perfil')] class extends Component {
     public function saveUsername(SetUsername $setUsername): void
     {
         $this->throttle('account-change');
-        try {
+        $this->forgetting(['current_password'], function () use ($setUsername): void {
             $data = $this->validate($setUsername->rules());
             $setUsername->handle(Auth::user(), $data['username'], $data['current_password']);
-        } finally {
-            // The password never travels back to the browser.
-            $this->reset('current_password');
-        }
+        });
         $this->reset('username');
         $this->toast('Nombre de usuario guardado. Consulta el estado de Música en Servicios');
     }

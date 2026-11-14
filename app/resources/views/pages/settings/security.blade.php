@@ -2,11 +2,11 @@
 
 use App\Concerns\PasswordValidationRules;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 use Livewire\Attributes\Title;
+use App\Livewire\Concerns\ForgetsSecrets;
 use App\Livewire\Concerns\NotifiesInterface;
 use Livewire\Component;
 use Laravel\Passkeys\Actions\DeletePasskey;
@@ -14,7 +14,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 
 new #[Title('Seguridad')] class extends Component {
-    use NotifiesInterface;
+    use ForgetsSecrets, NotifiesInterface;
 
     use PasswordValidationRules;
 
@@ -62,20 +62,13 @@ new #[Title('Seguridad')] class extends Component {
      */
     public function updatePassword(): void
     {
-        try {
+        $this->forgetting(['current_password', 'password', 'password_confirmation'], function (): void {
             $validated = $this->validate([
                 'current_password' => $this->currentPasswordRules(),
                 'password' => $this->passwordRules(),
             ]);
-        } catch (ValidationException $e) {
-            $this->reset('current_password', 'password', 'password_confirmation');
-
-            throw $e;
-        }
-
-        app(\App\Services\ServiceAccounts::class)->changePassword(Auth::user(), $validated['password']);
-
-        $this->reset('current_password', 'password', 'password_confirmation');
+            app(\App\Services\ServiceAccounts::class)->changePassword(Auth::user(), $validated['password']);
+        });
 
         $this->toast('Contraseña actualizada');
     }

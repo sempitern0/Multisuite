@@ -2,6 +2,7 @@
 
 use App\Concerns\PasswordValidationRules;
 use App\Livewire\Actions\Logout;
+use App\Livewire\Concerns\ForgetsSecrets;
 use App\Models\User;
 use App\Services\Storage\StorageReservations;
 use Illuminate\Support\Facades\Auth;
@@ -9,18 +10,14 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 new class extends Component {
-    use PasswordValidationRules;
+    use ForgetsSecrets, PasswordValidationRules;
 
     public string $password = '';
 
     /** Deletes the signed-in person's own account after confirming their password. */
     public function deleteUser(Logout $logout): void
     {
-        try {
-            $this->validate(['password' => $this->currentPasswordRules()]);
-        } finally {
-            $this->reset('password');
-        }
+        $this->forgetting(['password'], fn () => $this->validate(['password' => $this->currentPasswordRules()]));
 
         DB::transaction(function (): void {
             $user = User::whereKey(Auth::id())->lockForUpdate()->firstOrFail();
