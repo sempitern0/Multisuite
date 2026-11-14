@@ -62,7 +62,7 @@ new #[Title('Invitaciones')] class extends Component {
     {
         return Invitation::whereIn('role', $this->roles)
             ->with('inviter')
-            ->status($this->status)
+            ->inStatus($this->status)
             ->latest()
             ->paginate(Auth::user()->preferences()->perPage());
     }

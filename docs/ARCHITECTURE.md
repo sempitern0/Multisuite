@@ -30,7 +30,7 @@ El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada ser
 | Dominio | Código clave | Doc |
 | --- | --- | --- |
 | Portada y servicios | `config/portal.php`, `DashboardController` + `Support/ServiceTiles` (qué ve cada persona), `ServiceController`, `resources/views/dashboard.blade.php` | NAVIDROME.md |
-| Listas administrativas | Páginas Livewire `resources/views/pages/admin/{users,invitations,activity}` (autorizan en `boot()`, en cada petición), `Actions/Invitations/{IssueInvitation,RevokeInvitation}` compartidas con `InvitationController`; estado de invitación en `Invitation::status()`/`scopeStatus()`; búsqueda en `User::scopeSearch()`; límite en `Livewire/Concerns/ThrottlesActions` | USER_MANAGEMENT.md, INVITATIONS.md |
+| Listas administrativas | Páginas Livewire `resources/views/pages/admin/{users,invitations,activity}` (autorizan en `boot()`, en cada petición), `Actions/Invitations/{IssueInvitation,RevokeInvitation}` compartidas con `InvitationController`; estado de invitación en `Invitation::status()`/`scopeInStatus()`; búsqueda en `User::scopeSearch()`; límite en `Livewire/Concerns/ThrottlesActions` | USER_MANAGEMENT.md, INVITATIONS.md |
 | Preferencias | `Support/UserPreferences` (columna `users.preferences`), página `pages::settings.preferences`, `Http/Responses/LoginResponse` (página de inicio) | DESIGN.md |
 | Diseño (tema) | `config/ui.php`, `resources/views/themes/nocturne/components` (`x-ui::`, layouts), `resources/css/themes/nocturne.css`, delegadores `resources/views/layouts/{app,auth}.blade.php` | DESIGN.md |
 | Roles y permisos | `User::canInviteRole`, `Policies/UserPolicy`, gates en `Providers/AppServiceProvider` | USER_MANAGEMENT.md |
@@ -48,7 +48,7 @@ Tablas propias: `invitations`, `service_accounts`, `admin_audit_events`, `storag
 
 ## Invariantes que no se deben romper
 - Las acciones Livewire que modifican datos llaman a `ThrottlesActions::throttle()` con el limitador con nombre de su ruta: `/livewire/update` no pasa por `throttle:` y así ambos caminos comparten contador y definición.
-- Los componentes Livewire de un solo archivo (`resources/views/pages`) no los analiza PHPStan: solo orquestan. Consultas en scopes de modelo (`User::search`, `Invitation::status`) y mutaciones en Actions.
+- Los componentes Livewire de un solo archivo (`resources/views/pages`) no los analiza PHPStan: solo orquestan. Consultas en scopes de modelo (`User::search`, `Invitation::inStatus`) y mutaciones en Actions.
 - Autorización en servidor en cada lectura/escritura; revalidar roles **bajo bloqueo** en operaciones administrativas (patrón `lockedUsers`).
 - Orden de bloqueo del almacenamiento: usuario → grupo → cuota → reserva.
 - Nunca aceptar rutas, URLs de redirección ni IDs de servicio no registrados desde la petición. Nombres de archivo/carpeta son etiquetas, nunca rutas.

@@ -32,4 +32,4 @@ Estos roles solo afectan al portal. Navidrome conserva usuarios y permisos indep
 Referencia: Laravel 13 URL Generation (temporarySignedRoute) y Authorization (Gates), consultadas 2026-11-09. Sin dependencias añadidas.
 
 ## Estados en la lista
-`Invitation::status()` (y su forma SQL `scopeStatus()`): *aceptada* si se usó; *pendiente* si `isAcceptable()` (sin usar, sin caducar y emitida por alguien que aún puede invitar ese rol); *caducada o anulada* en el resto. Solo las pendientes se pueden revocar.
+`Invitation::status()` (y su forma SQL `scopeInStatus()`): *aceptada* si se usó; *pendiente* si `isAcceptable()` (sin usar, sin caducar y emitida por alguien que aún puede invitar ese rol); *caducada o anulada* en el resto. Solo las pendientes se pueden revocar.

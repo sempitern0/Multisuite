@@ -34,7 +34,7 @@ class Invitation extends Model
 
     /**
      * The link still works: unused, not expired and issued by someone who can still
-     * invite that role. scopeStatus('pending') is the query form of the same rule.
+     * invite that role. scopeInStatus('pending') is the query form of the same rule.
      */
     public function isAcceptable(): bool
     {
@@ -59,7 +59,7 @@ class Invitation extends Model
      *
      * @param  Builder<Invitation>  $query
      */
-    public function scopeStatus(Builder $query, string $status): void
+    public function scopeInStatus(Builder $query, string $status): void
     {
         if ($status === 'accepted') {
             $query->whereNotNull('used_at');

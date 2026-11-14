@@ -151,7 +151,7 @@ class AdminListsTest extends TestCase
 
         $this->assertSame('pending', $pending->status());
         $this->assertSame('expired', $orphan->status());
-        $emails = fn (string $status): array => Invitation::status($status)->orderBy('email')->pluck('email')->all();
+        $emails = fn (string $status): array => Invitation::inStatus($status)->orderBy('email')->pluck('email')->all();
         $this->assertSame(['pending@example.com'], $emails('pending'));
         $this->assertSame(['accepted@example.com'], $emails('accepted'));
         $this->assertSame(['expired@example.com', 'orphan@example.com'], $emails('expired'));
