@@ -15,11 +15,11 @@ class DashboardController extends Controller
         $user = $request->user();
         abort_if($user === null, 403);
         $quota = UserStorageQuota::find($user->id);
-        $limit = (int) ($quota?->limit_bytes ?? StorageSetting::defaultUserQuotaBytes());
+        $limit = (int) ($quota->limit_bytes ?? StorageSetting::defaultUserQuotaBytes());
 
         return view('dashboard', [
             'tiles' => ServiceTiles::forUser($user),
-            'storage' => $limit > 0 ? ['used' => (int) ($quota?->used_bytes ?? 0), 'limit' => $limit] : null,
+            'storage' => $limit > 0 ? ['used' => (int) ($quota->used_bytes ?? 0), 'limit' => $limit] : null,
         ]);
     }
 }
