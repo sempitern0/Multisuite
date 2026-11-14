@@ -23,6 +23,11 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - [ ] Resumen de administración con métricas reales (solo gates de admin).
 - [ ] Retirar la reasignación de paleta `zinc`/`teal` y los avisos de Flux cuando no queden vistas Flux.
 
+## DB — Modelo de datos (ARCHITECTURE.md § Modelo de datos)
+- [ ] Enums PHP respaldados (`Role`, `ReservationState`, `UploadState`, `ExportState`, `ServiceAccountStatus`) con casts y `CHECK` en PostgreSQL añadidos en la misma migración que los cubra con tests en PostgreSQL. Hoy son cadenas validadas solo en código.
+- [ ] Si aparece un tercer subtipo de reserva, mover `location_id`/`root_hash` de `private_uploads`/`file_exports` a `storage_reservations`.
+- [ ] Índices parciales (`user_files` actuales, `WHERE trashed_at IS NULL AND version_of_id IS NULL`) solo si las listas de archivos crecen a decenas de miles por persona.
+
 ## S02 — Almacenamiento y cuotas
 - [ ] S02.3 QA ampliado (opcional antes del piloto): móvil 360 px, teclado, zoom 200 %, disco desconectado, conflicto de grupos, sobreasignación, admin frente a owner.
 - [ ] S02.4 Validar `make nas-discover`/`nas-apply` en el servidor Linux real (implementado y probado con herramientas simuladas).

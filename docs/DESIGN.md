@@ -77,7 +77,7 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 ## Estado por pantalla
 | Pantalla | Estado |
 |---|---|
-| Acceso, recuperar/guardar contraseña, confirmar, 2FA, verificar correo, invitación, contraseña inicial, bienvenida | Migradas (D01) |
+| Acceso, recuperar/guardar contraseña, confirmar, 2FA, verificar correo, invitación, contraseña inicial | Migradas (D01). Sin página de bienvenida: `/` lleva a entrar o a la página de inicio elegida |
 | Shell y portada de servicios | Migradas (D01) |
 | Mis archivos, papelera, exportaciones, personas, invitaciones, almacenamiento, actividad, ajustes | Pendiente (D02); ya usan la paleta Nocturne |
 | Resumen de administración con métricas reales | Pendiente (D02, solo admin) |

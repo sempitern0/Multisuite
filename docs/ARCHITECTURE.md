@@ -44,7 +44,27 @@ El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada ser
 
 Gates: `manage-invitations`, `view-admin-audit`, `view-storage` (owner/admin); `manage-storage-pools` (owner); `manage-storage-quota` (owner → todos; admin → miembros).
 
-Tablas propias: `invitations`, `service_accounts`, `admin_audit_events`, `storage_pools`, `user_storage_quotas`, `storage_reservations`, `private_uploads`, `storage_settings`, `folders`, `user_files`, `file_exports`.
+## Modelo de datos
+Motor: PostgreSQL 17 en desarrollo y producción; SQLite en los tests (CI ejecuta además PostgreSQL para concurrencia y planes de consulta). Revisión del esquema: 2026-11-14.
+
+| Área | Tablas | Relaciones clave |
+| --- | --- | --- |
+| Identidad | `users`, `invitations`, `passkeys`, `sessions` | `invitations.invited_by` → users (null al borrar); `users.created_by_admin_id` → users |
+| Cuentas de servicio | `service_accounts` | 1 por (usuario, servicio); `(service, username)` único |
+| Auditoría | `admin_audit_events` | sin FK a propósito: el historial sobrevive al borrado |
+| Almacenamiento | `storage_pools`, `user_storage_quotas`, `storage_settings` (fila única), `storage_reservations` | reserva → pool (restrict), → usuario (null al borrar) |
+| Contenido | `private_uploads`, `file_exports` (subtipos 1:1 de la reserva, misma UUID), `folders` (árbol por `parent_id`), `user_files` (`folder_id`, `original_folder_id`, `version_of_id`) | tamaño y MIME se leen de la reserva/subida, no se duplican en `user_files` |
+
+**Desnormalizaciones deliberadas** (no "corregir"):
+- Contadores `reserved_bytes`/`used_bytes` en pools y cuotas: permiten reservar con un bloqueo de fila en vez de sumar reservas; la reconciliación está en ROADMAP (S02).
+- `actor_name`/`subject_name` en auditoría: instantánea para que el historial no dependa de usuarios borrados.
+- `file_exports.items`: instantánea del contenido en el momento de pedir el ZIP.
+- `users.service_access` e `invitations.services` en JSON: conjunto pequeño de IDs validados contra `config/portal.php`, solo se lee por persona (nunca se busca "quién tiene X"). `null` significa cuenta anterior a las invitaciones con servicios (sin restricción gestionada). Pasar a tabla si algún día hay que consultar entre personas.
+- `users.preferences` en JSON: solo interfaz, con valores por defecto en `Support/UserPreferences`.
+
+**Índices**: PostgreSQL no indexa las claves foráneas; todas las columnas FK o de búsqueda tienen índice propio (migración `2026_11_18_000000_index_foreign_keys`) y `tests/Integration/QueryPlanTest.php` comprueba en CI que cada consulta usa el suyo.
+
+**Pendiente** (ver ROADMAP): enums PHP + `CHECK` para roles y estados escritos como texto; mover `location_id`/`root_hash` (hoy repetidos en `private_uploads` y `file_exports`) a la reserva común si aparece un tercer subtipo.
 
 ## Invariantes que no se deben romper
 - Las acciones Livewire que modifican datos llaman a `ThrottlesActions::throttle()` con el limitador con nombre de su ruta: `/livewire/update` no pasa por `throttle:` y así ambos caminos comparten contador y definición.

@@ -11,9 +11,17 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\StorageController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\UsernameController;
+use App\Models\User;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome')->name('home');
+// No landing page: guests go straight to sign in, signed-in people to their start page.
+Route::get('/', function (Request $request): RedirectResponse {
+    $user = $request->user();
+
+    return redirect()->route($user instanceof User ? $user->preferences()->startRoute() : 'login');
+})->name('home');
 
 Route::middleware(['guest', 'signed', 'throttle:invitation-accept'])->group(function () {
     Route::get('invitations/accept/{token}', [InvitationController::class, 'show'])->where('token', '[A-Za-z0-9]{64}')->name('invitation.accept');
