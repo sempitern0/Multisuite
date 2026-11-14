@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\FileExport;
+use App\Models\Folder;
 use App\Models\StoragePool;
 use App\Models\User;
 use App\Models\UserStorageQuota;
@@ -50,7 +51,8 @@ class FileExportsTest extends TestCase
         return $entries;
     }
 
-    private function seed(): array
+    /** @return array{0: Folder, 1: Folder} */
+    private function seedFiles(): array
     {
         $service = app(PersonalFiles::class);
         $bills = $service->createFolder($this->owner, null, 'Facturas');
@@ -67,7 +69,7 @@ class FileExportsTest extends TestCase
 
     public function test_folder_zip_contains_current_files_with_paths_and_is_downloadable(): void
     {
-        [$bills] = $this->seed();
+        [$bills] = $this->seedFiles();
         $usedBefore = (int) UserStorageQuota::findOrFail($this->owner->id)->used_bytes;
 
         $this->actingAs($this->owner)->post('/files/exports', ['scope' => 'folder', 'folder' => $bills->id])
@@ -90,7 +92,7 @@ class FileExportsTest extends TestCase
 
     public function test_export_all_and_selection_with_name_clashes(): void
     {
-        [$bills] = $this->seed();
+        [$bills] = $this->seedFiles();
         $this->upload($this->owner, 'Facturas', 'archivo con el nombre de la carpeta')->assertOk();
         $exports = app(FileExports::class);
 
@@ -108,7 +110,7 @@ class FileExportsTest extends TestCase
     public function test_large_exports_are_built_by_the_scheduler_and_expire_with_verified_cleanup(): void
     {
         config(['nas.export_sync_max_bytes' => 1]);
-        [$bills] = $this->seed();
+        [$bills] = $this->seedFiles();
         $this->actingAs($this->owner)->post('/files/exports', ['scope' => 'folder', 'folder' => $bills->id]);
         $export = FileExport::sole();
         $this->assertSame('queued', $export->state);
@@ -151,7 +153,7 @@ class FileExportsTest extends TestCase
 
     public function test_isolation_limits_and_space_checks(): void
     {
-        $this->seed();
+        $this->seedFiles();
         $own = app(FileExports::class)->request($this->owner, 'all', null);
         $intruder = User::factory()->create();
         app(StorageReservations::class)->setUserQuota($intruder, 1000);
@@ -179,7 +181,7 @@ class FileExportsTest extends TestCase
 
     public function test_exports_are_refused_when_the_disk_has_no_room(): void
     {
-        $this->seed();
+        $this->seedFiles();
         app(StorageReservations::class)->setPoolLimit('disk', (int) StoragePool::findOrFail('disk')->used_bytes + 10);
         $this->actingAs($this->owner)->from('/files')->post('/files/exports', ['scope' => 'all'])->assertSessionHasErrors('export');
         $this->assertSame(0, FileExport::count());
