@@ -15,7 +15,7 @@ NAS doméstico con portal privado Laravel + Livewire para el propietario, famili
 
 ## Mantenimiento de la documentación
 - `docs/` describe el estado actual. Lo completado se resume en una línea en PROJECT_STATUS; el detalle vive en git/PRs. No acumular bitácoras de iteraciones, planes sustituidos ni listas de QA ya superadas.
-- Un documento por dominio (STORAGE, USER_MANAGEMENT, INVITATIONS, ADMIN_AUDIT, NAVIDROME, SERVICE_ACCOUNTS, MUSIC_SESSION_BRIDGE, ENVIRONMENTS, DEPENDENCIES). Ampliar el existente antes de crear otro.
+- Un documento por dominio (DESIGN, STORAGE, USER_MANAGEMENT, INVITATIONS, ADMIN_AUDIT, NAVIDROME, SERVICE_ACCOUNTS, MUSIC_SESSION_BRIDGE, ENVIRONMENTS, DEPENDENCIES). Ampliar el existente antes de crear otro.
 - `docs/foundry/` son guías heredadas de la plantilla; adaptarlas, no tratarlas como estado del producto. CI comprueba algunas rutas de docs (`.github/workflows/ci.yml`): si mueves un documento, actualiza CI y referencias en la misma PR.
 - Distinguir siempre *implementado*, *validado en CI*, *validado por el usuario* y *desplegado*.
 
@@ -57,6 +57,7 @@ No usar betas, forks abandonados o dependencias de pago como base por defecto. U
 - Español claro para personas sin conocimientos técnicos: opciones predefinidas, unidades humanas, mensajes de error junto al control que los causa y explicación breve de consecuencias.
 - Portada con categorías y tarjetas; cada tarjeta abre su aplicación. Responsive, teclado, foco visible, contraste, estados desactivado/error y reduced-motion. No inventar métricas de disponibilidad ni construir reproductor persistente común.
 - Offline se resuelve con descargas/clientes de cada servicio. La portada Livewire necesita servidor.
+- Diseño separado de la lógica (docs/DESIGN.md): las vistas usan componentes `x-ui::` y `x-layouts::app|auth`; el aspecto vive en `resources/views/themes/{tema}` y `resources/css/themes/{tema}.css`. Nada de colores, sombras ni radios escritos a mano en vistas de dominio, ni lógica de permisos o estados dentro del tema.
 
 ## Entornos y operación
 Leer docs/ENVIRONMENTS.md, docs/NAVIDROME.md y docs/foundry/DEPLOYMENT.md antes de cambiar despliegues.

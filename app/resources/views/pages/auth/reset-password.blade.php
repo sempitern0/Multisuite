@@ -1,54 +1,9 @@
-<x-layouts::auth :title="__('Guardar contraseña')">
-    <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Guardar contraseña')" :description="__('Elige una contraseña nueva para tu cuenta.')" />
-
-        <!-- Session Status -->
-        <x-auth-session-status class="text-center" :status="session('status')" />
-
-        <form method="POST" action="{{ route('password.update') }}" class="flex flex-col gap-6">
-            @csrf
-            <!-- Token -->
-            <input type="hidden" name="token" value="{{ request()->route('token') }}">
-
-            <!-- Email Address -->
-            <flux:input
-                name="email"
-                value="{{ request('email') }}"
-                :label="__('Correo electrónico')"
-                type="email"
-                required
-                autocomplete="email"
-            />
-
-            <!-- Password -->
-            <flux:input
-                name="password"
-                :label="__('Nueva contraseña')"
-                type="password"
-                required
-                autocomplete="new-password"
-                :placeholder="__('Contraseña')"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
-            />
-
-            <!-- Confirm Password -->
-            <flux:input
-                name="password_confirmation"
-                :label="__('Confirmar contraseña')"
-                type="password"
-                required
-                autocomplete="new-password"
-                :placeholder="__('Confirmar contraseña')"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
-            />
-
-            <div class="flex items-center justify-end">
-                <flux:button type="submit" variant="primary" class="w-full" data-test="reset-password-button">
-                    {{ __('Guardar contraseña') }}
-                </flux:button>
-            </div>
-        </form>
-    </div>
+<x-layouts::auth title="Guardar contraseña" eyebrow="Nueva contraseña" heading="Elige tu nueva contraseña" description="Usa una contraseña que no utilices en otros sitios.">
+    <x-ui::form :action="route('password.update')">
+        <input type="hidden" name="token" value="{{ request()->route('token') }}">
+        <x-ui::field name="email" type="email" label="Correo electrónico" :value="request('email')" required autocomplete="email" />
+        <x-ui::password name="password" label="Nueva contraseña" required autocomplete="new-password" passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}" />
+        <x-ui::password name="password_confirmation" label="Repite la contraseña" required autocomplete="new-password" passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}" />
+        <x-ui::button type="submit" block data-test="reset-password-button">Guardar contraseña</x-ui::button>
+    </x-ui::form>
 </x-layouts::auth>

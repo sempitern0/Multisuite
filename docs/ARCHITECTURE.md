@@ -29,7 +29,8 @@ El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada ser
 ## Aplicación (`app/`)
 | Dominio | Código clave | Doc |
 | --- | --- | --- |
-| Portada y servicios | `config/portal.php`, `ServiceController`, `resources/views/dashboard.blade.php` | NAVIDROME.md |
+| Portada y servicios | `config/portal.php`, `DashboardController` + `Support/ServiceTiles` (qué ve cada persona), `ServiceController`, `resources/views/dashboard.blade.php` | NAVIDROME.md |
+| Diseño (tema) | `config/ui.php`, `resources/views/themes/nocturne/components` (`x-ui::`, layouts), `resources/css/themes/nocturne.css`, delegadores `resources/views/layouts/{app,auth}.blade.php` | DESIGN.md |
 | Roles y permisos | `User::canInviteRole`, `Policies/UserPolicy`, gates en `Providers/AppServiceProvider` | USER_MANAGEMENT.md |
 | Invitaciones | `InvitationController`, `Models/Invitation`, `Notifications/PortalInvitation` | INVITATIONS.md |
 | Alta manual y primer acceso | `ManualUserController`, `InitialPasswordController`, `Middleware/EnsureInitialPasswordChanged` | USER_MANAGEMENT.md |

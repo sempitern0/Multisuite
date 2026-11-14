@@ -68,6 +68,17 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         ];
     }
 
+    /** Human role name shown in the interface (single source for every view). */
+    public function roleLabel(): string
+    {
+        return match ($this->role) {
+            'owner' => 'Propietario',
+            'admin' => 'Administrador',
+            'member' => 'Miembro',
+            default => 'Sin rol',
+        };
+    }
+
     /**
      * Get the user's initials
      */

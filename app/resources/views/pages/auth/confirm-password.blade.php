@@ -1,36 +1,21 @@
-<x-layouts::auth :title="__('Confirmar contraseña')">
-    <div class="flex flex-col gap-6">
-        <x-auth-header
-            :title="__('Confirmar contraseña')"
-            :description="__('Introduce tu contraseña para continuar.')"
-        />
+<x-layouts::auth title="Confirmar contraseña" eyebrow="Un último paso" heading="Confirma tu contraseña" description="Para continuar, necesitamos comprobar que eres tú.">
+    <x-passkey-verify
+        options-route="passkey.confirm-options"
+        submit-route="passkey.confirm"
+        :label="__('Confirmar con una llave de acceso')"
+        :loading-label="__('Comprobando…')"
+        :separator="__('O confirma con tu contraseña')"
+    />
 
-        <x-auth-session-status class="text-center" :status="session('status')" />
+    <x-ui::form :action="route('password.confirm.store')">
+        <x-ui::password name="password" label="Contraseña actual" required autofocus autocomplete="current-password" />
+        <x-ui::button type="submit" block data-test="confirm-password-button">Confirmar y continuar</x-ui::button>
+    </x-ui::form>
 
-        <x-passkey-verify
-            options-route="passkey.confirm-options"
-            submit-route="passkey.confirm"
-            :label="__('Confirm with passkey')"
-            :loading-label="__('Confirming...')"
-            :separator="__('Or confirm with password')"
-        />
-
-        <form method="POST" action="{{ route('password.confirm.store') }}" class="flex flex-col gap-6">
-            @csrf
-
-            <flux:input
-                name="password"
-                :label="__('Contraseña')"
-                type="password"
-                required
-                autocomplete="current-password"
-                :placeholder="__('Contraseña')"
-                viewable
-            />
-
-            <flux:button variant="primary" type="submit" class="w-full" data-test="confirm-password-button">
-                {{ __('Continuar') }}
-            </flux:button>
-        </form>
-    </div>
+    @if (Route::has('password.request'))
+        <x-slot:links>
+            <x-ui::link :href="route('dashboard')">Cancelar</x-ui::link>
+            <x-ui::link :href="route('password.request')">¿La has olvidado?</x-ui::link>
+        </x-slot:links>
+    @endif
 </x-layouts::auth>

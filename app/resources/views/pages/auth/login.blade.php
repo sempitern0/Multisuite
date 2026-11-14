@@ -1,56 +1,21 @@
-<x-layouts::auth :title="__('Entrar')">
-    <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Bienvenido a Multisuite')" :description="__('Entra con tu usuario o correo.')" />
+<x-layouts::auth title="Entrar" eyebrow="Bienvenido de nuevo" heading="Entra en Multisuite" description="Usa tu usuario o tu correo y tu contraseña.">
+    @if (session('status'))
+        <x-ui::notice>{{ session('status') }}</x-ui::notice>
+    @endif
 
-        <!-- Session Status -->
-        <x-auth-session-status class="text-center" :status="session('status')" />
+    <x-passkey-verify :label="__('Entrar con una llave de acceso')" :loading-label="__('Comprobando…')" :separator="__('O entra con tu contraseña')" />
 
-        <x-passkey-verify />
+    <x-ui::form :action="route('login.store')">
+        <x-ui::field name="email" label="Usuario o correo electrónico" required autofocus autocomplete="username" placeholder="tony o tony@example.com" />
+        <x-ui::password name="password" label="Contraseña" required autocomplete="current-password" />
+        <x-ui::checkbox name="remember" label="Recordarme en este dispositivo" />
+        <x-ui::button type="submit" block data-test="login-button">Entrar</x-ui::button>
+    </x-ui::form>
 
-        <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6">
-            @csrf
-
-            <!-- Email Address -->
-            <flux:input
-                name="email"
-                :label="__('Usuario o correo electrónico')"
-                :value="old('email')"
-                type="text"
-                required
-                autofocus
-                autocomplete="username"
-                placeholder="tony o tony@example.com"
-            />
-
-            <!-- Password -->
-            <div class="relative">
-                <flux:input
-                    name="password"
-                    :label="__('Contraseña')"
-                    type="password"
-                    required
-                    autocomplete="current-password"
-                    :placeholder="__('Contraseña')"
-                    viewable
-                />
-
-                @if (Route::has('password.request'))
-                    <flux:link class="absolute top-0 text-sm end-0" :href="route('password.request')" wire:navigate>
-                        {{ __('¿Has olvidado tu contraseña?') }}
-                    </flux:link>
-                @endif
-            </div>
-
-            <!-- Remember Me -->
-            <flux:checkbox name="remember" :label="__('Recordarme')" :checked="old('remember')" />
-
-            <div class="flex items-center justify-end">
-                <flux:button variant="primary" type="submit" class="w-full" data-test="login-button">
-                    {{ __('Entrar') }}
-                </flux:button>
-            </div>
-        </form>
-
-        <flux:text>¿Necesitas acceso? Contacta con el administrador.</flux:text>
-    </div>
+    <x-slot:links>
+        @if (Route::has('password.request'))
+            <x-ui::link :href="route('password.request')" wire:navigate>¿Has olvidado tu contraseña?</x-ui::link>
+        @endif
+        <x-ui::text tone="muted">¿Necesitas acceso? Pídeselo al administrador.</x-ui::text>
+    </x-slot:links>
 </x-layouts::auth>

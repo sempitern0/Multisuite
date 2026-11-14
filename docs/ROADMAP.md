@@ -10,10 +10,18 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - Un incremento = una rama desde `main` + una PR (apilada si depende de otra). Se fusiona solo con indicación del usuario.
 
 ## Orden vigente
-1. **S05.1** — Backup del NAS (DB, servicios y archivos) a destino externo con restauración ensayada.
-2. **S04** — Publicación/retirada administrativa y movimientos entre discos.
-3. **P03** — Cuentas existentes, baja integral, VPN/TLS y segundo dispositivo.
-4. **P04/P05** — Nuevos servicios (uno por PR), despliegue reproducible y piloto familiar.
+1. **D02** — Migrar el resto de pantallas al tema Nocturne (decisión 2026-11-14: el diseño va primero para que lo siguiente nazca con él).
+2. **S05.1** — Backup del NAS (DB, servicios y archivos) a destino externo con restauración ensayada.
+3. **S04** — Publicación/retirada administrativa y movimientos entre discos.
+4. **P03** — Cuentas existentes, baja integral, VPN/TLS y segundo dispositivo.
+5. **P04/P05** — Nuevos servicios (uno por PR), despliegue reproducible y piloto familiar.
+
+## D — Diseño Nocturne (docs/DESIGN.md)
+- [ ] D01 QA del usuario: acceso, 2FA, contraseña olvidada, invitación y portada en 360/768/1440 px, teclado y zoom 200 %.
+- [ ] D02 Ajustes: el QR de 2FA usa `$flux.appearance` para invertirse; revisarlo al retirar el selector claro/oscuro.
+- [ ] D02 Migrar a `x-ui::` (con componentes nuevos de tabla, modal, toast y explorador cuando hagan falta): Mis archivos (+ papelera y exportaciones), Personas, Invitaciones, Almacenamiento, Actividad y Ajustes (perfil, seguridad, 2FA, passkeys).
+- [ ] D02 Resumen de administración con métricas reales (solo gates de admin) y estados de mantenimiento/fuera de línea de servicios solo si hay una fuente real.
+- [ ] Retirar la reasignación de paleta `zinc`/`teal` del tema cuando no queden vistas Flux sin migrar.
 
 ## S02 — Almacenamiento y cuotas
 - [ ] S02.3 QA ampliado (opcional antes del piloto): móvil 360 px, teclado, zoom 200 %, disco desconectado, conflicto de grupos, sobreasignación, admin frente a owner.
@@ -27,7 +35,7 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 ## S03 — Mis archivos (decisión 2026-11-13: dentro del portal, carpetas propias)
 - [ ] Mover archivos y carpetas entre carpetas.
 - [ ] S03.3 QA del usuario: papelera, restaurar, vaciar, versiones.
-- [ ] S03.4 QA del usuario: ZIP de selección, carpeta y exportar todo; descarga grande en segundo plano (requiere el contenedor `scheduler`).
+- [ ] S03.4 QA del usuario (fusionado): ZIP de selección, carpeta y exportar todo; descarga grande en segundo plano (requiere el contenedor `scheduler`).
 - [ ] Revisar límites Nginx/PHP para archivos grandes; valorar subida por trozos/reanudable.
 - [ ] Reconciliar archivos `ready` ausentes, corruptos o restaurados desde backup.
 - [ ] Conectar contenido con bibliotecas por usuario de Navidrome/servicios (escaneo bajo demanda).

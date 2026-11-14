@@ -23,7 +23,7 @@
                         @if ($listedUser->username)
                             <flux:text>{{ '@'.$listedUser->username }}</flux:text>
                         @endif
-                        <flux:text>{{ ['owner' => 'Propietario', 'admin' => 'Administrador', 'member' => 'Miembro'][$listedUser->role] ?? 'Sin rol' }} · {{ $listedUser->must_change_password ? 'Debe cambiar su contraseña' : ($listedUser->hasVerifiedEmail() ? 'Correo verificado' : 'Correo pendiente de verificar') }}</flux:text>
+                        <flux:text>{{ $listedUser->roleLabel() }} · {{ $listedUser->must_change_password ? 'Debe cambiar su contraseña' : ($listedUser->hasVerifiedEmail() ? 'Correo verificado' : 'Correo pendiente de verificar') }}</flux:text>
                     </div>
                     @can('update', $listedUser)
                         <flux:button :href="route('users.edit', $listedUser)" :aria-label="'Gestionar a '.$listedUser->name">Gestionar</flux:button>

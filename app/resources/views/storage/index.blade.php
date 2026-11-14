@@ -188,7 +188,7 @@
                     <li class="space-y-3 p-5" id="user-{{ $row['user']->id }}">
                         <div class="flex flex-wrap items-baseline justify-between gap-2">
                             <p class="break-words text-lg font-semibold">{{ $row['user']->name }}</p>
-                            <flux:text>{{ ['owner' => 'Propietario', 'admin' => 'Administrador', 'member' => 'Miembro'][$row['user']->role] ?? 'Sin rol' }}</flux:text>
+                            <flux:text>{{ $row['user']->roleLabel() }}</flux:text>
                         </div>
                         <div>
                             <div class="h-3 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $row['percent'] }}" aria-label="Espacio usado por {{ $row['user']->name }}">
