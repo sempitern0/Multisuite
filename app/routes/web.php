@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminAuditController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\FileExportController;
 use App\Http\Controllers\InitialPasswordController;
@@ -55,7 +56,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('{key}', [PrivateUploadController::class, 'update'])->whereUuid('key');
         Route::delete('{key}', [PrivateUploadController::class, 'destroy'])->whereUuid('key');
     });
-    Route::view('dashboard', 'dashboard')->name('dashboard');
+    Route::get('dashboard', DashboardController::class)->name('dashboard');
     Route::get('services/{service}', ServiceController::class)->where('service', '[a-z0-9-]+')->name('services.open');
 
     Route::middleware(['can:manage-invitations', 'password.confirm', 'throttle:admin'])->group(function () {

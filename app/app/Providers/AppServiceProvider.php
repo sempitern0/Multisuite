@@ -14,6 +14,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -37,6 +38,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        // Design layer: `<x-ui::button>` etc. resolve to the active theme's components.
+        Blade::anonymousComponentPath(resource_path('views/themes/'.config('ui.theme', 'nocturne').'/components'), 'ui');
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(UserFile::class, UserFilePolicy::class);
         Gate::policy(Folder::class, FolderPolicy::class);

@@ -1,3 +1,4 @@
-<x-layouts::auth.simple :title="$title ?? null">
+{{-- Indirection point: every auth step uses x-layouts::auth; the active theme draws it. --}}
+<x-ui::layouts.auth :title="$title ?? null" :eyebrow="$eyebrow ?? null" :heading="$heading ?? null" :description="$description ?? null">
     {{ $slot }}
-</x-layouts::auth.simple>
+</x-ui::layouts.auth>

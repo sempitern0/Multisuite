@@ -1,11 +1,10 @@
-<x-layouts::auth :title="__('Multisuite')">
-    <div class="space-y-6">
-        <x-auth-header title="Multisuite" description="Tus servicios, en un espacio privado para compartir." />
-        <flux:text>Para crear una cuenta necesitas una invitación del propietario o de un administrador.</flux:text>
+<x-layouts::auth title="Multisuite" eyebrow="Espacio privado" heading="Multisuite" description="Tus servicios, en un espacio privado para compartir.">
+    <p class="ui-sub" style="margin-top:14px">Para crear una cuenta necesitas una invitación del propietario o de un administrador.</p>
+    <div style="margin-top:22px">
         @auth
-            <flux:button :href="route('dashboard')" variant="primary">Abrir mis aplicaciones</flux:button>
+            <x-ui::button :href="route('dashboard')" block icon-end="arrow-right">Abrir mis servicios</x-ui::button>
         @else
-            <flux:button :href="route('login')" variant="primary">Iniciar sesión</flux:button>
+            <x-ui::button :href="route('login')" block icon-end="arrow-right">Iniciar sesión</x-ui::button>
         @endauth
     </div>
 </x-layouts::auth>
