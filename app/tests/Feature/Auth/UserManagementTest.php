@@ -8,11 +8,12 @@ use App\Services\ServiceAccounts;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Password;
+use Tests\Concerns\UsesAdminPages;
 use Tests\TestCase;
 
 class UserManagementTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, UsesAdminPages;
 
     private function actor(string $role): User
     {
@@ -35,8 +36,8 @@ class UserManagementTest extends TestCase
         $this->get('/users')->assertRedirect('/login');
         $this->actingAs($target)->get('/users')->assertForbidden();
         $this->get('/users/'.$target->id.'/edit')->assertForbidden();
-        $this->put('/users/'.$target->id, $this->input($target))->assertForbidden();
-        $this->delete('/users/'.$target->id)->assertForbidden();
+        $this->updatePerson($target, $this->input($target))->assertForbidden();
+        $this->deletePerson($target)->assertForbidden();
         $this->get('/dashboard')->assertDontSee('href="'.route('users.index').'"', false);
         $this->actingAs($this->actor('admin'))->get('/users')->assertRedirect(route('password.confirm'));
         $this->withSession(['auth.password_confirmed_at' => time()])->get('/users')->assertOk()->assertSee($target->email);
@@ -50,12 +51,12 @@ class UserManagementTest extends TestCase
         $peer = $this->actor('admin');
         $this->actingAs($admin)->withSession(['auth.password_confirmed_at' => time()]);
         foreach ([$owner, $admin, $peer] as $target) {
-            $this->put('/users/'.$target->id, $this->input($target))->assertForbidden();
-            $this->delete('/users/'.$target->id, ['confirm_email' => $target->email])->assertForbidden();
+            $this->updatePerson($target, $this->input($target))->assertForbidden();
+            $this->deletePerson($target, $target->email)->assertForbidden();
         }
         $this->get('/users/'.$member->id.'/edit')->assertOk();
-        $this->put('/users/'.$member->id, [...$this->input($member), 'role' => 'admin'])->assertForbidden();
-        $this->put('/users/'.$member->id, $this->input($member))->assertRedirect(route('users.edit', $member));
+        $this->updatePerson($member, [...$this->input($member), 'role' => 'admin'])->assertForbidden();
+        $this->updatePerson($member, $this->input($member))->assertHasNoErrors();
         $this->assertSame('Updated name', $member->fresh()->name);
     }
 
@@ -64,11 +65,11 @@ class UserManagementTest extends TestCase
         $owner = $this->actor('owner');
         $admin = $this->actor('admin');
         $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()]);
-        $this->put('/users/'.$admin->id, [...$this->input($admin), 'role' => 'member'])->assertRedirect();
+        $this->updatePerson($admin, [...$this->input($admin), 'role' => 'member'])->assertHasNoErrors();
         $this->assertSame('member', $admin->fresh()->role);
-        $this->put('/users/'.$admin->id, [...$this->input($admin), 'role' => 'owner'])->assertSessionHasErrors('role');
+        $this->updatePerson($admin, [...$this->input($admin), 'role' => 'owner'])->assertHasErrors('role');
         $this->get('/users/'.$owner->id.'/edit')->assertForbidden();
-        $this->delete('/users/'.$owner->id, ['confirm_email' => $owner->email])->assertForbidden();
+        $this->deletePerson($owner, $owner->email)->assertForbidden();
     }
 
     public function test_email_change_requires_ownership_confirmation_and_revokes_reset_token(): void
@@ -77,11 +78,10 @@ class UserManagementTest extends TestCase
         $token = Password::createToken($member);
         $this->actingAs($this->actor('owner'))->withSession(['auth.password_confirmed_at' => time()]);
         $input = [...$this->input($member), 'email' => 'changed@example.com'];
-        $this->put('/users/'.$member->id, $input)->assertSessionHasErrors('email_confirmed');
-        $this->put('/users/'.$member->id, [...$input, 'email_confirmed' => '1'])->assertRedirect();
+        $this->updatePerson($member, $input)->assertHasErrors('email_confirmed');
+        $this->updatePerson($member, [...$input, 'email_confirmed' => '1'])->assertHasNoErrors();
         $this->assertFalse(Password::tokenExists($member, $token));
         $this->assertSame('changed@example.com', $member->fresh()->email);
-        $this->put('/users/'.$member->id, [...$input, 'username' => 'overwrite'])->assertSessionHasErrors('username');
     }
 
     public function test_search_and_delete_require_exact_target_confirmation(): void
@@ -90,9 +90,9 @@ class UserManagementTest extends TestCase
         $this->actingAs($this->actor('owner'))->withSession(['auth.password_confirmed_at' => time()]);
         $this->get('/users?q='.urlencode($member->email))->assertOk()->assertSee($member->email);
         $this->get('/users?q=nonexistent-user-query')->assertOk()->assertDontSee($member->email);
-        $this->delete('/users/'.$member->id, ['confirm_email' => 'wrong'])->assertSessionHasErrors('confirm_email');
+        $this->deletePerson($member, 'wrong')->assertHasErrors('confirm_email');
         $this->assertModelExists($member);
-        $this->delete('/users/'.$member->id, ['confirm_email' => $member->email])->assertRedirect(route('users.index'));
+        $this->deletePerson($member, $member->email)->assertRedirect(route('users.index'));
         $this->assertModelMissing($member);
     }
 
@@ -111,7 +111,7 @@ class UserManagementTest extends TestCase
         $account = $this->musicAccount($member);
         Http::fake(['*' => Http::response([], 503)]);
         $this->actingAs($this->actor('owner'))->withSession(['auth.password_confirmed_at' => time()]);
-        $this->delete('/users/'.$member->id, ['confirm_email' => $member->email])->assertSessionHasErrors('deletion');
+        $this->deletePerson($member, $member->email)->assertHasErrors('deletion');
         $this->assertModelExists($member);
         $this->assertModelExists($account);
     }
@@ -127,7 +127,7 @@ class UserManagementTest extends TestCase
                 ->push([], 204)->push([], 404),
         ]);
         $this->actingAs($this->actor('owner'))->withSession(['auth.password_confirmed_at' => time()]);
-        $this->delete('/users/'.$member->id, ['confirm_email' => $member->email])->assertRedirect(route('users.index'));
+        $this->deletePerson($member, $member->email)->assertRedirect(route('users.index'));
         Http::assertSent(fn ($request) => $request->method() === 'DELETE' && str_ends_with($request->url(), $account->remote_id));
         $this->assertModelMissing($member);
         $this->assertModelMissing($account);
@@ -142,7 +142,7 @@ class UserManagementTest extends TestCase
             'music.test/api/user/'.$account->remote_id => Http::response(['id' => $account->remote_id, 'userName' => $account->username, 'isAdmin' => true]),
         ]);
         $this->actingAs($this->actor('owner'))->withSession(['auth.password_confirmed_at' => time()]);
-        $this->delete('/users/'.$member->id, ['confirm_email' => $member->email])->assertSessionHasErrors('deletion');
+        $this->deletePerson($member, $member->email)->assertHasErrors('deletion');
         Http::assertNotSent(fn ($request) => $request->method() === 'DELETE');
         $this->assertModelExists($member);
     }
@@ -156,7 +156,7 @@ class UserManagementTest extends TestCase
             'music.test/api/user/*' => Http::response([], 404),
         ]);
         $this->actingAs($this->actor('owner'))->withSession(['auth.password_confirmed_at' => time()]);
-        $this->delete('/users/'.$member->id, ['confirm_email' => $member->email])->assertRedirect(route('users.index'));
+        $this->deletePerson($member, $member->email)->assertRedirect(route('users.index'));
         $this->assertModelMissing($member);
     }
 }

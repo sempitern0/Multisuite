@@ -8,11 +8,12 @@ use App\Notifications\PortalInvitation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
+use Tests\Concerns\UsesAdminPages;
 use Tests\TestCase;
 
 class InvitationTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, UsesAdminPages;
 
     private function actor(string $role): User
     {
@@ -54,12 +55,12 @@ class InvitationTest extends TestCase
         Notification::fake();
         $this->get('/invitations')->assertRedirect('/login');
         $member = $this->actor('member');
-        $this->actingAs($member)->post('/invitations', ['email' => 'guest@example.com', 'role' => 'member'])->assertForbidden();
+        $this->actingAs($member)->invite(['email' => 'guest@example.com', 'role' => 'member'])->assertForbidden();
         $admin = $this->actor('admin');
         $this->actingAs($admin)->withSession(['auth.password_confirmed_at' => time()]);
-        $this->post('/invitations', ['email' => 'guest@example.com', 'role' => 'admin'])->assertForbidden();
-        $this->post('/invitations', ['email' => 'guest@example.com', 'role' => 'owner'])->assertSessionHasErrors('role');
-        $this->post('/invitations', ['email' => 'guest@example.com', 'role' => 'member'])->assertRedirect();
+        $this->invite(['email' => 'guest@example.com', 'role' => 'admin'])->assertForbidden();
+        $this->invite(['email' => 'guest@example.com', 'role' => 'owner'])->assertHasErrors('role');
+        $this->invite(['email' => 'guest@example.com', 'role' => 'member'])->assertHasNoErrors();
         Notification::assertSentOnDemand(PortalInvitation::class);
         $this->assertDatabaseHas('invitations', ['email' => 'guest@example.com', 'role' => 'member', 'invited_by' => $admin->id]);
     }
@@ -69,12 +70,13 @@ class InvitationTest extends TestCase
         Notification::fake();
         $owner = $this->actor('owner');
         $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()]);
-        $this->post('/invitations', ['email' => 'guest@example.com', 'role' => 'admin'])->assertRedirect();
+        $this->invite(['email' => 'guest@example.com', 'role' => 'admin'])->assertHasNoErrors();
         $this->get('/invitations')->assertOk();
         $id = Invitation::firstOrFail()->id;
         $this->actingAs($this->actor('admin'));
-        $this->post('/invitations', ['email' => 'guest@example.com', 'role' => 'member'])->assertForbidden();
-        $this->delete('/invitations/'.$id)->assertForbidden();
+        $this->invite(['email' => 'guest@example.com', 'role' => 'member'])->assertForbidden();
+        // Owner-issued administrator invitations do not exist for administrators.
+        $this->revokeInvitation($id)->assertNotFound();
         $this->get('/invitations')->assertOk()->assertDontSee('guest@example.com');
     }
 
@@ -112,7 +114,7 @@ class InvitationTest extends TestCase
         $owner->role = 'owner';
         $owner->save();
         $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])
-            ->delete('/invitations/'.Invitation::firstOrFail()->id)->assertRedirect();
+            ->revokeInvitation(Invitation::firstOrFail()->id)->assertHasNoErrors();
         $this->post('/logout');
         $this->post($url, $this->details())->assertStatus(410);
         $this->travel(2)->days();
@@ -127,7 +129,7 @@ class InvitationTest extends TestCase
         $this->post($url, [...$this->details(), 'password_confirmation' => 'different'])->assertSessionHasErrors('password');
         $this->assertNull(Invitation::firstOrFail()->used_at);
         $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])
-            ->post('/invitations', ['email' => 'guest@example.com', 'role' => 'member'])->assertRedirect();
+            ->invite(['email' => 'guest@example.com', 'role' => 'member'])->assertHasNoErrors();
         $this->post('/logout');
         $this->get($url)->assertNotFound();
     }

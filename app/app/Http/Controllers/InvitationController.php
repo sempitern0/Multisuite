@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\Invitations\IssueInvitation;
-use App\Actions\Invitations\RevokeInvitation;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Concerns\UsernameValidationRules;
@@ -15,29 +13,10 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 
 class InvitationController extends Controller
 {
     use PasswordValidationRules, ProfileValidationRules, UsernameValidationRules;
-
-    public function store(Request $request, IssueInvitation $issue): RedirectResponse
-    {
-        Gate::authorize('manage-invitations');
-        /** @var array{email: string, role: string, services?: list<string>} $data */
-        $data = $request->validate($issue->rules());
-        $issue->handle($this->actor($request), $data);
-
-        return back()->with('status', 'Invitación enviada. Cualquier enlace anterior ha quedado invalidado.');
-    }
-
-    public function revoke(Request $request, Invitation $invitation, RevokeInvitation $revoke): RedirectResponse
-    {
-        Gate::authorize('manage-invitations');
-        $revoke->handle($this->actor($request), $invitation);
-
-        return back()->with('status', 'Invitación revocada. Las cuentas existentes no cambian.');
-    }
 
     public function show(string $token): Response
     {
@@ -85,13 +64,5 @@ class InvitationController extends Controller
         $request->session()->regenerate();
 
         return redirect()->route('dashboard');
-    }
-
-    private function actor(Request $request): User
-    {
-        $user = $request->user();
-        abort_unless($user instanceof User, 403);
-
-        return $user;
     }
 }

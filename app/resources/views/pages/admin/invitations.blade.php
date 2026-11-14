@@ -47,7 +47,7 @@ new #[Title('Invitaciones')] class extends Component {
     #[Computed]
     public function roles(): array
     {
-        return Auth::user()->role === 'owner' ? ['member', 'admin'] : ['member'];
+        return array_keys(Auth::user()->assignableRoles());
     }
 
     /** @return list<string> */
@@ -100,7 +100,7 @@ new #[Title('Invitaciones')] class extends Component {
                     @if (count($this->roles) > 1)
                         <x-ui::choice-group name="role" label="Rol de la cuenta" wire:model="role"
                             help="Solo el propietario puede invitar administradores."
-                            :options="['member' => 'Miembro', 'admin' => 'Administrador']" />
+                            :options="Auth::user()->assignableRoles()" />
                     @endif
                     @foreach ($this->availableServices as $service)
                         <x-ui::checkbox name="services[]" :value="$service" wire:model="services" :label="'Preparar su cuenta en '.config('portal.services.'.$service.'.name')" />

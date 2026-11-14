@@ -23,9 +23,10 @@ Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md
 
 ## En revisión: D02b.1 administración completa en el tema — rama `feat/d02b-admin-forms`
 - Crear, editar y eliminar personas y **Almacenamiento** son páginas Livewire con componentes del tema: se guarda en el sitio con aviso, errores junto al control y sin recargas.
-- Operaciones extraídas a Actions (`Actions/Users/*`, `Actions/Storage/UpdateStorageLimits`) usadas por las páginas y por los controladores, que quedan como endpoints finos; `Support/LockedUsers` unifica el bloqueo ordenado y `Support/SizeInput` la lectura de tamaños.
+- Operaciones extraídas a Actions (`Actions/Users/*`, `Actions/Storage/UpdateStorageLimits`) con una sola entrada, su página: se retiran `UserManagementController`, `ManualUserController`, `StorageController` y las rutas de formulario de invitaciones, que ya no usaba ninguna pantalla; `Support/LockedUsers` unifica el bloqueo ordenado y `Support/SizeInput` la lectura de tamaños.
 - Tema: diálogo de confirmación (`x-ui::confirm`, sustituye a `wire:confirm`), selector de tamaño, barra por segmentos, datos resumidos y aviso tras redirección (`session('toast')`).
-- Tests: `AdminFormsTest` y casos Livewire en `StorageAdminTest`; los tests HTTP anteriores siguen cubriendo las mismas Actions. Sin dependencias ni migraciones nuevas.
+- `User::assignableRoles()` y `UserStorageQuota::summaryFor()` sustituyen reglas repetidas en varias pantallas.
+- Tests: los casos anteriores de personas, invitaciones y almacenamiento se ejecutan ahora contra las páginas (`tests/Concerns/UsesAdminPages`), más `AdminFormsTest`. Sin dependencias ni migraciones nuevas.
 
 ## Siguiente acción ejecutable
 1. Usuario: revisar la PR D02b.1; tras fusionar, `make up` + `make npm CMD="run build"` y probar Personas (crear/editar/eliminar) y Almacenamiento.

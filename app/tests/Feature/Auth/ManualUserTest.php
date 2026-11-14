@@ -8,11 +8,12 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Tests\Concerns\UsesAdminPages;
 use Tests\TestCase;
 
 class ManualUserTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, UsesAdminPages;
 
     private function actor(string $role): User
     {
@@ -39,9 +40,9 @@ class ManualUserTest extends TestCase
     public function test_guest_and_member_cannot_create_users(): void
     {
         $this->get('/users/create')->assertRedirect('/login');
-        $this->post('/users', $this->input())->assertRedirect('/login');
+        $this->createPerson($this->input())->assertForbidden();
         $this->actingAs($this->actor('member'))->get('/users/create')->assertForbidden();
-        $this->post('/users', $this->input())->assertForbidden();
+        $this->createPerson($this->input())->assertForbidden();
     }
 
     public function test_admin_creates_member_but_cannot_assign_privileged_roles(): void
@@ -49,9 +50,9 @@ class ManualUserTest extends TestCase
         $admin = $this->actor('admin');
         $this->actingAs($admin)->withSession(['auth.password_confirmed_at' => time()]);
         $this->get('/users/create')->assertOk()->assertDontSee('value="admin"', false);
-        $this->post('/users', $this->input('admin'))->assertForbidden();
-        $this->post('/users', $this->input('owner'))->assertSessionHasErrors('role');
-        $this->post('/users', $this->input())->assertRedirect(route('users.create'));
+        $this->createPerson($this->input('admin'))->assertForbidden();
+        $this->createPerson($this->input('owner'))->assertHasErrors('role');
+        $this->createPerson($this->input())->assertHasNoErrors();
         $user = User::where('email', 'new@example.com')->firstOrFail();
         $this->assertSame('member', $user->role);
         $this->assertSame('new-user', $user->username);
@@ -60,15 +61,15 @@ class ManualUserTest extends TestCase
         $this->assertTrue($user->hasVerifiedEmail());
         $this->assertTrue(Hash::check('Temporary-Secret-123!', $user->password));
         $this->assertDatabaseCount('service_accounts', 0);
-        $this->post('/users', $this->input())->assertSessionHasErrors('email');
+        $this->createPerson($this->input())->assertHasErrors('email');
     }
 
     public function test_owner_can_create_admin_but_never_another_owner(): void
     {
         $this->actingAs($this->actor('owner'))->withSession(['auth.password_confirmed_at' => time()]);
-        $this->post('/users', $this->input('admin'))->assertRedirect(route('users.create'));
+        $this->createPerson($this->input('admin'))->assertHasNoErrors();
         $this->assertDatabaseHas('users', ['email' => 'new@example.com', 'role' => 'admin']);
-        $this->post('/users', [...$this->input('owner'), 'email' => 'another@example.com', 'username' => 'another-user'])->assertSessionHasErrors('role');
+        $this->createPerson([...$this->input('owner'), 'email' => 'another@example.com', 'username' => 'another-user'])->assertHasErrors('role');
     }
 
     public function test_manually_created_user_must_change_password_before_accessing_services(): void
@@ -77,7 +78,7 @@ class ManualUserTest extends TestCase
         Http::preventStrayRequests();
         Http::fake(['*' => Http::response([], 503)]);
         $this->actingAs($this->actor('owner'))->withSession(['auth.password_confirmed_at' => time()])
-            ->post('/users', [...$this->input(), 'services' => ['music']])->assertRedirect(route('users.create'));
+            ->createPerson([...$this->input(), 'services' => ['music']])->assertHasNoErrors();
         $user = User::where('email', 'new@example.com')->firstOrFail();
         $this->assertDatabaseCount('service_accounts', 0);
         $this->post('/logout');
@@ -109,7 +110,7 @@ class ManualUserTest extends TestCase
     {
         $owner = $this->actor('owner');
         $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()]);
-        $this->post('/users', [...$this->input(), 'services' => ['unknown']])->assertSessionHasErrors('services.0');
+        $this->createPerson([...$this->input(), 'services' => ['unknown']])->assertHasErrors('services.0');
         $invitation = new Invitation;
         $invitation->email = 'new@example.com';
         $invitation->role = 'admin';
@@ -117,7 +118,7 @@ class ManualUserTest extends TestCase
         $invitation->token_hash = hash('sha256', str_repeat('a', 64));
         $invitation->expires_at = now()->addDay();
         $invitation->save();
-        $this->post('/users', $this->input())->assertRedirect(route('users.create'));
+        $this->createPerson($this->input())->assertHasNoErrors();
         $this->assertTrue($invitation->fresh()->expires_at->isPast() || $invitation->fresh()->expires_at->isCurrentSecond());
     }
 
@@ -133,7 +134,7 @@ class ManualUserTest extends TestCase
         $invitation->expires_at = now()->addDay();
         $invitation->save();
         $this->actingAs($admin)->withSession(['auth.password_confirmed_at' => time()])
-            ->post('/users', $this->input())->assertForbidden();
+            ->createPerson($this->input())->assertForbidden();
         $this->assertDatabaseMissing('users', ['email' => 'new@example.com']);
     }
 }

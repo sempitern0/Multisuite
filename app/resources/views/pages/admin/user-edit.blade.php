@@ -4,7 +4,6 @@ use App\Actions\Users\DeleteUser;
 use App\Actions\Users\UpdateUser;
 use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
-use App\Models\StorageSetting;
 use App\Models\User;
 use App\Models\UserStorageQuota;
 use Illuminate\Support\Arr;
@@ -53,7 +52,7 @@ new #[Title('Gestionar persona')] class extends Component {
     #[Computed]
     public function roles(): array
     {
-        return Auth::user()->role === 'owner' ? ['member' => 'Miembro', 'admin' => 'Administrador'] : ['member' => 'Miembro'];
+        return Auth::user()->assignableRoles();
     }
 
     /** @return Collection<int, \App\Models\ServiceAccount> */
@@ -63,20 +62,14 @@ new #[Title('Gestionar persona')] class extends Component {
         return $this->managed->serviceAccounts()->get();
     }
 
-    /** @return array{used: int, limit: int, default: bool}|null */
+    /** @return array{used: int, limit: int, followsDefault: bool}|null */
     #[Computed]
     public function storage(): ?array
     {
         if (Gate::denies('view-storage')) {
             return null;
         }
-        $quota = UserStorageQuota::find($this->userId);
-
-        return [
-            'used' => (int) ($quota->used_bytes ?? 0),
-            'limit' => (int) ($quota->limit_bytes ?? StorageSetting::defaultUserQuotaBytes()),
-            'default' => $quota === null,
-        ];
+        return UserStorageQuota::summaryFor($this->userId);
     }
 
     public function save(UpdateUser $update): void
@@ -144,7 +137,7 @@ new #[Title('Gestionar persona')] class extends Component {
                     <x-ui::stack gap="sm">
                         <x-ui::heading id="storage-space">Espacio de almacenamiento</x-ui::heading>
                         <x-ui::meter :value="\App\Support\Bytes::percent($this->storage['used'], $this->storage['limit'])" :label="'Espacio usado por '.$this->managed->name">
-                            {{ \App\Support\Bytes::format($this->storage['used']) }} usados de {{ \App\Support\Bytes::format($this->storage['limit']) }}{{ $this->storage['default'] ? ' (espacio por defecto)' : '' }}.
+                            {{ \App\Support\Bytes::format($this->storage['used']) }} usados de {{ \App\Support\Bytes::format($this->storage['limit']) }}{{ $this->storage['followsDefault'] ? ' (espacio por defecto)' : '' }}.
                         </x-ui::meter>
                         <x-ui::link :href="route('storage.index', ['q' => $this->managed->email])">Cambiar su espacio</x-ui::link>
                     </x-ui::stack>

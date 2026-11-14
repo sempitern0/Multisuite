@@ -108,6 +108,20 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
+     * Roles this person may give to someone else, with their labels (derived from canInviteRole()).
+     *
+     * @return array<string, string>
+     */
+    public function assignableRoles(): array
+    {
+        return array_filter(
+            ['member' => 'Miembro', 'admin' => 'Administrador'],
+            fn (string $role): bool => $this->canInviteRole($role),
+            ARRAY_FILTER_USE_KEY,
+        );
+    }
+
+    /**
      * Get the user's initials
      */
     public function initials(): string

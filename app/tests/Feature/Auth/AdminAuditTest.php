@@ -10,11 +10,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Mockery\MockInterface;
 use RuntimeException;
+use Tests\Concerns\UsesAdminPages;
 use Tests\TestCase;
 
 class AdminAuditTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, UsesAdminPages;
 
     private function administrator(): User
     {
@@ -41,10 +42,10 @@ class AdminAuditTest extends TestCase
     public function test_manual_creation_records_identity_without_credentials(): void
     {
         $actor = $this->administrator();
-        $this->post('/users', [
+        $this->createPerson([
             'name' => 'Audit subject', 'email' => 'audit@example.com', 'role' => 'member',
             'password' => 'Temporary-Password-123!', 'password_confirmation' => 'Temporary-Password-123!',
-        ])->assertRedirect();
+        ])->assertHasNoErrors();
         $event = AdminAuditEvent::firstOrFail();
         $this->assertSame('user.created', $event->action);
         $this->assertSame($actor->id, $event->actor_id);
@@ -57,12 +58,12 @@ class AdminAuditTest extends TestCase
     {
         $this->administrator();
         $member = User::factory()->create();
-        $this->put('/users/'.$member->id, ['name' => 'Changed', 'email' => $member->email, 'role' => 'admin'])->assertRedirect();
+        $this->updatePerson($member, ['name' => 'Changed', 'email' => $member->email, 'role' => 'admin'])->assertHasNoErrors();
         $event = AdminAuditEvent::firstOrFail();
         $this->assertSame(['name', 'role'], $event->details['fields']);
         $this->assertSame('member', $event->details['previous_role']);
         $this->assertSame('admin', $event->details['role']);
-        $this->delete('/users/'.$member->id, ['confirm_email' => $member->email])->assertRedirect();
+        $this->deletePerson($member, $member->email)->assertRedirect();
         $this->assertModelMissing($member);
         $this->assertDatabaseCount('admin_audit_events', 2);
         $this->get('/admin/activity?action=user.deleted')->assertOk()->assertSee('Usuario eliminado');
@@ -80,9 +81,9 @@ class AdminAuditTest extends TestCase
     {
         $actor = $this->administrator();
         $member = User::factory()->create();
-        $this->put('/users/'.$member->id, ['name' => $member->name, 'email' => $member->email, 'role' => 'member'])->assertRedirect();
-        $this->delete('/users/'.$member->id, ['confirm_email' => 'wrong'])->assertSessionHasErrors();
-        $this->delete('/users/'.$actor->id, ['confirm_email' => $actor->email])->assertForbidden();
+        $this->updatePerson($member, ['name' => $member->name, 'email' => $member->email, 'role' => 'member'])->assertHasNoErrors();
+        $this->deletePerson($member, 'wrong')->assertHasErrors();
+        $this->deletePerson($actor, $actor->email)->assertForbidden();
         $this->assertDatabaseCount('admin_audit_events', 0);
     }
 
@@ -96,7 +97,7 @@ class AdminAuditTest extends TestCase
         });
         $this->withoutExceptionHandling();
         try {
-            $this->put('/users/'.$member->id, ['name' => 'Must roll back', 'email' => $member->email, 'role' => 'member']);
+            $this->updatePerson($member, ['name' => 'Must roll back', 'email' => $member->email, 'role' => 'member']);
             $this->fail('Audit failure must propagate.');
         } catch (RuntimeException $exception) {
             $this->assertSame('audit unavailable', $exception->getMessage());

@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
-/** Changes name, email and role of another person. Shared by the HTTP controller and the Livewire page. */
+/** Changes name, email and role of another person, re-checking roles under lock. */
 class UpdateUser
 {
     use ProfileValidationRules;

@@ -13,8 +13,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
- * Issues (or reissues) the single invitation for an email. Shared by the HTTP
- * controller and the Livewire page so both apply the same rules.
+ * Issues (or reissues) the single invitation for an email.
  */
 class IssueInvitation
 {

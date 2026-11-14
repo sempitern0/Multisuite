@@ -43,7 +43,7 @@ new #[Title('Crear cuenta')] class extends Component {
     #[Computed]
     public function roles(): array
     {
-        return Auth::user()->role === 'owner' ? ['member' => 'Miembro', 'admin' => 'Administrador'] : ['member' => 'Miembro'];
+        return Auth::user()->assignableRoles();
     }
 
     /** @return list<string> */

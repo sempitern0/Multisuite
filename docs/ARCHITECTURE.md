@@ -30,12 +30,12 @@ El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada ser
 | Dominio | Código clave | Doc |
 | --- | --- | --- |
 | Portada y servicios | `config/portal.php`, `DashboardController` + `Support/ServiceTiles` (qué ve cada persona), `ServiceController`, `resources/views/dashboard.blade.php` | NAVIDROME.md |
-| Administración (páginas) | Livewire en `resources/views/pages/admin/{users,user-create,user-edit,invitations,activity,storage}`: autorizan en cada petición y delegan en Actions (`Actions/Users/{CreateUser,UpdateUser,DeleteUser}`, `Actions/Invitations/*`, `Actions/Storage/UpdateStorageLimits`). Los controladores (`UserManagementController`, `ManualUserController`, `StorageController`, `InvitationController`) son endpoints de formulario finos sobre las mismas Actions. Apoyos: `Support/LockedUsers` (bloqueo ordenado actor/objetivo), `Support/SizeInput`, `Invitation::status()`/`scopeInStatus()`, `User::scopeSearch()`, `Livewire/Concerns/ThrottlesActions` | USER_MANAGEMENT.md, INVITATIONS.md, STORAGE.md |
+| Administración (páginas) | Livewire en `resources/views/pages/admin/{users,user-create,user-edit,invitations,activity,storage}`: única entrada a estas operaciones; autorizan en cada petición y delegan en Actions (`Actions/Users/{CreateUser,UpdateUser,DeleteUser}`, `Actions/Invitations/*`, `Actions/Storage/UpdateStorageLimits`). Apoyos: `Support/LockedUsers` (bloqueo ordenado actor/objetivo), `Support/SizeInput`, `User::assignableRoles()`, `Invitation::status()`/`scopeInStatus()`, `User::scopeSearch()`, `UserStorageQuota::summaryFor()`, `Livewire/Concerns/ThrottlesActions`. Pruebas con `tests/Concerns/UsesAdminPages` | USER_MANAGEMENT.md, INVITATIONS.md, STORAGE.md |
 | Preferencias | `Support/UserPreferences` (columna `users.preferences`), página `pages::settings.preferences`, `Http/Responses/LoginResponse` (página de inicio) | DESIGN.md |
 | Diseño (tema) | `config/ui.php`, `resources/views/themes/nocturne/components` (`x-ui::`, layouts), `resources/css/themes/nocturne.css`, delegadores `resources/views/layouts/{app,auth}.blade.php` | DESIGN.md |
 | Roles y permisos | `User::canInviteRole`, `Policies/UserPolicy`, gates en `Providers/AppServiceProvider` | USER_MANAGEMENT.md |
 | Invitaciones | `InvitationController`, `Models/Invitation`, `Notifications/PortalInvitation` | INVITATIONS.md |
-| Alta manual y primer acceso | `ManualUserController`, `InitialPasswordController`, `Middleware/EnsureInitialPasswordChanged` | USER_MANAGEMENT.md |
+| Alta manual y primer acceso | `Actions/Users/CreateUser`, `InitialPasswordController`, `Middleware/EnsureInitialPasswordChanged` | USER_MANAGEMENT.md |
 | Cuentas de servicio | `Services/ServiceAccounts`, `Services/NavidromeAccounts`, `config/provisioning.php`, `portal:sync-accounts`, `portal:accounts-status` | SERVICE_ACCOUNTS.md |
 | Sesión musical | `MusicSessionController`, `Services/MusicSessionBridge`, `docker/music-proxy/` | MUSIC_SESSION_BRIDGE.md |
 | Auditoría | `Services/AdminAudit`, `Enums/ServiceAuditAction`, página Livewire `pages::admin.activity` | ADMIN_AUDIT.md |
@@ -70,7 +70,7 @@ Motor: PostgreSQL 17 en desarrollo y producción; SQLite en los tests (CI ejecut
 - Las acciones Livewire que modifican datos llaman a `ThrottlesActions::throttle()` con el limitador con nombre de su ruta: `/livewire/update` no pasa por `throttle:` y así ambos caminos comparten contador y definición.
 - Los componentes Livewire de un solo archivo (`resources/views/pages`) no los analiza PHPStan: solo orquestan. Consultas en scopes de modelo (`User::search`, `Invitation::inStatus`) y mutaciones en Actions.
 - Autorización en servidor en cada lectura/escritura; revalidar roles **bajo bloqueo** en operaciones administrativas (`Support/LockedUsers::pair`).
-- Una operación de dominio vive en una Action y la usan todas sus entradas (página Livewire y endpoint HTTP): no duplicar reglas en componentes ni controladores.
+- Una operación de dominio vive en una Action y tiene una sola entrada (su página Livewire). No mantener endpoints paralelos sin uso ni duplicar reglas en componentes.
 - Orden de bloqueo del almacenamiento: usuario → grupo → cuota → reserva.
 - Nunca aceptar rutas, URLs de redirección ni IDs de servicio no registrados desde la petición. Nombres de archivo/carpeta son etiquetas, nunca rutas.
 - Ninguna ruta de Laravel bajo `/storage/`: Nginx la sirve como disco público.

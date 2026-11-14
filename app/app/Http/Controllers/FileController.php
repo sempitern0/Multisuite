@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\StorageSetting;
 use App\Models\UserStorageQuota;
 use App\Services\Files\PersonalFiles;
 use Illuminate\Database\RecordsNotFoundException;
@@ -36,7 +35,7 @@ class FileController extends Controller
         if ($folder !== null) {
             Gate::authorize('view', $folder);
         }
-        $quota = UserStorageQuota::find($user->id);
+        $storage = UserStorageQuota::summaryFor($user->id);
 
         return response()->view('files.index', [
             'folder' => $folder,
@@ -47,8 +46,8 @@ class FileController extends Controller
             'summaries' => $this->files->summaries($user),
             'enabled' => (bool) config('nas.uploads_enabled'),
             'maxBytes' => (int) config('nas.upload_max_bytes'),
-            'used' => (int) ($quota->used_bytes ?? 0),
-            'limit' => (int) ($quota->limit_bytes ?? StorageSetting::defaultUserQuotaBytes()),
+            'used' => $storage['used'],
+            'limit' => $storage['limit'],
         ]);
     }
 

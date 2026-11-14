@@ -16,7 +16,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 /**
  * Changes a person's quota, a disk limit or the default quota, with audit.
  * Domain refusals become a validation message on `$field` (next to the form that
- * caused them). Shared by StorageController and the Livewire page.
+ * caused them). Called by the Almacenamiento page.
  */
 class UpdateStorageLimits
 {

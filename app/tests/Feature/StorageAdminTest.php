@@ -17,11 +17,12 @@ use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Mockery\MockInterface;
 use RuntimeException;
+use Tests\Concerns\UsesAdminPages;
 use Tests\TestCase;
 
 class StorageAdminTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, UsesAdminPages;
 
     private const GB = 1_073_741_824;
 
@@ -69,8 +70,8 @@ class StorageAdminTest extends TestCase
     {
         $owner = $this->actor('owner');
         $this->confirmed($owner)->from('/admin/storage')
-            ->put('/admin/storage/pools/disk', ['preset' => 'custom', 'amount' => '1,5', 'unit' => 'GB'])
-            ->assertRedirect('/admin/storage')->assertSessionHasNoErrors();
+            ->savePool('disk', ['preset' => 'custom', 'amount' => '1,5', 'unit' => 'GB'])
+            ->assertHasNoErrors();
         $this->assertSame((int) (1.5 * self::GB), StoragePool::findOrFail('disk')->limit_bytes);
         $event = AdminAuditEvent::where('action', 'storage.pool_limit')->firstOrFail();
         $this->assertSame(['pool' => 'disk', 'limit_bytes' => (int) (1.5 * self::GB), 'previous_limit_bytes' => null], $event->details);
@@ -80,8 +81,8 @@ class StorageAdminTest extends TestCase
     public function test_unknown_or_unavailable_disk_is_rejected_next_to_its_form(): void
     {
         $this->confirmed($this->actor('owner'))->from('/admin/storage')
-            ->put('/admin/storage/pools/other', ['preset' => (string) self::GB])
-            ->assertSessionHasErrors('pool_other');
+            ->savePool('other', ['preset' => (string) self::GB])
+            ->assertHasErrors('pool_other');
         $this->assertNull(StoragePool::find('other'));
     }
 
@@ -90,12 +91,12 @@ class StorageAdminTest extends TestCase
         $admin = $this->actor('admin');
         $member = $this->actor('member');
         $this->confirmed($admin);
-        $this->put('/admin/storage/pools/disk', ['preset' => (string) self::GB])->assertForbidden();
-        $this->put('/admin/storage/default', ['preset' => (string) self::GB])->assertForbidden();
+        $this->savePool('disk', ['preset' => (string) self::GB])->assertForbidden();
+        $this->saveDefault(['preset' => (string) self::GB])->assertForbidden();
         foreach ([$this->actor('owner'), $this->actor('admin'), $admin] as $target) {
-            $this->put('/admin/storage/users/'.$target->id, ['preset' => (string) self::GB])->assertForbidden();
+            $this->saveQuota($target, ['preset' => (string) self::GB])->assertForbidden();
         }
-        $this->from('/admin/storage')->put('/admin/storage/users/'.$member->id, ['preset' => (string) (5 * self::GB)])->assertRedirect('/admin/storage');
+        $this->from('/admin/storage')->saveQuota($member, ['preset' => (string) (5 * self::GB)])->assertHasNoErrors();
         $this->assertSame(5 * self::GB, UserStorageQuota::findOrFail($member->id)->limit_bytes);
         $this->assertDatabaseHas('admin_audit_events', ['action' => 'storage.user_quota', 'actor_id' => $admin->id, 'subject_id' => $member->id]);
     }
@@ -103,8 +104,8 @@ class StorageAdminTest extends TestCase
     public function test_owner_can_set_own_quota_and_page_shows_who_is_manageable(): void
     {
         $owner = $this->actor('owner');
-        $this->confirmed($owner)->from('/admin/storage')->put('/admin/storage/users/'.$owner->id, ['preset' => (string) (10 * self::GB)])
-            ->assertSessionHasNoErrors();
+        $this->confirmed($owner)->from('/admin/storage')->saveQuota($owner, ['preset' => (string) (10 * self::GB)])
+            ->assertHasNoErrors();
         $this->assertSame(10 * self::GB, UserStorageQuota::findOrFail($owner->id)->limit_bytes);
         $this->get('/admin/storage')->assertSee('Guardar espacio de '.$owner->name);
     }
@@ -120,8 +121,8 @@ class StorageAdminTest extends TestCase
         $service->reserve($member, 'disk', 4 * self::GB, $key);
         $service->commit($member, $key, 4 * self::GB);
 
-        $this->confirmed($owner)->from('/admin/storage')->put('/admin/storage/users/'.$member->id, ['preset' => (string) self::GB])
-            ->assertSessionHasErrors('quota_'.$member->id);
+        $this->confirmed($owner)->from('/admin/storage')->saveQuota($member, ['preset' => (string) self::GB])
+            ->assertHasErrors('quota_'.$member->id);
         $this->assertSame(10 * self::GB, UserStorageQuota::findOrFail($member->id)->limit_bytes);
         $this->assertDatabaseMissing('admin_audit_events', ['action' => 'storage.user_quota']);
     }
@@ -131,10 +132,10 @@ class StorageAdminTest extends TestCase
         $owner = $this->actor('owner');
         $this->confirmed($owner)->from('/admin/storage');
         foreach (['1e5', '-3', '', '1234567', '1.234'] as $amount) {
-            $this->put('/admin/storage/default', ['preset' => 'custom', 'amount' => $amount, 'unit' => 'GB'])->assertSessionHasErrors();
+            $this->saveDefault(['preset' => 'custom', 'amount' => $amount, 'unit' => 'GB'])->assertHasErrors();
         }
-        $this->put('/admin/storage/default', ['preset' => 'custom', 'amount' => '5', 'unit' => 'PB'])->assertSessionHasErrors('unit');
-        $this->put('/admin/storage/default', ['preset' => '12abc'])->assertSessionHasErrors('preset');
+        $this->saveDefault(['preset' => 'custom', 'amount' => '5', 'unit' => 'PB'])->assertHasErrors('default');
+        $this->saveDefault(['preset' => '12abc'])->assertHasErrors('default');
         $this->assertSame(0, app(StorageReservations::class)->defaultUserQuota());
     }
 
@@ -147,7 +148,7 @@ class StorageAdminTest extends TestCase
         $service->setPoolLimit('disk', 100 * self::GB);
         $service->setUserQuota($explicit, self::GB);
 
-        $this->confirmed($owner)->from('/admin/storage')->put('/admin/storage/default', ['preset' => (string) (2 * self::GB)])->assertSessionHasNoErrors();
+        $this->confirmed($owner)->from('/admin/storage')->saveDefault(['preset' => (string) (2 * self::GB)])->assertHasNoErrors();
         $this->assertSame(self::GB, UserStorageQuota::findOrFail($explicit->id)->limit_bytes);
         $this->assertNull(UserStorageQuota::find($newcomer->id));
 
