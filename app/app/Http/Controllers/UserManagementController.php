@@ -13,7 +13,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -22,24 +21,6 @@ use RuntimeException;
 class UserManagementController extends Controller
 {
     use ProfileValidationRules;
-
-    public function index(Request $request): View
-    {
-        Gate::authorize('viewAny', User::class);
-        $data = $request->validate(['q' => ['nullable', 'string', 'max:100']]);
-        $query = trim($data['q'] ?? '');
-        $users = User::query()
-            ->when($query !== '', function ($builder) use ($query): void {
-                $pattern = '%'.Str::lower($query).'%';
-                $builder->where(function ($search) use ($pattern): void {
-                    $search->whereRaw('LOWER(name) LIKE ?', [$pattern])
-                        ->orWhereRaw('LOWER(email) LIKE ?', [$pattern])
-                        ->orWhereRaw('LOWER(username) LIKE ?', [$pattern]);
-                });
-            })->orderBy('name')->orderBy('id')->paginate(20)->withQueryString();
-
-        return view('users.index', ['users' => $users, 'query' => $query]);
-    }
 
     public function edit(Request $request, User $user): View
     {

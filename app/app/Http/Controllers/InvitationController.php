@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Invitations\IssueInvitation;
+use App\Actions\Invitations\RevokeInvitation;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Concerns\UsernameValidationRules;
 use App\Models\Invitation;
 use App\Models\User;
-use App\Notifications\PortalInvitation;
 use App\Services\ServiceAccounts;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,66 +16,25 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 
 class InvitationController extends Controller
 {
     use PasswordValidationRules, ProfileValidationRules, UsernameValidationRules;
 
-    public function index(Request $request): View
+    public function store(Request $request, IssueInvitation $issue): RedirectResponse
     {
         Gate::authorize('manage-invitations');
-        $roles = $request->user()?->role === 'owner' ? ['member', 'admin'] : ['member'];
-
-        return view('invitations.index', [
-            'roles' => $roles,
-            'services' => app(ServiceAccounts::class)->available(),
-            'invitations' => Invitation::whereIn('role', $roles)->latest()->paginate(20),
-        ]);
-    }
-
-    public function store(Request $request): RedirectResponse
-    {
-        Gate::authorize('manage-invitations');
-        $data = $request->validate([
-            'email' => ['required', 'string', 'email', 'lowercase', 'max:255', Rule::unique('users', 'email')],
-            'role' => ['required', Rule::in(['admin', 'member'])],
-            'services' => ['sometimes', 'array'],
-            'services.*' => ['string', 'distinct', Rule::in(app(ServiceAccounts::class)->available())],
-        ]);
-        abort_unless($request->user()?->canInviteRole($data['role']), 403);
-        $token = Str::random(64);
-        $invitation = DB::transaction(function () use ($data, $request, $token): Invitation {
-            $invitation = Invitation::where('email', $data['email'])->lockForUpdate()->first() ?? new Invitation;
-            // Administrators cannot overwrite an owner's administrator invitation.
-            abort_if($invitation->exists && ! $request->user()->canInviteRole($invitation->role), 403);
-            $invitation->email = $data['email'];
-            $invitation->role = $data['role'];
-            $invitation->services = $data['services'] ?? [];
-            $invitation->invited_by = $request->user()->id;
-            $invitation->token_hash = hash('sha256', $token);
-            $invitation->expires_at = now()->addDays(7);
-            $invitation->used_at = null;
-            $invitation->save();
-
-            return $invitation;
-        });
-        $url = URL::temporarySignedRoute('invitation.accept', $invitation->expires_at, ['token' => $token]);
-        Notification::route('mail', $invitation->email)->notify(new PortalInvitation($url));
+        /** @var array{email: string, role: string, services?: list<string>} $data */
+        $data = $request->validate($issue->rules());
+        $issue->handle($this->actor($request), $data);
 
         return back()->with('status', 'Invitación enviada. Cualquier enlace anterior ha quedado invalidado.');
     }
 
-    public function revoke(Request $request, Invitation $invitation): RedirectResponse
+    public function revoke(Request $request, Invitation $invitation, RevokeInvitation $revoke): RedirectResponse
     {
         Gate::authorize('manage-invitations');
-        abort_unless($request->user()?->canInviteRole($invitation->role), 403);
-        $invitation->expires_at = now();
-        $invitation->save();
+        $revoke->handle($this->actor($request), $invitation);
 
         return back()->with('status', 'Invitación revocada. Las cuentas existentes no cambian.');
     }
@@ -125,5 +85,13 @@ class InvitationController extends Controller
         $request->session()->regenerate();
 
         return redirect()->route('dashboard');
+    }
+
+    private function actor(Request $request): User
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+
+        return $user;
     }
 }

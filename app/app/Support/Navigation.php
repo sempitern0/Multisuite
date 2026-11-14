@@ -16,12 +16,12 @@ class Navigation
      * Each entry: route name, label, theme icon, gate (null = every signed-in person)
      * and the route patterns that mark it as the current section.
      *
-     * @var list<array{group: ?string, items: list<array{route: string, label: string, icon: string, gate: ?string, active: list<string>}>}>
+     * @var list<array{group: ?string, items: list<array{route: string, label: string, icon: string, gate: ?string, active: list<string>, spa?: bool}>}>
      */
     private const GROUPS = [
         ['group' => null, 'items' => [
             ['route' => 'dashboard', 'label' => 'Servicios', 'icon' => 'grid', 'gate' => null, 'active' => ['dashboard']],
-            ['route' => 'files.index', 'label' => 'Mis archivos', 'icon' => 'folder', 'gate' => null, 'active' => ['files.*']],
+            ['route' => 'files.index', 'label' => 'Mis archivos', 'icon' => 'folder', 'gate' => null, 'active' => ['files.*'], 'spa' => false],
         ]],
         ['group' => 'Administración', 'items' => [
             ['route' => 'users.index', 'label' => 'Personas', 'icon' => 'users', 'gate' => 'manage-invitations', 'active' => ['users.*']],
@@ -32,12 +32,13 @@ class Navigation
     ];
 
     /** @var array{route: string, label: string, icon: string, active: list<string>} */
-    private const SETTINGS = ['route' => 'profile.edit', 'label' => 'Ajustes', 'icon' => 'settings', 'active' => ['profile.*', 'security.*', 'appearance.*', 'settings.*']];
+    private const SETTINGS = ['route' => 'profile.edit', 'label' => 'Ajustes', 'icon' => 'settings', 'active' => ['profile.*', 'security.*', 'preferences.*', 'settings.*']];
 
     /**
      * @return array{
-     *     groups: list<array{label: ?string, items: list<array{label: string, icon: string, href: string, active: bool}>}>,
-     *     account: array{name: string, initials: string, role: string, settings: array{label: string, icon: string, href: string, active: bool}, logout: string}
+     *     home: string,
+     *     groups: list<array{label: ?string, items: list<array{label: string, icon: string, href: string, active: bool, spa: bool}>}>,
+     *     account: array{name: string, initials: string, role: string, settings: array{label: string, icon: string, href: string, active: bool, spa: bool}, logout: string}
      * }
      */
     public static function for(User $user): array
@@ -57,6 +58,7 @@ class Navigation
         }
 
         return [
+            'home' => route('dashboard'),
             'groups' => $groups,
             'account' => [
                 'name' => $user->name,
@@ -69,8 +71,8 @@ class Navigation
     }
 
     /**
-     * @param  array{route: string, label: string, icon: string, active: list<string>}  $item
-     * @return array{label: string, icon: string, href: string, active: bool}
+     * @param  array{route: string, label: string, icon: string, active: list<string>, spa?: bool}  $item
+     * @return array{label: string, icon: string, href: string, active: bool, spa: bool}
      */
     private static function link(array $item): array
     {
@@ -79,6 +81,8 @@ class Navigation
             'icon' => $item['icon'],
             'href' => route($item['route']),
             'active' => request()->routeIs(...$item['active']),
+            // Pages with their own scripts (uploads) load normally instead of SPA navigation.
+            'spa' => $item['spa'] ?? true,
         ];
     }
 }
