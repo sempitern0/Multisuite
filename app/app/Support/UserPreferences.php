@@ -32,7 +32,6 @@ final class UserPreferences
             $values[$key] = in_array($value, $allowed, true) ? $value : $allowed[0];
         }
 
-        /** @var array{motion: string, density: string, sidebar: string, start: string, per_page: int} $values */
         return new self($values);
     }
 
