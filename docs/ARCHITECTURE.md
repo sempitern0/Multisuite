@@ -48,6 +48,7 @@ Tablas propias: `invitations`, `service_accounts`, `admin_audit_events`, `storag
 - Orden de bloqueo del almacenamiento: usuario → grupo → cuota → reserva.
 - Nunca aceptar rutas, URLs de redirección ni IDs de servicio no registrados desde la petición. Nombres de archivo/carpeta son etiquetas, nunca rutas.
 - Ninguna ruta de Laravel bajo `/storage/`: Nginx la sirve como disco público.
+- Límites de peticiones con nombre (`RateLimiter::for` en `AppServiceProvider`: files, uploads, file-exports, admin…). Nunca `throttle:N,1` sin nombre en rutas web: comparten un contador por usuario entre todas las rutas y las anidadas cuentan doble.
 - Auditoría con lista blanca de campos: sin payloads, rutas, contraseñas ni respuestas remotas.
 - Migraciones solo incrementales; no editar las ya aplicadas.
 - Fallar cerrado: capacidad desconocida, marca ausente o conflicto bloquean escrituras.

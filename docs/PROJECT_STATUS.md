@@ -21,6 +21,7 @@ Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md
 ## En revisión: S03.4 descargas ZIP — rama `feat/s03-zip-exports`
 - Selección, carpeta o todo; ZIP sin compresión en la ubicación privada con reserva temporal que no carga la cuota; ≤ 50 MiB al momento y el resto por `portal:exports-run`; 24 h y borrado verificado antes de liberar el espacio.
 - Sin dependencias nuevas (extensión `zip` de PHP ya presente; Packagist no es accesible desde el entorno del agente).
+- Corregido de paso: los `throttle:N,1` sin nombre compartían un contador por usuario en todas las rutas web (un ZIP tras subir varios archivos daba 429). Ahora cada área tiene su limitador con nombre y los mismos valores.
 - Tests: `FileExportsTest` (contenido y rutas, nombres repetidos, papelera/versiones excluidas, cuota intacta, scheduler y caducidad, fallo con limpieza, aislamiento, límites, sin espacio). `PersonalFilesTest` usa el nuevo trait `UsesPrivateStorage`.
 
 ## Siguiente acción ejecutable
