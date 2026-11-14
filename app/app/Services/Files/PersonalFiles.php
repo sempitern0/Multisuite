@@ -98,6 +98,17 @@ class PersonalFiles
         };
     }
 
+    /**
+     * Every current file of a person with its verified size (for ZIP exports).
+     *
+     * @return Collection<int, UserFile>
+     */
+    public function currentFiles(User $user): Collection
+    {
+        return $this->visible($user)->orderBy('user_files.name')
+            ->get(['user_files.*', 'storage_reservations.actual_bytes as size']);
+    }
+
     /** @return Builder<UserFile> */
     private function visible(User $user): Builder
     {

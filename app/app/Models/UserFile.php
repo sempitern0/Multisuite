@@ -19,6 +19,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $version_of_id
  * @property CarbonImmutable|null $trashed_at
  * @property CarbonImmutable|null $superseded_at
+ * @property-read string|null $mime Joined from private_uploads in listing queries only.
+ * @property-read int|string|null $size Joined verified bytes in listing queries only.
  */
 class UserFile extends Model
 {

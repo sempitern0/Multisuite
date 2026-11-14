@@ -6,7 +6,7 @@ Guía rápida para personas y agentes de IA. Si algo aquí contradice al código
 ```
 Navegador ──► Caddy/Nginx ──► Laravel 13 + Livewire 4 + Flux 2 (app/, PHP ≥ 8.3)
                                    │  DB: SQLite (dev/tests) · PostgreSQL (concurrencia real)
-                                   │  scheduler: portal:sync-accounts (1 min), portal:uploads-cleanup (10 min)
+                                   │  scheduler: portal:sync-accounts (1 min), portal:exports-run (1 min), portal:uploads-cleanup (10 min), portal:files-purge (diario)
                                    ├──► API nativa de Navidrome (aprovisionamiento de cuentas)
                                    └──► Carpetas NAS montadas en el contenedor (solo las declaradas)
 Navegador ──► music-gateway (Nginx, mismo origen) ──► Navidrome 0.64.2 (compose.music.yaml, autónomo)
@@ -36,18 +36,19 @@ El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada ser
 | Cuentas de servicio | `Services/ServiceAccounts`, `Services/NavidromeAccounts`, `config/provisioning.php`, `portal:sync-accounts`, `portal:accounts-status` | SERVICE_ACCOUNTS.md |
 | Sesión musical | `MusicSessionController`, `Services/MusicSessionBridge`, `docker/music-proxy/` | MUSIC_SESSION_BRIDGE.md |
 | Auditoría | `Services/AdminAudit`, `Enums/ServiceAuditAction`, `AdminAuditController` | ADMIN_AUDIT.md |
-| Mis archivos | `Services/Files/PersonalFiles` (carpetas, papelera, versiones, retención), `Events/PrivateUploadReady` (listener en `AppServiceProvider`), `portal:files-purge`, `FileController`, `Models/{Folder,UserFile}`, `Policies/{FolderPolicy,UserFilePolicy}`, `resources/js/files.js`, `resources/views/files/` | STORAGE.md §5b |
+| Mis archivos | `Services/Files/PersonalFiles` (carpetas, papelera, versiones, retención), `Services/Files/FileExports` + `FileExportController` + `portal:exports-run` (ZIP), `Events/PrivateUploadReady` (listener en `AppServiceProvider`), `portal:files-purge`, `FileController`, `Models/{Folder,UserFile}`, `Policies/{FolderPolicy,UserFilePolicy}`, `resources/js/files.js`, `resources/views/files/` | STORAGE.md §5b |
 | Almacenamiento | `Services/Storage/{VolumeProbe,StorageInventory,StorageReservations,StorageOverview,PrivateUploads}`, `StorageController`, `PrivateUploadController`, `Support/Bytes`, `config/nas.php`, `portal:storage-status`, `portal:storage-quota`, `portal:uploads-cleanup`, `portal:dev-bootstrap`, `Services/Storage/HardwareSnapshot`, `scripts/nas-discover.*`, `scripts/nas-apply.*` | STORAGE.md |
 
 Gates: `manage-invitations`, `view-admin-audit`, `view-storage` (owner/admin); `manage-storage-pools` (owner); `manage-storage-quota` (owner → todos; admin → miembros).
 
-Tablas propias: `invitations`, `service_accounts`, `admin_audit_events`, `storage_pools`, `user_storage_quotas`, `storage_reservations`, `private_uploads`, `storage_settings`, `folders`, `user_files`.
+Tablas propias: `invitations`, `service_accounts`, `admin_audit_events`, `storage_pools`, `user_storage_quotas`, `storage_reservations`, `private_uploads`, `storage_settings`, `folders`, `user_files`, `file_exports`.
 
 ## Invariantes que no se deben romper
 - Autorización en servidor en cada lectura/escritura; revalidar roles **bajo bloqueo** en operaciones administrativas (patrón `lockedUsers`).
 - Orden de bloqueo del almacenamiento: usuario → grupo → cuota → reserva.
 - Nunca aceptar rutas, URLs de redirección ni IDs de servicio no registrados desde la petición. Nombres de archivo/carpeta son etiquetas, nunca rutas.
 - Ninguna ruta de Laravel bajo `/storage/`: Nginx la sirve como disco público.
+- Límites de peticiones con nombre (`RateLimiter::for` en `AppServiceProvider`: files, uploads, file-exports, admin…). Nunca `throttle:N,1` sin nombre en rutas web: comparten un contador por usuario entre todas las rutas y las anidadas cuentan doble.
 - Auditoría con lista blanca de campos: sin payloads, rutas, contraseñas ni respuestas remotas.
 - Migraciones solo incrementales; no editar las ya aplicadas.
 - Fallar cerrado: capacidad desconocida, marca ausente o conflicto bloquean escrituras.

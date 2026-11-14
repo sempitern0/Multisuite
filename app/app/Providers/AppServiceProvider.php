@@ -11,10 +11,13 @@ use App\Policies\UserFilePolicy;
 use App\Policies\UserPolicy;
 use App\Services\Files\PersonalFiles;
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -37,6 +40,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(UserFile::class, UserFilePolicy::class);
         Gate::policy(Folder::class, FolderPolicy::class);
+        // Named limiters: unnamed `throttle:N,1` share one counter per user across every
+        // route (and nested ones count twice), so each area gets its own key.
+        foreach (['files' => 120, 'uploads' => 60, 'file-exports' => 10, 'invitation-accept' => 10, 'account-change' => 5, 'admin' => 10, 'admin-storage' => 60] as $name => $perMinute) {
+            RateLimiter::for($name, fn (Request $request) => Limit::perMinute($perMinute)->by($name.':'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
+        }
         // Registered here (no app/Listeners) so event discovery cannot attach it twice.
         Event::listen(PrivateUploadReady::class, fn (PrivateUploadReady $event) => app(PersonalFiles::class)->onUploadReady($event->uploadId, $event->userId));
         Gate::define('view-admin-audit', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));

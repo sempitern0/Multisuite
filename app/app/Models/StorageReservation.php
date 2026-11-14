@@ -5,7 +5,10 @@ namespace App\Models;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 
-/** @property CarbonImmutable $expires_at */
+/**
+ * @property CarbonImmutable $expires_at
+ * @property bool $charges_user
+ */
 class StorageReservation extends Model
 {
     public $incrementing = false;
@@ -15,6 +18,6 @@ class StorageReservation extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['expires_at' => 'immutable_datetime'];
+        return ['expires_at' => 'immutable_datetime', 'charges_user' => 'boolean'];
     }
 }

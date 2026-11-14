@@ -13,3 +13,6 @@ Schedule::command('portal:sync-accounts')->everyMinute()->withoutOverlapping();
 Schedule::command('portal:uploads-cleanup')->everyTenMinutes()->withoutOverlapping();
 
 Schedule::command('portal:files-purge')->dailyAt('03:30')->withoutOverlapping();
+
+// Long ZIP builds run in the background so other schedules are not delayed.
+Schedule::command('portal:exports-run')->everyMinute()->withoutOverlapping()->runInBackground();
