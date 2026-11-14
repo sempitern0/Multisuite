@@ -182,7 +182,7 @@ new #[Title('Almacenamiento')] class extends Component {
                                 <x-ui::td label="Formato">{{ $part['fstype'] !== '' ? $part['fstype'] : 'sin formato' }}</x-ui::td>
                                 <x-ui::td label="Tamaño">{{ $fmt($part['size']) }}</x-ui::td>
                                 <x-ui::td label="Montaje">{{ $part['mountpoint'] === '' ? 'No montada' : $part['mountpoint'].($part['fs_available'] !== null ? ' · libre '.$fmt($part['fs_available']) : '') }}</x-ui::td>
-                                <x-ui::td label="Portal">@if ($part['in_use'])<x-ui::status>En uso</x-ui::status>@else — @endif</x-ui::td>
+                                <x-ui::td label="Portal">@if ($part['in_use'])<x-ui::status>En uso por el portal</x-ui::status>@else — @endif</x-ui::td>
                             </tr>
                         @empty
                             <x-ui::table-empty colspan="5">Sin particiones con sistema de archivos (disco sin usar).</x-ui::table-empty>

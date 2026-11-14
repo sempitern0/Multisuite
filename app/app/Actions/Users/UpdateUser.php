@@ -18,7 +18,7 @@ class UpdateUser
 {
     use ProfileValidationRules;
 
-    /** @return array<string, list<mixed>> */
+    /** @return array<string, array<int, mixed>> */
     public function rules(User $target): array
     {
         return [

@@ -21,7 +21,7 @@ class CreateUser
 {
     use PasswordValidationRules, ProfileValidationRules, UsernameValidationRules;
 
-    /** @return array<string, list<mixed>> */
+    /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
         return [

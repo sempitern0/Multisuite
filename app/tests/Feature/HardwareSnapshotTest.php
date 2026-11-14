@@ -62,7 +62,7 @@ class HardwareSnapshotTest extends TestCase
         $owner->role = 'owner';
         $owner->save();
         $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->get('/admin/storage')->assertOk()
-            ->assertSee('Discos del servidor')->assertSee('Samsung SSD')->assertSee('en uso por el portal')
+            ->assertSee('Discos del servidor')->assertSee('Samsung SSD')->assertSee('En uso por el portal')
             ->assertSee('No montada')->assertSee('Sin particiones con sistema de archivos');
     }
 
