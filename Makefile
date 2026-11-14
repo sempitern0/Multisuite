@@ -13,6 +13,7 @@ ACCOUNTS_NETWORK := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scri
 TENANCY_CHECK_SCRIPT := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/tenancy-check.ps1
 NAS_DISCOVER := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/nas-discover.ps1
 NAS_APPLY := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/nas-apply.ps1
+NAS_BACKUP := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/nas-backup.ps1
 else
 SHELL := /bin/sh
 SETUP_SCRIPT := sh scripts/setup.sh
@@ -28,6 +29,7 @@ ACCOUNTS_NETWORK := sh scripts/accounts-network.sh
 TENANCY_CHECK_SCRIPT := sh scripts/tenancy-check.sh
 NAS_DISCOVER := sh scripts/nas-discover.sh
 NAS_APPLY := TARGETS="$(TARGETS)" UPLOAD="$(UPLOAD)" YES="$(YES)" sh scripts/nas-apply.sh
+NAS_BACKUP := FILES="$(FILES)" TARGET="$(TARGET)" SNAPSHOT="$(SNAPSHOT)" sh scripts/nas-backup.sh
 endif
 
 .DEFAULT_GOAL := help
@@ -64,7 +66,7 @@ STARTER ?=
 # Explicit all-profiles stop also removes containers started manually through a
 # profile not included in the current .env.
 ALL_PROFILES := --profile dev --profile tools --profile workers --profile scheduler --profile redis --profile https --profile postgres --profile mariadb --profile mysql --profile phpmyadmin --profile mailpit --profile pgweb --profile adminer
-.PHONY: nas-discover nas-apply music-up music-stop music-status music-logs music-config help check status doctor host-config setup reconfigure up up-detached up-wait up-logs start stop restart down build images rebuild ps logs shell artisan composer npm migrate test lint backup env-sync https-setup reset-project worker scheduler redis config tenancy-check
+.PHONY: nas-discover nas-apply nas-backup nas-backup-verify nas-backup-restore nas-backup-snapshots music-up music-stop music-status music-logs music-config help check status doctor host-config setup reconfigure up up-detached up-wait up-logs start stop restart down build images rebuild ps logs shell artisan composer npm migrate test lint backup env-sync https-setup reset-project worker scheduler redis config tenancy-check
 
 help:
 	@echo "Laravel Foundry - self-hosted Laravel environments with Docker Compose"
@@ -81,6 +83,7 @@ help:
 	@echo "Auto music:  music.env enables Navidrome; use MUSIC_AUTO=0 to skip"
 	@echo "Dev NAS:     private storage volume; use NAS_DEV=0 with real disks"
 	@echo "Real disks:  make nas-discover | nas-apply TARGETS='/mnt/disk1' (Linux server)"
+	@echo "NAS backup:  make nas-backup | nas-backup-verify | nas-backup-snapshots | nas-backup-restore TARGET=/empty/dir"
 	@echo "Bootstrap:   migrations + unset limits after up/start; DEV_BOOTSTRAP=0 skips"
 	@echo "Operations:  make env-sync | backup | https-setup | reset-project"
 	@echo "SaaS:        make tenancy-check     Check local tenant hostname routing"
@@ -244,6 +247,19 @@ nas-discover:
 
 nas-apply:
 	@$(NAS_APPLY)
+
+# Encrypted backup to an external destination (backup.env); scheduled by the operator.
+nas-backup:
+	@$(NAS_BACKUP) run
+
+nas-backup-verify:
+	@$(NAS_BACKUP) verify
+
+nas-backup-restore:
+	@$(NAS_BACKUP) restore
+
+nas-backup-snapshots:
+	@$(NAS_BACKUP) snapshots
 
 # Independent commands deliberately fail if music.env is absent or invalid.
 music-up: accounts-network

@@ -35,6 +35,7 @@ jobs:
           docker compose -f compose.yaml -f deploy/compose.portal-accounts.example.yaml -f deploy/compose.nas-dev.yaml config --quiet
           python3 tests/accounts-profiles.py
           python3 tests/nas-disk-discovery.py
+          python3 tests/nas-backup.py
       - name: Test music session bridge and gateway
         run: |
           node --test tests/music-session.test.mjs
@@ -88,6 +89,7 @@ jobs:
           make -n start
           make -n stop
           make -n backup
+          make -n nas-backup && make -n nas-backup-verify
           make -n reset-project
           make -n rebuild
           make -n lint

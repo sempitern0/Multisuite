@@ -24,7 +24,7 @@ class StorageOverview
         'missing' => 'Ya no figura en la configuración del servidor',
     ];
 
-    public function __construct(private StorageInventory $inventory, private StorageReservations $reservations, private HardwareSnapshot $hardware) {}
+    public function __construct(private StorageInventory $inventory, private StorageReservations $reservations, private HardwareSnapshot $hardware, private BackupStatus $backup) {}
 
     /** @return array<string, mixed> */
     public function build(User $viewer, string $query, int $perPage = 25): array
@@ -81,6 +81,7 @@ class StorageOverview
             'canManagePools' => Gate::forUser($viewer)->allows('manage-storage-pools'),
             'virtualHost' => self::runsInDesktopVm(),
             'hardware' => $this->hardware->read(),
+            'backup' => $this->backup->read(),
             'presets' => Bytes::presets(),
             'units' => array_keys(Bytes::UNITS),
         ];

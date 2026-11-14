@@ -41,6 +41,7 @@ dist/
 /.foundry-runtime-state.tmp
 /app-backups/
 /backups/
+/backup.env
 
 # Editor, OS and tool-specific temporary files
 .DS_Store
