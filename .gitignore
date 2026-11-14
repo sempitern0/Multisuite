@@ -65,6 +65,8 @@ yarn-error.log*
 
 # Host-specific generated Docker Compose configuration
 /compose.override.yaml
+# Real disks prepared on the server by make nas-apply
+/compose.nas.yaml
 /.foundry-host-override.*
 /.foundry-host.json
 

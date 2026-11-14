@@ -22,6 +22,11 @@ Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md
 - Mis archivos muestra en cada carpeta sus elementos y su tamaño exacto acumulado.
 - Almacenamiento y `portal:dev-bootstrap` avisan cuando la capacidad procede del disco virtual de Docker Desktop.
 
+## En revisión: S02.4 descubrimiento de discos — rama `feat/s02-disk-discovery` (apilada sobre #15)
+- `make nas-discover` (solo lectura) y `make nas-apply TARGETS=…` preparan discos ya montados en el servidor Linux: marca, carpeta privada 0700 y `compose.nas.yaml` local, que Make prefiere al NAS de desarrollo. Nunca formatea, particiona ni monta.
+- Panel **Discos del servidor** en Almacenamiento a partir del inventario `lsblk` (solo lectura).
+- Validado: `tests/nas-disk-discovery.py` con `lsblk`/`findmnt` simulados; `HardwareSnapshotTest` en CI. Pendiente: prueba en el servidor real.
+
 ## Siguiente acción ejecutable
 1. Usuario confirmó el 2026-11-13 que `main` funciona (Almacenamiento y Mis archivos). Revisar la PR de información de carpetas.
 2. S03.3 Papelera y versiones (rama nueva desde `main`).

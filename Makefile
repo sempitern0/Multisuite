@@ -11,6 +11,8 @@ HOST_DOCTOR := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/e
 HTTP_CHECK := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/check-http.ps1
 ACCOUNTS_NETWORK := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/accounts-network.ps1
 TENANCY_CHECK_SCRIPT := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/tenancy-check.ps1
+NAS_DISCOVER := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/nas-discover.ps1
+NAS_APPLY := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/nas-apply.ps1
 else
 SHELL := /bin/sh
 SETUP_SCRIPT := sh scripts/setup.sh
@@ -24,6 +26,8 @@ HOST_DOCTOR := sh scripts/environment.sh doctor
 HTTP_CHECK := sh scripts/check-http.sh
 ACCOUNTS_NETWORK := sh scripts/accounts-network.sh
 TENANCY_CHECK_SCRIPT := sh scripts/tenancy-check.sh
+NAS_DISCOVER := sh scripts/nas-discover.sh
+NAS_APPLY := TARGETS="$(TARGETS)" UPLOAD="$(UPLOAD)" YES="$(YES)" sh scripts/nas-apply.sh
 endif
 
 .DEFAULT_GOAL := help
@@ -32,9 +36,10 @@ DC := docker compose
 # Override with MUSIC_AUTO=0 for Laravel-only operation.
 MUSIC_AUTO ?= $(if $(wildcard music.env),1,0)
 MUSIC_DC := docker compose --env-file music.env -f compose.music.yaml
-# Development NAS volume (deploy/compose.nas-dev.yaml). NAS_DEV=0 opts out
-# (e.g. when NAS_STORAGE_VOLUMES points at real disks in app/.env).
-NAS_DEV ?= 1
+# Real disks prepared by `make nas-apply` (compose.nas.yaml, local) replace the
+# development NAS volume (deploy/compose.nas-dev.yaml). NAS_DEV=0 also opts out.
+NAS_REAL := $(wildcard compose.nas.yaml)
+NAS_DEV ?= $(if $(NAS_REAL),0,1)
 DC_FILES := -f compose.yaml $(if $(wildcard compose.override.yaml),-f compose.override.yaml)
 ifeq ($(MUSIC_AUTO),1)
 # Keep host-generated overrides; append service connectivity without rewriting them.
@@ -44,7 +49,10 @@ endif
 ifeq ($(NAS_DEV),1)
 DC_FILES += -f deploy/compose.nas-dev.yaml
 endif
-ifneq ($(MUSIC_AUTO)$(NAS_DEV),00)
+ifneq ($(NAS_REAL),)
+DC_FILES += -f compose.nas.yaml
+endif
+ifneq ($(MUSIC_AUTO)$(NAS_DEV)$(NAS_REAL),00)
 DC := docker compose $(DC_FILES)
 endif
 # After start: wait for the DB, migrate and fill unset storage limits. Independent of
@@ -56,7 +64,7 @@ STARTER ?=
 # Explicit all-profiles stop also removes containers started manually through a
 # profile not included in the current .env.
 ALL_PROFILES := --profile dev --profile tools --profile workers --profile scheduler --profile redis --profile https --profile postgres --profile mariadb --profile mysql --profile phpmyadmin --profile mailpit --profile pgweb --profile adminer
-.PHONY: music-up music-stop music-status music-logs music-config help check status doctor host-config setup reconfigure up up-detached up-wait up-logs start stop restart down build images rebuild ps logs shell artisan composer npm migrate test lint backup env-sync https-setup reset-project worker scheduler redis config tenancy-check
+.PHONY: nas-discover nas-apply music-up music-stop music-status music-logs music-config help check status doctor host-config setup reconfigure up up-detached up-wait up-logs start stop restart down build images rebuild ps logs shell artisan composer npm migrate test lint backup env-sync https-setup reset-project worker scheduler redis config tenancy-check
 
 help:
 	@echo "Laravel Foundry - self-hosted Laravel environments with Docker Compose"
@@ -72,6 +80,7 @@ help:
 	@echo "Music:       make music-up | music-stop | music-status | music-logs"
 	@echo "Auto music:  music.env enables Navidrome; use MUSIC_AUTO=0 to skip"
 	@echo "Dev NAS:     private storage volume; use NAS_DEV=0 with real disks"
+	@echo "Real disks:  make nas-discover | nas-apply TARGETS='/mnt/disk1' (Linux server)"
 	@echo "Bootstrap:   migrations + unset limits after up/start; DEV_BOOTSTRAP=0 skips"
 	@echo "Operations:  make env-sync | backup | https-setup | reset-project"
 	@echo "SaaS:        make tenancy-check     Check local tenant hostname routing"
@@ -228,6 +237,13 @@ reset-project:
 
 tenancy-check:
 	$(TENANCY_CHECK_SCRIPT)
+
+# Read-only disk inventory, then preparation of chosen mount points (Linux server).
+nas-discover:
+	@$(NAS_DISCOVER)
+
+nas-apply:
+	@$(NAS_APPLY)
 
 # Independent commands deliberately fail if music.env is absent or invalid.
 music-up: accounts-network

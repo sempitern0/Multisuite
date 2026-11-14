@@ -19,7 +19,7 @@ El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada ser
 | `app/` | Aplicación Laravel (se versiona entera con lockfiles) |
 | `compose.yaml`, `compose.production.yaml` | Stack del portal heredado de Laravel Foundry |
 | `compose.music.yaml`, `music.env.example` | Navidrome independiente |
-| `deploy/*.yaml` | Overlays que aplica Make: cuentas/red compartida con Música y NAS de desarrollo (`compose.nas-dev.yaml`) |
+| `deploy/*.yaml` | Overlays que aplica Make: cuentas/red compartida con Música y NAS de desarrollo (`compose.nas-dev.yaml`). En el servidor, `compose.nas.yaml` (local, generado por `make nas-apply`) lo sustituye |
 | `docker/` | Imágenes PHP/Nginx, Caddy, gateway musical (`docker/music-proxy`) |
 | `scripts/` | Setup/preflight/backup en Bash y PowerShell (paridad obligatoria) |
 | `tests/` | Pruebas de infraestructura (Python/Bash/PowerShell/Node) y laboratorio `tests/isolation/` |
@@ -37,7 +37,7 @@ El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada ser
 | Sesión musical | `MusicSessionController`, `Services/MusicSessionBridge`, `docker/music-proxy/` | MUSIC_SESSION_BRIDGE.md |
 | Auditoría | `Services/AdminAudit`, `Enums/ServiceAuditAction`, `AdminAuditController` | ADMIN_AUDIT.md |
 | Mis archivos | `Services/Files/PersonalFiles`, `FileController`, `Models/{Folder,UserFile}`, `Policies/{FolderPolicy,UserFilePolicy}`, `resources/js/files.js`, `resources/views/files/` | STORAGE.md §5b |
-| Almacenamiento | `Services/Storage/{VolumeProbe,StorageInventory,StorageReservations,StorageOverview,PrivateUploads}`, `StorageController`, `PrivateUploadController`, `Support/Bytes`, `config/nas.php`, `portal:storage-status`, `portal:storage-quota`, `portal:uploads-cleanup`, `portal:dev-bootstrap` | STORAGE.md |
+| Almacenamiento | `Services/Storage/{VolumeProbe,StorageInventory,StorageReservations,StorageOverview,PrivateUploads}`, `StorageController`, `PrivateUploadController`, `Support/Bytes`, `config/nas.php`, `portal:storage-status`, `portal:storage-quota`, `portal:uploads-cleanup`, `portal:dev-bootstrap`, `Services/Storage/HardwareSnapshot`, `scripts/nas-discover.*`, `scripts/nas-apply.*` | STORAGE.md |
 
 Gates: `manage-invitations`, `view-admin-audit`, `view-storage` (owner/admin); `manage-storage-pools` (owner); `manage-storage-quota` (owner → todos; admin → miembros).
 
