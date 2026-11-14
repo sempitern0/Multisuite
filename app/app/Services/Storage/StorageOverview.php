@@ -2,7 +2,6 @@
 
 namespace App\Services\Storage;
 
-use App\Models\PrivateUpload;
 use App\Models\StoragePool;
 use App\Models\StorageReservation;
 use App\Models\User;
@@ -108,13 +107,22 @@ class StorageOverview
      */
     private function staleReservations(): array
     {
-        $pending = PrivateUpload::where('state', 'pending')->pluck('id')->flip();
+        // One aggregate in SQL instead of loading every pending upload id into PHP.
+        $rows = StorageReservation::query()
+            ->leftJoin('private_uploads', function ($join): void {
+                $join->on('private_uploads.id', '=', 'storage_reservations.id')->where('private_uploads.state', '=', 'pending');
+            })
+            ->where('storage_reservations.state', 'reserved')
+            ->where('storage_reservations.expires_at', '<', now())
+            ->groupBy('storage_reservations.pool_id')
+            ->selectRaw('storage_reservations.pool_id as pool_id')
+            ->selectRaw('coalesce(sum(case when private_uploads.id is not null then storage_reservations.bytes else 0 end), 0) as automatic')
+            ->selectRaw('coalesce(sum(case when private_uploads.id is null then storage_reservations.bytes else 0 end), 0) as manual')
+            ->selectRaw('count(*) as stale_count')
+            ->toBase()->get();
         $stale = [];
-        foreach (StorageReservation::where('state', 'reserved')->where('expires_at', '<', now())->get(['id', 'pool_id', 'bytes']) as $reservation) {
-            $entry = $stale[$reservation->pool_id] ?? ['automatic' => 0, 'manual' => 0, 'count' => 0];
-            $entry[$pending->has($reservation->id) ? 'automatic' : 'manual'] += (int) $reservation->bytes;
-            $entry['count']++;
-            $stale[$reservation->pool_id] = $entry;
+        foreach ($rows as $row) {
+            $stale[(string) $row->pool_id] = ['automatic' => (int) $row->automatic, 'manual' => (int) $row->manual, 'count' => (int) $row->stale_count];
         }
 
         return $stale;

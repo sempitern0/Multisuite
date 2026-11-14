@@ -18,10 +18,10 @@ class CleanupUploads extends Command
     public function handle(PrivateUploads $uploads): int
     {
         $failed = false;
-        foreach (StorageReservation::where('state', 'reserved')->where('expires_at', '<', now())->lazyById(100) as $reservation) {
-            if (! PrivateUpload::whereKey($reservation->id)->where('state', 'pending')->exists()) {
-                continue;
-            }
+        // Only expired reservations that still belong to a pending upload (one query per chunk, not per row).
+        $expired = StorageReservation::where('state', 'reserved')->where('expires_at', '<', now())
+            ->whereIn('id', PrivateUpload::select('id')->where('state', 'pending'));
+        foreach ($expired->lazyById(100) as $reservation) {
             try {
                 $uploads->cancel(User::findOrFail($reservation->user_id), $reservation->id);
             } catch (Throwable) {

@@ -67,17 +67,20 @@ jobs:
       - name: Feature and unit tests
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: php artisan test
-      - name: PostgreSQL storage concurrency
+      - name: PostgreSQL integration (storage concurrency, query plans)
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         env:
           STORAGE_CONCURRENCY_TEST: '1'
+          QUERY_PLAN_TEST: '1'
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
           DB_PORT: '5432'
           DB_DATABASE: multisuite_storage_ci
           DB_USERNAME: storage_ci
           DB_PASSWORD: disposable-storage-ci
-        run: php artisan test tests/Integration/StorageConcurrencyTest.php
+        run: |
+          php artisan test tests/Integration/StorageConcurrencyTest.php
+          php artisan test tests/Integration/QueryPlanTest.php
       - name: Navidrome account integration
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: |
