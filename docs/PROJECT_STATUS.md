@@ -18,6 +18,11 @@ Instantánea a 2026-11-14. Historial detallado: git log y PRs #1–#17. Este arc
 
 Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md); entorno local desechable mientras no haya producción.
 
+## En revisión: S03.4 descargas ZIP — rama `feat/s03-zip-exports`
+- Selección, carpeta o todo; ZIP sin compresión en la ubicación privada con reserva temporal que no carga la cuota; ≤ 50 MiB al momento y el resto por `portal:exports-run`; 24 h y borrado verificado antes de liberar el espacio.
+- Sin dependencias nuevas (extensión `zip` de PHP ya presente; Packagist no es accesible desde el entorno del agente).
+- Tests: `FileExportsTest` (contenido y rutas, nombres repetidos, papelera/versiones excluidas, cuota intacta, scheduler y caducidad, fallo con limpieza, aislamiento, límites, sin espacio). `PersonalFilesTest` usa el nuevo trait `UsesPrivateStorage`.
+
 ## Siguiente acción ejecutable
 1. Usuario: `git checkout main && git pull && make up` (migra solo) y probar papelera, restaurar, vaciar y versiones (subir dos veces el mismo nombre).
 2. En el servidor Linux: `make nas-discover` y `make nas-apply TARGETS="…"`.

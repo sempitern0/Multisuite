@@ -35,6 +35,11 @@ return [
     'trash_days' => (int) env('NAS_TRASH_DAYS', 30),
     'max_versions' => (int) env('NAS_MAX_VERSIONS', 5),
 
+    // ZIP downloads: built during the request up to this size, otherwise by the
+    // scheduler (portal:exports-run); offered for this many hours, then deleted.
+    'export_sync_max_bytes' => (int) env('NAS_EXPORT_SYNC_MAX_BYTES', 52428800),
+    'export_ttl_hours' => (int) env('NAS_EXPORT_TTL_HOURS', 24),
+
     // Read-only previews (Mis archivos). Larger text is offered as download only.
     'preview_text_max_bytes' => 1048576,
 ];

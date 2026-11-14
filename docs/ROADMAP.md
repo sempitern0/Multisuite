@@ -10,11 +10,10 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - Un incremento = una rama desde `main` + una PR (apilada si depende de otra). Se fusiona solo con indicación del usuario.
 
 ## Orden vigente
-1. **S03.4** — Descargas ZIP (selección, carpeta, «Exportar todo») en segundo plano.
-2. **S05.1** — Backup del NAS (DB, servicios y archivos) a destino externo con restauración ensayada.
-3. **S04** — Publicación/retirada administrativa y movimientos entre discos.
-4. **P03** — Cuentas existentes, baja integral, VPN/TLS y segundo dispositivo.
-5. **P04/P05** — Nuevos servicios (uno por PR), despliegue reproducible y piloto familiar.
+1. **S05.1** — Backup del NAS (DB, servicios y archivos) a destino externo con restauración ensayada.
+2. **S04** — Publicación/retirada administrativa y movimientos entre discos.
+3. **P03** — Cuentas existentes, baja integral, VPN/TLS y segundo dispositivo.
+4. **P04/P05** — Nuevos servicios (uno por PR), despliegue reproducible y piloto familiar.
 
 ## S02 — Almacenamiento y cuotas
 - [ ] S02.3 QA ampliado (opcional antes del piloto): móvil 360 px, teclado, zoom 200 %, disco desconectado, conflicto de grupos, sobreasignación, admin frente a owner.
@@ -28,7 +27,7 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 ## S03 — Mis archivos (decisión 2026-11-13: dentro del portal, carpetas propias)
 - [ ] Mover archivos y carpetas entre carpetas.
 - [ ] S03.3 QA del usuario: papelera, restaurar, vaciar, versiones.
-- [ ] S03.4 ZIP de selección o carpeta y «Exportar todo», generado por job con reserva temporal, caducidad y limpieza; nunca extraer ZIP subidos.
+- [ ] S03.4 QA del usuario: ZIP de selección, carpeta y exportar todo; descarga grande en segundo plano (requiere el contenedor `scheduler`).
 - [ ] Revisar límites Nginx/PHP para archivos grandes; valorar subida por trozos/reanudable.
 - [ ] Reconciliar archivos `ready` ausentes, corruptos o restaurados desde backup.
 - [ ] Conectar contenido con bibliotecas por usuario de Navidrome/servicios (escaneo bajo demanda).

@@ -216,6 +216,17 @@ class PrivateUploads
         }
     }
 
+    /**
+     * The verified private directory, its capacity group and location ID, for other
+     * private artefacts (ZIP exports) that must live next to the blobs.
+     *
+     * @return array{string, string, string}
+     */
+    public function privateArea(): array
+    {
+        return $this->destination();
+    }
+
     /** @return array{string, string, string} */
     private function destination(): array
     {

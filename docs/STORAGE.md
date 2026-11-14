@@ -83,6 +83,7 @@ Reglas del inventario: mismo FS declarado en grupos distintos → `configuration
 - `reserve(User, poolId, bytes, UUID)`: bloquea usuario → grupo → cuota → reserva (orden fijo en todas las mutaciones). Idempotente por UUID; otro usuario o parámetros distintos no reutilizan la clave. Caduca a los 30 min, pero **una reserva caducada sigue contabilizada** hasta limpieza verificada.
 - `commit(User, UUID, actualBytes)`: solo el finalizador de confianza tras medir bytes reales; no supera lo reservado ni confirma tras caducar.
 - `release(User, UUID)`: solo el limpiador tras detener el escritor y verificar que no quedan temporales.
+- `reserveTemporary(User, pool, bytes, UUID, ttl)`: espacio para una copia temporal (ZIP) comprobado contra el disco, sin tocar la cuota (`charges_user=false`); nunca se confirma, se libera con `release()` tras verificar el borrado.
 - `releaseCommitted(User, UUID)`: solo el borrado definitivo, tras verificar que el blob ya no existe; devuelve los bytes confirmados (reserva `purged`). Repetirlo no tiene efecto.
 - `setUserQuota`, `setPoolLimit`, `setDefaultUserQuota`: devuelven el valor anterior (para auditoría); rechazan límites por debajo de usado + reservado.
 - La baja de un usuario se bloquea mientras tenga espacio usado/reservado.
@@ -124,7 +125,12 @@ Decisión del usuario (2026-11-13): gestor de archivos propio del portal con car
 - **Borrado definitivo**: `PrivateUploads::purge` borra el blob, comprueba que ha desaparecido y, en la misma transacción, `StorageReservations::releaseCommitted` devuelve los bytes a la cuota y al disco (reserva `purged`, subida `purged`). Las versiones se purgan antes que el archivo, cada una en su propia transacción. Si el volumen no está disponible o hay un enlace simbólico, no se borra nada y todo sigue contado (fallo cerrado).
 - **Versiones**: subir un archivo con el mismo nombre (sin distinguir mayúsculas) en la misma carpeta crea una versión. El cambio ocurre **solo cuando los bytes nuevos están verificados**: un listener síncrono de `PrivateUploadReady` dentro de la transacción de recepción. Las versiones cuentan en la cuota, se pueden descargar, restaurar (intercambio con la actual, conservando el nombre visible) o borrar.
 - **Retención**: `portal:files-purge` (scheduler, diario 03:30) borra lo que lleva más de `NAS_TRASH_DAYS` (30) en la papelera y las versiones que exceden `NAS_MAX_VERSIONS` (5) por archivo. Lo que falla se reintenta al día siguiente.
-- **Pendiente**: mover entre carpetas, ZIP (S03.4).
+- **Descargas ZIP (S03.4)**: casillas en cada carpeta/archivo y botones «Descargar selección en ZIP», «Descargar esta carpeta en ZIP» o, en la raíz, «Exportar todo en ZIP». Página **Descargas ZIP** (`/files/exports`).
+  - Contenido: instantánea de los archivos actuales al pedirlo (nunca papelera ni versiones), con la estructura de carpetas; un nombre repetido dentro de una carpeta del ZIP se guarda como «nombre (2)». Sin compresión (`CM_STORE`, ZIP64 automático de libzip), así que el tamaño estimado es exacto; nunca se extrae ningún ZIP subido.
+  - Espacio: `StorageReservations::reserveTemporary` reserva la estimación en el disco (límite y espacio físico) **sin cargarla a la cuota de la persona**; si no cabe, se rechaza antes de empezar. El ZIP vive en la ubicación privada (`<uuid>.zip`, 0600) con la identidad de la ubicación comprobada.
+  - Generación: hasta `NAS_EXPORT_SYNC_MAX_BYTES` (50 MiB) en la propia petición; si es mayor, `portal:exports-run` (scheduler, cada minuto, en segundo plano y sin solaparse) con reclamación atómica `queued → building`, sin reintentos de cola que dupliquen trabajo. Un proceso caído se marca como fallido a las 6 h.
+  - Ciclo de vida: descargable durante `NAS_EXPORT_TTL_HOURS` (24 h). Después, y al eliminarlo o si falla, se borran `.zip`/`.zip.part`, se verifica y solo entonces se libera la reserva (fallo cerrado si la ubicación no está disponible). Máximo 3 activas por persona y 10 000 archivos por ZIP. Una cuenta con ZIP activos no se puede eliminar hasta que caduquen.
+- **Pendiente**: mover entre carpetas.
 
 ## 6. Contenido personal y publicación (contrato aprobado 2026-11-11)
 
@@ -143,7 +149,8 @@ Decisión del usuario (2026-11-13): gestor de archivos propio del portal con car
 | Mis archivos: carpetas, subida web, vista previa y descarga (S03.2) | Integrado (PR #13) |
 | Descubrimiento de discos del servidor y panel de solo lectura (S02.4) | Integrado (PR #16); pendiente prueba en servidor real |
 | Papelera, borrado verificado, versiones y retención (S03.3) | Integrado (PR #17) |
+| Descargas ZIP: selección, carpeta y exportar todo (S03.4) | Rama `feat/s03-zip-exports` |
 | GUI de almacenamiento y cuota por defecto (S02.3) | Rama `feat/s02-storage-admin-gui`, pendiente de CI y QA visual |
-| ZIP, mover entre carpetas, reconciliación, bibliotecas por usuario, publicación, movimientos y backup | Pendiente (ROADMAP S03–S05) |
+| Mover entre carpetas, reconciliación, bibliotecas por usuario, publicación, movimientos y backup | Pendiente (ROADMAP S03–S05) |
 
 Tests: `make test CMD="--filter=Storage"`, `--filter=PrivateUploadsTest`, `--filter=PersonalFilesTest`, `--filter=BytesTest`.

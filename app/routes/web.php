@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminAuditController;
 use App\Http\Controllers\FileController;
+use App\Http\Controllers\FileExportController;
 use App\Http\Controllers\InitialPasswordController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\ManualUserController;
@@ -34,6 +35,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('folders/{folderId}', [FileController::class, 'updateFolder'])->whereNumber('folderId')->name('folders.update');
         Route::delete('folders/{folderId}', [FileController::class, 'destroyFolder'])->whereNumber('folderId')->name('folders.destroy');
         Route::post('/', [FileController::class, 'store'])->middleware('throttle:60,1')->name('store');
+        Route::get('exports', [FileExportController::class, 'index'])->name('exports.index');
+        Route::post('exports', [FileExportController::class, 'store'])->middleware('throttle:10,1')->name('exports.store');
+        Route::get('exports/{exportId}/download', [FileExportController::class, 'download'])->whereUuid('exportId')->name('exports.download');
+        Route::delete('exports/{exportId}', [FileExportController::class, 'destroy'])->whereUuid('exportId')->name('exports.destroy');
         Route::get('trash', [FileController::class, 'trash'])->name('trash');
         Route::delete('trash', [FileController::class, 'emptyTrash'])->name('trash.empty');
         Route::get('{fileId}', [FileController::class, 'show'])->whereNumber('fileId')->name('show');

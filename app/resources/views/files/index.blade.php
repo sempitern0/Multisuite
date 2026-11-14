@@ -59,6 +59,7 @@
                 </div>
             @endif
             <flux:button :href="route('files.trash')" icon="trash">Papelera</flux:button>
+            <flux:button :href="route('files.exports.index')" icon="archive-box-arrow-down">Descargas ZIP</flux:button>
             <form method="POST" action="{{ route('files.folders.store') }}" class="flex flex-wrap items-end gap-2">
                 @csrf
                 <input type="hidden" name="parent" value="{{ $folder?->id }}">
@@ -72,10 +73,23 @@
             <flux:text>{{ $pending }} {{ $pending === 1 ? 'subida sin terminar' : 'subidas sin terminar' }}. Si cerraste la página a mitad, el espacio se libera solo al cabo de unos 30–40 minutos.</flux:text>
         @endif
 
+        @error('export')
+            <p role="alert" class="rounded-lg border border-red-300 p-4 text-red-700 dark:border-red-800 dark:text-red-400">{{ $message }}</p>
+        @enderror
+        <form method="POST" action="{{ route('files.exports.store') }}" id="zip-form" class="space-y-3">
+        @csrf
+        <input type="hidden" name="folder" value="{{ $folder?->id }}">
+        @if ($folders->isNotEmpty() || $entries->isNotEmpty())
+            <div class="flex flex-wrap items-center gap-3">
+                <flux:button type="submit" name="scope" value="selection" size="sm">Descargar selección en ZIP</flux:button>
+                <flux:button type="submit" name="scope" value="{{ $folder === null ? 'all' : 'folder' }}" size="sm">{{ $folder === null ? 'Exportar todo en ZIP' : 'Descargar esta carpeta en ZIP' }}</flux:button>
+            </div>
+        @endif
         <ul class="divide-y rounded-xl border border-zinc-200 dark:border-zinc-700" aria-label="Contenido de la carpeta">
             @foreach ($folders as $child)
                 <li class="flex items-center justify-between gap-4 p-4">
-                    <a href="{{ route('files.folder', $child) }}" class="flex min-w-0 items-center gap-3 font-medium underline-offset-4 hover:underline">
+                    <input type="checkbox" name="folders[]" value="{{ $child->id }}" class="size-4 shrink-0" aria-label="Seleccionar carpeta {{ $child->name }}">
+                    <a href="{{ route('files.folder', $child) }}" class="me-auto flex min-w-0 items-center gap-3 font-medium underline-offset-4 hover:underline">
                         <span aria-hidden="true">📁</span><span class="truncate">{{ $child->name }}</span>
                     </a>
                     <flux:text>{{ $describe($summaries[$child->id] ?? ['items' => 0, 'bytes' => 0]) }}</flux:text>
@@ -83,7 +97,8 @@
             @endforeach
             @foreach ($entries as $entry)
                 <li class="flex flex-wrap items-center justify-between gap-4 p-4">
-                    <a href="{{ route('files.show', $entry) }}" class="flex min-w-0 items-center gap-3 underline-offset-4 hover:underline">
+                    <input type="checkbox" name="files[]" value="{{ $entry->id }}" class="size-4 shrink-0" aria-label="Seleccionar {{ $entry->name }}">
+                    <a href="{{ route('files.show', $entry) }}" class="me-auto flex min-w-0 items-center gap-3 underline-offset-4 hover:underline">
                         <span aria-hidden="true">{{ $icon($entry->mime) }}</span><span class="truncate">{{ $entry->name }}</span>
                     </a>
                     <div class="flex items-center gap-4 text-sm text-zinc-600 dark:text-zinc-300">
@@ -96,6 +111,7 @@
                 <li class="p-5 text-zinc-600 dark:text-zinc-300">Esta carpeta está vacía.</li>
             @endif
         </ul>
+        </form>
 
         @if ($folder !== null)
             <section aria-labelledby="folder-settings" class="grid gap-4 rounded-xl border border-zinc-200 p-5 sm:grid-cols-2 dark:border-zinc-700">
