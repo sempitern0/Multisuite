@@ -2,82 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\UserStorageQuota;
+use App\Services\Files\FilePreview;
 use App\Services\Files\PersonalFiles;
-use Illuminate\Database\RecordsNotFoundException;
+use App\Support\DomainErrors;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
- * Mis archivos. Read-only previews are limited to images, PDF (browser viewer),
- * sanitised Markdown and plain text; everything else is download-only.
+ * Non-page endpoints of Mis archivos: upload registration (JSON, used by files.js) and
+ * file content. The pages are Livewire (resources/views/pages/files).
  */
 class FileController extends Controller
 {
-    private const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-
-    private const TEXT_MIMES = ['text/plain', 'text/markdown', 'text/csv', 'application/json'];
-
     public function __construct(private PersonalFiles $files) {}
-
-    public function index(Request $request, ?int $folderId = null): Response
-    {
-        $user = $request->user();
-        $folder = $this->files->folder($user, $folderId);
-        if ($folder !== null) {
-            Gate::authorize('view', $folder);
-        }
-        $storage = UserStorageQuota::summaryFor($user->id);
-
-        return response()->view('files.index', [
-            'folder' => $folder,
-            'breadcrumbs' => $this->files->breadcrumbs($folder),
-            'folders' => $this->files->folders($user, $folder),
-            'entries' => $this->files->files($user, $folder),
-            'pending' => $this->files->pendingCount($user),
-            'summaries' => $this->files->summaries($user),
-            'enabled' => (bool) config('nas.uploads_enabled'),
-            'maxBytes' => (int) config('nas.upload_max_bytes'),
-            'used' => $storage['used'],
-            'limit' => $storage['limit'],
-        ]);
-    }
-
-    public function storeFolder(Request $request): RedirectResponse
-    {
-        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'parent' => ['nullable', 'integer']]);
-        $folder = $this->guard('folder', fn () => $this->files->createFolder($request->user(), isset($data['parent']) ? (int) $data['parent'] : null, $data['name']));
-
-        return redirect()->route('files.folder', $folder)->with('status', 'Carpeta «'.$folder->name.'» creada.');
-    }
-
-    public function updateFolder(Request $request, int $folderId): RedirectResponse
-    {
-        Gate::authorize('update', $this->files->folder($request->user(), $folderId));
-        $data = $request->validate(['name' => ['required', 'string', 'max:255']]);
-        $folder = $this->guard('folder_name', fn () => $this->files->renameFolder($request->user(), $folderId, $data['name']));
-
-        return redirect()->route('files.folder', $folder)->with('status', 'Carpeta renombrada.');
-    }
-
-    public function destroyFolder(Request $request, int $folderId): RedirectResponse
-    {
-        $folder = $this->files->folder($request->user(), $folderId);
-        Gate::authorize('update', $folder);
-        $parent = $folder?->parent_id;
-        $this->guard('folder_delete', fn () => $this->files->deleteEmptyFolder($request->user(), $folderId));
-
-        return ($parent === null ? redirect()->route('files.index') : redirect()->route('files.folder', $parent))
-            ->with('status', 'Carpeta eliminada.');
-    }
 
     /** Step 1 of an upload from the page: reserve quota and register the entry. */
     public function store(Request $request): JsonResponse
@@ -88,127 +29,16 @@ class FileController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'folder' => ['nullable', 'integer'],
         ]);
-        try {
-            $file = $this->files->begin($request->user(), isset($data['folder']) ? (int) $data['folder'] : null, $data['name'], (int) $data['bytes'], $data['key']);
-        } catch (RecordsNotFoundException $exception) {
-            throw $exception; // Foreign or missing folder: 404, never a validation message.
-        } catch (RuntimeException $exception) {
-            // Domain messages are written for people and never contain paths.
-            throw ValidationException::withMessages(['upload' => $exception->getMessage()]);
-        }
+        // A foreign or missing folder stays a 404; domain refusals are written for people.
+        $file = DomainErrors::guard('upload', fn () => $this->files->begin(
+            $request->user(),
+            isset($data['folder']) ? (int) $data['folder'] : null,
+            $data['name'],
+            (int) $data['bytes'],
+            $data['key'],
+        ));
 
         return response()->json(['id' => $file->id, 'upload' => $file->upload_id, 'name' => $file->name], 201);
-    }
-
-    public function update(Request $request, int $fileId): RedirectResponse
-    {
-        Gate::authorize('update', $this->files->file($request->user(), $fileId));
-        $data = $request->validate(['name' => ['required', 'string', 'max:255']]);
-        $file = $this->guard('file_name', fn () => $this->files->renameFile($request->user(), $fileId, $data['name']));
-
-        return redirect()->route('files.show', $file)->with('status', 'Archivo renombrado.');
-    }
-
-    public function trash(Request $request): Response
-    {
-        $user = $request->user();
-
-        return response()->view('files.trash', [
-            'entries' => $this->files->trashed($user),
-            'bytes' => $this->files->trashBytes($user),
-            'days' => (int) config('nas.trash_days'),
-        ]);
-    }
-
-    public function destroy(Request $request, int $fileId): RedirectResponse
-    {
-        Gate::authorize('update', $this->files->file($request->user(), $fileId));
-        $file = $this->guard('file_trash', fn () => $this->files->trash($request->user(), $fileId));
-        $back = $file->original_folder_id === null ? redirect()->route('files.index') : redirect()->route('files.folder', $file->original_folder_id);
-
-        return $back->with('status', '«'.$file->name.'» se ha movido a la papelera. Puedes restaurarlo durante '.(int) config('nas.trash_days').' días.');
-    }
-
-    public function restore(Request $request, int $fileId): RedirectResponse
-    {
-        Gate::authorize('update', $this->files->file($request->user(), $fileId));
-        $file = $this->guard('file_trash', fn () => $this->files->restore($request->user(), $fileId));
-
-        return redirect()->route('files.show', $file)->with('status', 'Archivo restaurado como «'.$file->name.'».');
-    }
-
-    public function purge(Request $request, int $fileId): RedirectResponse
-    {
-        $file = $this->files->file($request->user(), $fileId);
-        Gate::authorize('update', $file);
-        $current = $file->version_of_id;
-        $this->guard('file_purge', fn () => $this->files->purge($request->user(), $fileId));
-
-        return ($current === null ? redirect()->route('files.trash') : redirect()->route('files.show', $current))
-            ->with('status', 'Borrado definitivamente. El espacio ya está disponible.');
-    }
-
-    public function emptyTrash(Request $request): RedirectResponse
-    {
-        $failed = $this->files->emptyTrash($request->user());
-
-        return redirect()->route('files.trash')->with('status', $failed === 0
-            ? 'Papelera vaciada. El espacio ya está disponible.'
-            : $failed.' archivos no se pudieron borrar (el disco no está disponible) y siguen en la papelera.');
-    }
-
-    public function promote(Request $request, int $fileId): RedirectResponse
-    {
-        Gate::authorize('update', $this->files->file($request->user(), $fileId));
-        $file = $this->guard('file_version', fn () => $this->files->promote($request->user(), $fileId));
-
-        return redirect()->route('files.show', $file)->with('status', 'Versión restaurada. La anterior queda guardada como versión.');
-    }
-
-    public function show(Request $request, int $fileId): Response
-    {
-        $file = $this->files->file($request->user(), $fileId);
-        Gate::authorize('view', $file);
-        $error = null;
-        $kind = 'none';
-        $text = null;
-        $html = null;
-        $truncated = false;
-        $readable = ['mime' => '', 'size' => 0];
-        try {
-            $readable = $this->files->readable($request->user(), $file);
-            $kind = $this->kind($readable['mime'], $file->name);
-            if (in_array($kind, ['text', 'markdown'], true)) {
-                $max = (int) config('nas.preview_text_max_bytes');
-                $raw = (string) file_get_contents($readable['path'], false, null, 0, max(1, $max + 1));
-                $truncated = strlen($raw) > $max;
-                $text = mb_scrub(substr($raw, 0, $max), 'UTF-8');
-                if ($kind === 'markdown' && ! $truncated) {
-                    // Raw HTML stripped and unsafe link schemes refused: output is safe to print.
-                    $html = Str::markdown($text, ['html_input' => 'strip', 'allow_unsafe_links' => false, 'max_nesting_level' => 20]);
-                }
-            }
-        } catch (RecordsNotFoundException $exception) {
-            throw $exception;
-        } catch (RuntimeException $exception) {
-            $error = $exception->getMessage();
-        }
-
-        $current = $file->version_of_id === null ? null : $this->files->file($request->user(), $file->version_of_id);
-
-        return response()->view('files.show', [
-            'file' => $file,
-            'current' => $current,
-            'versions' => $file->isCurrent() ? $this->files->versions($request->user(), $file) : collect(),
-            'breadcrumbs' => $this->files->breadcrumbs($this->files->folder($request->user(), ($current ?? $file)->folder_id)),
-            'kind' => $kind,
-            'mime' => $readable['mime'],
-            'size' => $readable['size'],
-            'text' => $text,
-            'html' => $html,
-            'truncated' => $truncated,
-            'error' => $error,
-        ])->header('Content-Security-Policy', "img-src 'self' data:");
     }
 
     public function content(Request $request, int $fileId): BinaryFileResponse
@@ -220,7 +50,7 @@ class FileController extends Controller
         } catch (RuntimeException) {
             abort(404);
         }
-        $kind = $this->kind($readable['mime'], $file->name);
+        $kind = FilePreview::kind($readable['mime'], $file->name);
         $inline = ! $request->boolean('download') && $kind !== 'none';
         $type = match (true) {
             ! $inline => 'application/octet-stream',
@@ -242,36 +72,5 @@ class FileController extends Controller
         $response->setContentDisposition($inline ? 'inline' : 'attachment', $file->name, trim($fallback, ' .') !== '' ? $fallback : 'archivo');
 
         return $response;
-    }
-
-    private function kind(string $mime, string $name): string
-    {
-        $extension = Str::lower(pathinfo($name, PATHINFO_EXTENSION));
-
-        return match (true) {
-            in_array($mime, self::IMAGE_MIMES, true) => 'image',
-            $mime === 'application/pdf' => 'pdf',
-            $mime === 'text/markdown', $mime === 'text/plain' && in_array($extension, ['md', 'markdown'], true) => 'markdown',
-            in_array($mime, self::TEXT_MIMES, true) => 'text',
-            default => 'none',
-        };
-    }
-
-    /**
-     * @template T
-     *
-     * @param  callable(): T  $operation
-     * @return T
-     */
-    private function guard(string $field, callable $operation): mixed
-    {
-        try {
-            return $operation();
-        } catch (RuntimeException $exception) {
-            if ($exception instanceof HttpExceptionInterface || $exception instanceof RecordsNotFoundException) {
-                throw $exception;
-            }
-            throw ValidationException::withMessages([$field => $exception->getMessage()]);
-        }
     }
 }

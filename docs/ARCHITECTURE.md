@@ -39,7 +39,7 @@ El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada ser
 | Cuentas de servicio | `Services/ServiceAccounts`, `Services/NavidromeAccounts`, `config/provisioning.php`, `portal:sync-accounts`, `portal:accounts-status` | SERVICE_ACCOUNTS.md |
 | Sesión musical | `MusicSessionController`, `Services/MusicSessionBridge`, `docker/music-proxy/` | MUSIC_SESSION_BRIDGE.md |
 | Auditoría | `Services/AdminAudit`, `Enums/ServiceAuditAction`, página Livewire `pages::admin.activity` | ADMIN_AUDIT.md |
-| Mis archivos | `Services/Files/PersonalFiles` (carpetas, papelera, versiones, retención), `Services/Files/FileExports` + `FileExportController` + `portal:exports-run` (ZIP), `Events/PrivateUploadReady` (listener en `AppServiceProvider`), `portal:files-purge`, `FileController`, `Models/{Folder,UserFile}`, `Policies/{FolderPolicy,UserFilePolicy}`, `resources/js/files.js`, `resources/views/files/` | STORAGE.md §5b |
+| Mis archivos | Páginas Livewire `resources/views/pages/files/{index,show,trash,exports}` (única entrada a las operaciones; búsquedas acotadas al propietario en cada petición) sobre `Services/Files/PersonalFiles` (carpetas, papelera, versiones, retención), `Services/Files/FileExports` y `Services/Files/FilePreview` (vista previa de solo lectura). `FileController` y `FileExportController` conservan solo lo que no es página: registro de subida (JSON para `resources/js/files.js`), contenido binario y descarga de ZIP. `Livewire/Concerns/ManagesOwnFiles` (papelera, restaurar, versiones y borrado compartidos por las páginas), `Middleware/RestrictPreviewImages` (CSP de la vista previa), `Support/DomainErrors`, `Policies/{UserFilePolicy,FolderPolicy}`, `portal:files-purge`, `portal:exports-run`. Pruebas con `tests/Concerns/UsesFilePages` | STORAGE.md |
 | Almacenamiento | `Services/Storage/{VolumeProbe,StorageInventory,StorageReservations,StorageOverview,PrivateUploads}`, `StorageController`, `PrivateUploadController`, `Support/Bytes`, `config/nas.php`, `portal:storage-status`, `portal:storage-quota`, `portal:uploads-cleanup`, `portal:dev-bootstrap`, `Services/Storage/HardwareSnapshot`, `scripts/nas-discover.*`, `scripts/nas-apply.*` | STORAGE.md |
 
 Gates: `manage-invitations`, `view-admin-audit`, `view-storage` (owner/admin); `manage-storage-pools` (owner); `manage-storage-quota` (owner → todos; admin → miembros).
@@ -77,6 +77,7 @@ Motor: PostgreSQL 17 en desarrollo y producción; SQLite en los tests (CI ejecut
 - Límites de peticiones con nombre (`RateLimiter::for` en `AppServiceProvider`: files, uploads, file-exports, admin…). Nunca `throttle:N,1` sin nombre en rutas web: comparten un contador por usuario entre todas las rutas y las anidadas cuentan doble.
 - Auditoría con lista blanca de campos: sin payloads, rutas, contraseñas ni respuestas remotas.
 - Migraciones solo incrementales; no editar las ya aplicadas.
+- La vista previa de un archivo (`files.show`) se abre siempre con carga completa (sin `wire:navigate`): su cabecera CSP `img-src 'self' data:` impide que un Markdown propio cargue imágenes remotas.
 - Fallar cerrado: capacidad desconocida, marca ausente o conflicto bloquean escrituras.
 
 ## Pruebas

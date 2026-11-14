@@ -12,12 +12,14 @@ use App\Services\Storage\StorageReservations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Tests\Concerns\UsesFilePages;
 use Tests\Concerns\UsesPrivateStorage;
 use Tests\TestCase;
 
 class PersonalFilesTest extends TestCase
 {
     use RefreshDatabase;
+    use UsesFilePages;
     use UsesPrivateStorage;
 
     protected function setUp(): void
@@ -64,28 +66,28 @@ class PersonalFilesTest extends TestCase
         $this->actingAs($intruder)->get('/files')->assertOk()->assertDontSee('privado.txt')->assertDontSee('Médico');
         $this->get('/files/'.$file->id)->assertNotFound();
         $this->get('/files/'.$file->id.'/content')->assertNotFound();
-        $this->patch('/files/'.$file->id, ['name' => 'robado.txt'])->assertNotFound();
+        $this->renameFile($file->id, 'robado.txt')->assertNotFound();
         $this->get('/files/folder/'.$folder->id)->assertNotFound();
-        $this->delete('/files/folders/'.$folder->id)->assertNotFound();
+        $this->deleteFolder($folder->id)->assertNotFound();
         $this->postJson('/files', ['key' => (string) Str::uuid(), 'bytes' => 5, 'name' => 'x.txt', 'folder' => $folder->id])->assertNotFound();
         $this->assertSame('privado.txt', $file->fresh()?->name);
     }
 
     public function test_folders_are_unique_per_level_nested_and_only_deleted_when_empty(): void
     {
-        $this->actingAs($this->owner)->post('/files/folders', ['name' => 'Facturas'])->assertRedirect();
+        $this->actingAs($this->owner)->createFolder('Facturas')->assertHasNoErrors();
         $folder = Folder::where('name', 'Facturas')->firstOrFail();
-        $this->from('/files')->post('/files/folders', ['name' => 'facturas'])->assertSessionHasErrors('folder');
-        $this->post('/files/folders', ['name' => '2026', 'parent' => $folder->id])->assertRedirect();
-        $this->from('/files/folder/'.$folder->id)->delete('/files/folders/'.$folder->id)->assertSessionHasErrors('folder_delete');
+        $this->from('/files')->createFolder('facturas')->assertHasErrors('newFolder');
+        $this->createFolder('2026', $folder->id)->assertHasNoErrors();
+        $this->from('/files/folder/'.$folder->id)->deleteFolder($folder->id)->assertHasErrors('folder_delete');
 
         $this->upload($this->owner, 'luz.txt', 'kWh', $folder->id)->assertOk();
         $this->actingAs($this->owner)->get('/files/folder/'.$folder->id)->assertSee('luz.txt')->assertSee('2026');
         $this->get('/files')->assertDontSee('luz.txt');
 
         $child = Folder::where('name', '2026')->firstOrFail();
-        $this->patch('/files/folders/'.$child->id, ['name' => '2026 (pagadas)'])->assertRedirect();
-        $this->delete('/files/folders/'.$child->id)->assertRedirect(route('files.folder', $folder));
+        $this->renameFolder($child->id, '2026 (pagadas)')->assertHasNoErrors();
+        $this->deleteFolder($child->id)->assertRedirect(route('files.folder', $folder));
         $this->assertModelMissing($child);
     }
 
@@ -140,16 +142,16 @@ class PersonalFilesTest extends TestCase
         $this->assertSame('uno', file_get_contents($this->get('/files/'.$old->id.'/content?download=1')->baseResponse->getFile()->getPathname()));
 
         // Restoring the old version swaps them and keeps the visible name.
-        $this->post('/files/'.$old->id.'/promote')->assertRedirect(route('files.show', $old));
+        $this->promoteFile($old->id)->assertHasNoErrors();
         $this->assertTrue($old->fresh()?->isCurrent());
         $this->assertSame('Acta.txt', $old->fresh()?->name);
         $this->assertSame($old->id, $current->fresh()?->version_of_id);
 
         // Purging a version deletes its bytes and returns quota; current files cannot be purged directly.
-        $this->delete('/files/'.$current->id.'/purge')->assertRedirect(route('files.show', $old));
+        $this->purgeFile($current->id)->assertRedirect(route('files.show', $old));
         $this->assertFileDoesNotExist($this->blob($current));
         $this->assertSame(3, $this->used($this->owner));
-        $this->from('/files/'.$old->id)->delete('/files/'.$old->id.'/purge')->assertSessionHasErrors('file_purge');
+        $this->from('/files/'.$old->id)->purgeFile($old->id)->assertHasErrors('file_purge');
         $this->assertFileExists($this->blob($old));
     }
 
@@ -161,24 +163,24 @@ class PersonalFilesTest extends TestCase
         $file = UserFile::whereNull('version_of_id')->sole();
         $version = UserFile::whereNotNull('version_of_id')->sole();
 
-        $this->actingAs($this->owner)->delete('/files/'.$file->id)->assertRedirect(route('files.folder', $folder));
+        $this->actingAs($this->owner)->trashFile($file->id)->assertRedirect(route('files.folder', $folder));
         // The flash message names the file, so check the listing links instead of the text.
         $this->get('/files/folder/'.$folder->id)->assertDontSee('href="'.route('files.show', $file).'"', false)
             ->assertSee('En esta carpeta: 0 elementos · 0 B');
         $this->get('/files/trash')->assertSee('luz.txt')->assertSee('14 B');
         $this->assertSame(14, $this->used($this->owner));
-        $this->delete('/files/folders/'.$folder->id)->assertRedirect();             // folder now empty
+        $this->deleteFolder($folder->id)->assertRedirect();             // folder now empty
         $this->assertModelMissing($folder);
 
         // Original folder gone: restore to the root; a clashing name gets a numbered copy.
         $this->upload($this->owner, 'luz.txt', 'otra')->assertOk();
-        $this->post('/files/'.$file->id.'/restore')->assertRedirect(route('files.show', $file));
+        $this->restoreFile($file->id)->assertHasNoErrors();
         $this->assertSame(['folder_id' => null, 'name' => 'luz (2).txt'], $file->fresh()?->only(['folder_id', 'name']));
         $this->assertNull($file->fresh()?->trashed_at);
 
         // Purge from the trash removes the file and its versions, and frees every byte.
-        $this->delete('/files/'.$file->id)->assertRedirect();
-        $this->delete('/files/'.$file->id.'/purge')->assertRedirect(route('files.trash'));
+        $this->trashFile($file->id)->assertRedirect();
+        $this->purgeFile($file->id)->assertRedirect(route('files.trash'));
         $this->assertFileDoesNotExist($this->blob($file));
         $this->assertFileDoesNotExist($this->blob($version));
         $this->assertModelMissing($file);
@@ -198,12 +200,12 @@ class PersonalFilesTest extends TestCase
         app(PersonalFiles::class)->trash($this->owner, $current->id);
         $intruder = User::factory()->create();
 
-        $this->actingAs($intruder)->delete('/files/'.$current->id)->assertNotFound();
-        $this->post('/files/'.$current->id.'/restore')->assertNotFound();
-        $this->delete('/files/'.$current->id.'/purge')->assertNotFound();
-        $this->post('/files/'.$old->id.'/promote')->assertNotFound();
+        $this->actingAs($intruder)->trashFile($current->id)->assertNotFound();
+        $this->restoreFile($current->id)->assertNotFound();
+        $this->purgeFile($current->id)->assertNotFound();
+        $this->promoteFile($old->id)->assertNotFound();
         $this->get('/files/trash')->assertDontSee('mio.txt');
-        $this->delete('/files/trash')->assertRedirect();
+        $this->emptyTrash()->assertHasNoErrors();
         $this->assertFileExists($this->blob($current));
         $this->assertFileExists($this->blob($old));
     }
@@ -215,7 +217,7 @@ class PersonalFilesTest extends TestCase
         app(PersonalFiles::class)->trash($this->owner, $file->id);
         rename($this->root.'/.multisuite-volume-id', $this->root.'/.marker-off');
         try {
-            $this->actingAs($this->owner)->from('/files/trash')->delete('/files/'.$file->id.'/purge')->assertSessionHasErrors('file_purge');
+            $this->actingAs($this->owner)->from('/files/trash')->purgeFile($file->id)->assertHasErrors('file_purge');
             $this->assertSame(1, app(PersonalFiles::class)->emptyTrash($this->owner));
         } finally {
             rename($this->root.'/.marker-off', $this->root.'/.multisuite-volume-id');

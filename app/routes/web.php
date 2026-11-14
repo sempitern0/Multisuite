@@ -8,6 +8,7 @@ use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\PrivateUploadController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\UsernameController;
+use App\Http\Middleware\RestrictPreviewImages;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,25 +34,16 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('settings/username', [UsernameController::class, 'update'])->middleware('throttle:account-change')->name('username.update');
     // Mis archivos: owner-scoped lookups and policies; never under /storage/ (Nginx public disk).
+    // Pages are Livewire and the only entry to file operations (actions use ThrottlesActions).
+    // The controller keeps the non-page endpoints: upload registration (JSON) and binary content.
     Route::prefix('files')->name('files.')->middleware('throttle:files')->group(function () {
-        Route::get('/', [FileController::class, 'index'])->name('index');
-        Route::get('folder/{folderId}', [FileController::class, 'index'])->whereNumber('folderId')->name('folder');
-        Route::post('folders', [FileController::class, 'storeFolder'])->name('folders.store');
-        Route::patch('folders/{folderId}', [FileController::class, 'updateFolder'])->whereNumber('folderId')->name('folders.update');
-        Route::delete('folders/{folderId}', [FileController::class, 'destroyFolder'])->whereNumber('folderId')->name('folders.destroy');
+        Route::livewire('/', 'pages::files.index')->name('index');
+        Route::livewire('folder/{folderId}', 'pages::files.index')->whereNumber('folderId')->name('folder');
         Route::post('/', [FileController::class, 'store'])->middleware('throttle:uploads')->name('store');
-        Route::get('exports', [FileExportController::class, 'index'])->name('exports.index');
-        Route::post('exports', [FileExportController::class, 'store'])->middleware('throttle:file-exports')->name('exports.store');
+        Route::livewire('exports', 'pages::files.exports')->name('exports.index');
         Route::get('exports/{exportId}/download', [FileExportController::class, 'download'])->whereUuid('exportId')->name('exports.download');
-        Route::delete('exports/{exportId}', [FileExportController::class, 'destroy'])->whereUuid('exportId')->name('exports.destroy');
-        Route::get('trash', [FileController::class, 'trash'])->name('trash');
-        Route::delete('trash', [FileController::class, 'emptyTrash'])->name('trash.empty');
-        Route::get('{fileId}', [FileController::class, 'show'])->whereNumber('fileId')->name('show');
-        Route::delete('{fileId}', [FileController::class, 'destroy'])->whereNumber('fileId')->name('destroy');
-        Route::post('{fileId}/restore', [FileController::class, 'restore'])->whereNumber('fileId')->name('restore');
-        Route::delete('{fileId}/purge', [FileController::class, 'purge'])->whereNumber('fileId')->name('purge');
-        Route::post('{fileId}/promote', [FileController::class, 'promote'])->whereNumber('fileId')->name('promote');
-        Route::patch('{fileId}', [FileController::class, 'update'])->whereNumber('fileId')->name('update');
+        Route::livewire('trash', 'pages::files.trash')->name('trash');
+        Route::livewire('{fileId}', 'pages::files.show')->whereNumber('fileId')->middleware(RestrictPreviewImages::class)->name('show');
         Route::get('{fileId}/content', [FileController::class, 'content'])->whereNumber('fileId')->name('content');
     });
     Route::prefix('uploads')->middleware('throttle:uploads')->group(function () {

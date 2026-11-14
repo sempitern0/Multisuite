@@ -18,4 +18,5 @@ parameters:
             identifier: trait.unused
             paths:
                 - app/Livewire/Concerns/NotifiesInterface.php
+                - app/Livewire/Concerns/ManagesOwnFiles.php
                 - app/Livewire/Concerns/ThrottlesActions.php
