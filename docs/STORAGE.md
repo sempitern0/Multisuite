@@ -151,8 +151,17 @@ Decisión del usuario (2026-11-13): gestor de archivos propio del portal con car
 | Papelera, borrado verificado, versiones y retención (S03.3) | Integrado (PR #17) |
 | Descargas ZIP: selección, carpeta y exportar todo (S03.4) | Rama `feat/s03-zip-exports` |
 | GUI de almacenamiento y cuota por defecto (S02.3) | Rama `feat/s02-storage-admin-gui`, pendiente de CI y QA visual |
-| Copia de seguridad externa con restic, retención, comprobación y ensayo de restauración (S05.1) | Rama `feat/s05-nas-backup`; probado con Docker simulado, pendiente de una copia real en el servidor |
+| Visor de imágenes, vídeo en el navegador y JPEG sin pérdida (S03.5) | Rama `feat/s03-media-viewer`; CI, pendiente de prueba en navegador |
+| Copia de seguridad externa con restic, retención, comprobación y ensayo de restauración (S05.1) | Integrado (PR #25); probado con Docker simulado, pendiente de una copia real en el servidor |
 | Mover entre carpetas, reconciliación, bibliotecas por usuario, publicación y movimientos | Pendiente (ROADMAP S03–S05) |
+
+## Fotos y vídeo en Mis archivos (S03.5)
+
+- **Visor de imágenes**: acercar y alejar con los botones, la rueda, doble clic o pellizco; arrastrar para moverse; «Tamaño real» (un píxel de la foto por píxel de pantalla); pantalla completa; teclado (`+`, `-`, `0`, flechas). Solo muestra: no edita ni guarda nada.
+- **Vídeo**: se admiten MP4, WebM y MOV y los reproduce el propio navegador con sus controles (avance, velocidad, pantalla completa, imagen en imagen). El servidor entrega el archivo tal cual, por tramos (`Range`), sin convertirlo. Si el navegador no entiende el formato, se indica y se ofrece descargarlo.
+- **Optimización sin pérdida al subir** (`NAS_OPTIMIZE_IMAGES`, activada): un JPEG se reempaqueta con `jpegtran` antes de confirmarlo. Los píxeles y los metadatos (fecha, ubicación, perfil de color) son idénticos; cambian los bytes, así que el archivo descargado no es igual bit a bit al que se subió y ocupa algo menos. A la persona se le descuenta el tamaño final. Si la herramienta falta, tarda más de 20 s o el resultado no es la misma imagen más pequeña, se guarda el original.
+- PNG, WebP, GIF y vídeo se guardan sin cambios: no existe una reducción sin pérdida que merezca la pena para vídeo, y nunca se recodifica.
+- Límite actual por archivo: `NAS_UPLOAD_MAX_BYTES` (100 MB) y `client_max_body_size` de Nginx. Subirlo para vídeos largos es una decisión pendiente (ROADMAP).
 
 ## Copia de seguridad (S05.1)
 

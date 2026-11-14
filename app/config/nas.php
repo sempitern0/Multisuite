@@ -20,6 +20,8 @@ return [
         'audio/mpeg', 'audio/flac', 'audio/x-flac', 'audio/ogg', 'application/ogg', 'audio/wav', 'audio/x-wav', 'audio/mp4',
         'application/pdf', 'text/plain', 'text/markdown', 'text/csv', 'application/json',
         'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        // Played by the browser as stored; the portal never transcodes.
+        'video/mp4', 'video/webm', 'video/quicktime',
         'application/epub+zip',
         'application/msword', 'application/vnd.ms-excel', 'application/vnd.ms-powerpoint',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -29,6 +31,9 @@ return [
         'application/vnd.oasis.opendocument.spreadsheet',
         'application/vnd.oasis.opendocument.presentation',
     ],
+
+    // Lossless only: JPEG is repacked by jpegtran (same pixels and metadata). Nothing is re-encoded.
+    'optimize_images' => (bool) env('NAS_OPTIMIZE_IMAGES', true),
 
     // Development only (portal:dev-bootstrap): default per-person space applied when
     // none has been chosen yet. Production leaves this at 0.

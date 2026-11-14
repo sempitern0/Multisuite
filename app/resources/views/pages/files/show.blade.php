@@ -171,7 +171,7 @@ new #[Title('Archivo')] class extends Component {
 
         @if ($p['error'] !== null)
             <x-ui::notice tone="bad">{{ $p['error'] }} Avisa al responsable técnico si el problema continúa.</x-ui::notice>
-        @elseif (in_array($p['kind'], ['image', 'pdf'], true))
+        @elseif (in_array($p['kind'], ['image', 'video', 'pdf'], true))
             <x-ui::preview :kind="$p['kind']" :src="$content" :title="$file->name" />
         @elseif ($p['html'] !== null)
             <x-ui::preview kind="rich"><x-ui::prose>{!! $p['html'] !!}</x-ui::prose></x-ui::preview>

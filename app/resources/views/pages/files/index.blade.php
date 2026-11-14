@@ -149,6 +149,7 @@ new #[Title('Mis archivos')] class extends Component {
         $icon = fn (?string $mime): string => match (true) {
             str_starts_with((string) $mime, 'image/') => 'image',
             str_starts_with((string) $mime, 'audio/') => 'music',
+            str_starts_with((string) $mime, 'video/') => 'video',
             default => 'document',
         };
         $crumbs = [['label' => 'Mis archivos', 'href' => route('files.index')]];

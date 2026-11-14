@@ -324,7 +324,18 @@
     .ui-uploads li[data-state="ok"] { border-color: #405438; color: var(--ui-ok); }
     .ui-uploads li[data-state="bad"] { border-color: #604039; color: var(--ui-bad); }
     .ui-preview { overflow: hidden; }
-    .ui-preview img { display: block; max-height: 75vh; max-width: 100%; margin: 0 auto; background: var(--ui-bg-2); }
+    .ui-viewer { background: var(--ui-bg-2); }
+    .ui-viewer-stage { position: relative; height: 75vh; overflow: hidden; display: grid; place-items: center; cursor: grab; touch-action: none; user-select: none; }
+    .ui-viewer-stage:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: -2px; }
+    .ui-viewer-stage[data-dragging] { cursor: grabbing; }
+    .ui-viewer-stage img { display: block; max-width: 100%; max-height: 100%; transform-origin: center; will-change: transform; }
+    .ui-viewer-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--ui-line); background: var(--ui-surface); }
+    .ui-viewer-level { min-width: 7ch; text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ui-sub); }
+    .ui-viewer:fullscreen { display: flex; flex-direction: column; }
+    .ui-viewer:fullscreen .ui-viewer-stage { flex: 1; height: auto; }
+    .ui-player { background: #000; }
+    .ui-player video { display: block; width: 100%; max-height: 75vh; }
+    .ui-player [data-player-error] { background: var(--ui-surface); }
     .ui-preview iframe { display: block; width: 100%; height: 75vh; border: 0; background: #fff; }
     .ui-preview pre { margin: 0; padding: 20px; max-height: 75vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; }
     .ui-preview-body { padding: 22px; color: var(--ui-sub); }

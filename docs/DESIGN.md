@@ -54,7 +54,7 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | `breadcrumbs` | `items` ({label, href}) | Ubicación; el último elemento es la página actual. |
 | `entry` | `href`, `icon`, `spa` | Nombre de archivo o carpeta con icono, como enlace. |
 | `uploader` | `store-url`, `upload-url`, `max-bytes`, `folder`, `hint` | Selector de archivos con lista de progreso; lo maneja `resources/js/files.js` (ganchos `data-uploader*`, estado en `data-state`) y emite `files-uploaded`. |
-| `preview` | `kind` image/pdf/text/rich/none, `src`, `title`, `note` | Superficie de vista previa de solo lectura. |
+| `preview` | `kind` image/video/pdf/text/rich/none, `src`, `title`, `note` | Superficie de vista previa de solo lectura. `image` es un visor con zoom y `video` el reproductor del navegador; su comportamiento vive en `resources/js/viewer.js` (`data-viewer`, `data-player`). |
 | `prose` | slot | Contenido largo ya convertido a HTML seguro (Markdown saneado). |
 | `form` | `action`, `method` | Añade CSRF (y `@method` si no es POST) y el espaciado entre campos. |
 | `stack` | `gap` sm/md/lg | Ritmo vertical entre bloques. |

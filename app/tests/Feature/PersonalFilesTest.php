@@ -10,6 +10,8 @@ use App\Models\UserStorageQuota;
 use App\Services\Files\PersonalFiles;
 use App\Services\Storage\StorageReservations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Process\PendingProcess;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Tests\Concerns\UsesFilePages;
@@ -21,6 +23,9 @@ class PersonalFilesTest extends TestCase
     use RefreshDatabase;
     use UsesFilePages;
     use UsesPrivateStorage;
+
+    /** 2×2 grey JPEG. */
+    private const JPEG = '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/wAALCAACAAIBAREA/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/9oACAEBAAA/ACv/2Q==';
 
     protected function setUp(): void
     {
@@ -260,6 +265,48 @@ class PersonalFilesTest extends TestCase
             ->assertSee('HTML en línea')->assertDontSee('HTML en línea</span>', false)
             ->assertDontSee('onclick', false)->assertDontSee('javascript:alert', false);
         $this->assertSame("img-src 'self' data:", $page->headers->get('Content-Security-Policy'));
+    }
+
+    public function test_video_plays_inline_with_seeking_and_images_open_in_the_viewer(): void
+    {
+        $video = "\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom\x00\x00\x00\x08free";
+        $this->upload($this->owner, 'clip.mp4', $video)->assertOk();
+        $clip = $this->entry('clip.mp4');
+        $this->get('/files/'.$clip->id)->assertOk()->assertSee('<video', false)->assertSee('data-player', false);
+        $part = $this->get('/files/'.$clip->id.'/content', ['Range' => 'bytes=4-7'])->assertStatus(206);
+        $this->assertSame('video/mp4', $part->headers->get('Content-Type'));
+        $this->assertSame('bytes 4-7/'.strlen($video), $part->headers->get('Content-Range'));
+
+        Process::fake(fn () => Process::result(exitCode: 127));
+        $this->upload($this->owner, 'foto.jpg', base64_decode(self::JPEG))->assertOk();
+        $this->get('/files/'.$this->entry('foto.jpg')->id)->assertOk()->assertSee('data-viewer', false)->assertSee('Tamaño real');
+    }
+
+    public function test_jpeg_is_repacked_without_loss_and_only_the_final_size_counts(): void
+    {
+        $jpeg = base64_decode(self::JPEG);
+        $received = $jpeg.str_repeat("\0", 4000);
+        $tool = fn (string $output) => Process::fake(function (PendingProcess $process) use ($output) {
+            file_put_contents($process->command[6], $output);
+
+            return Process::result();
+        });
+
+        $tool($jpeg);
+        $this->upload($this->owner, 'playa.jpg', $received)->assertOk();
+        $this->assertSame($jpeg, file_get_contents($this->blob($this->entry('playa.jpg'))));
+        $this->assertSame(strlen($jpeg), UserStorageQuota::findOrFail($this->owner->id)->used_bytes);
+        $this->assertSame(0, UserStorageQuota::findOrFail($this->owner->id)->reserved_bytes);
+        $this->assertSame(0600, fileperms($this->blob($this->entry('playa.jpg'))) & 0777);
+
+        // A result that is not the same picture, or no tool at all, keeps the upload untouched.
+        $tool('not an image');
+        $this->upload($this->owner, 'monte.jpg', $received)->assertOk();
+        $this->assertSame($received, file_get_contents($this->blob($this->entry('monte.jpg'))));
+        Process::fake(fn () => Process::result(exitCode: 127));
+        $this->upload($this->owner, 'rio.jpg', $received)->assertOk();
+        $this->assertSame($received, file_get_contents($this->blob($this->entry('rio.jpg'))));
+        $this->assertSame([], glob($this->root.'/.multisuite-private/*.opt'));
     }
 
     public function test_pdf_is_previewed_inline_without_sandbox_and_html_is_refused(): void

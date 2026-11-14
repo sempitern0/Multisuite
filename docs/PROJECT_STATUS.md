@@ -1,11 +1,12 @@
 # Estado de Multisuite
 
-Instantánea a 2026-11-14. Historial detallado: git log y PRs #1–#24. Este archivo se **reescribe** (no se acumula) al cerrar cada incremento.
+Instantánea a 2026-11-14. Historial detallado: git log y PRs #1–#25. Este archivo se **reescribe** (no se acumula) al cerrar cada incremento.
 
-## Integrado en `main` (PRs #1–#24)
+## Integrado en `main` (PRs #1–#25)
 | Área | Qué hay | Validación |
 | --- | --- | --- |
 | Portal | Portada «Servicios» (`DashboardController` + `ServiceTiles`), `/services/{id}` con destinos administrados | CI; QA visual del usuario pendiente |
+| Copia de seguridad (S05.1) | `make nas-backup` con restic a destino externo, ensayo de restauración y estado en Almacenamiento | CI con Docker simulado; ninguna copia real aún |
 | Modelo de datos | Índices de claves foráneas, consultas agregadas y `QueryPlanTest` en PostgreSQL; `/` redirige a entrar o a la página de inicio | CI |
 | Perfil y Seguridad (D02b.2b) | Perfil, contraseña, 2FA y llaves de acceso en el tema; fin de la migración de diseño | CI; QA con dispositivos reales pendiente |
 | Mis archivos (D02b.2a) | Explorador, vista previa, papelera y Descargas ZIP como páginas Livewire con el tema, sin recargas | CI; subida real en navegador pendiente del usuario |
@@ -24,19 +25,18 @@ Instantánea a 2026-11-14. Historial detallado: git log y PRs #1–#24. Este arc
 
 Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md); entorno local desechable mientras no haya producción; el diseño va por delante para que lo nuevo nazca con el tema; sin librerías de tablas por ahora (D010 en DEPENDENCIES.md).
 
-## En revisión: S05.1 Copia de seguridad del NAS — rama `feat/s05-nas-backup`
-- `make nas-backup` (servidor Linux): volcado de la DB, archivos privados, carpetas extra y datos de Navidrome a un repositorio restic cifrado en disco externo o remoto; retención, comprobación y `local/backup-status.json`. Se niega si el destino comparte disco con los datos.
-- `make nas-backup-verify` ensaya la restauración en un volumen y un PostgreSQL temporales; `nas-backup-restore` solo escribe en carpetas vacías; `nas-backup-snapshots` lista copias.
-- **Almacenamiento → Copia de seguridad** muestra si la última copia es reciente, antigua, fallida o no existe (`Services/Storage/BackupStatus`, solo lectura).
-- restic 0.19.1 como contenedor efímero (DEPENDENCIES D011). Sin migraciones ni paquetes PHP/JS.
-- Validado: CI (pruebas con Docker simulado y `BackupStatusTest`). **No validado**: ninguna copia real, la etiqueta de la imagen ni el ensayo de restauración; requieren el servidor.
-- De paso: `nas-discover` reescribe `nas-hardware.json` en el sitio para que el portal vea la actualización sin recrear contenedores.
+## En revisión: S03.5 Fotos y vídeo en Mis archivos — rama `feat/s03-media-viewer`
+- Visor de imágenes con zoom (botones, rueda, doble clic, pellizco, teclado), arrastre, tamaño real y pantalla completa.
+- Vídeo MP4/WebM/MOV reproducido por el navegador, con avance por tramos; sin conversión en el servidor.
+- Al subir, los JPEG se reempaquetan sin pérdida con `jpegtran` y se descuenta el tamaño final; el resto se guarda tal cual (`Services/Storage/LosslessOptimizer`).
+- Regla de alcance ampliada en AGENTS.md (decisión del usuario 2026-11-14); DEPENDENCIES D012. Sin migraciones ni paquetes PHP/JS; la imagen PHP añade `libjpeg-turbo-progs` (**requiere `make rebuild`**).
+- Validado: CI. **No validado**: el visor y el reproductor en un navegador real, ni `jpegtran` real dentro del contenedor (las pruebas lo simulan).
 
 ## Siguiente acción ejecutable
-1. Usuario: revisar la PR S05.1. En el servidor (o en desarrollo con `BACKUP_ALLOW_SAME_DISK=1` y una carpeta de destino): `cp backup.env.example backup.env`, `make nas-backup`, `make nas-backup-verify`.
-2. Usuario: QA pendiente de D02 (Seguridad con autenticador y llave reales, subida real en Mis archivos).
-3. En el servidor Linux: `make nas-discover` y `make nas-apply TARGETS="…"`.
-4. Siguiente hito: S04 (publicación administrativa) necesita tres decisiones del usuario (ROADMAP); si no, P03.
+1. Usuario: `git pull`, `make rebuild`, `make npm CMD="run build"` y probar la lista S03.5 del ROADMAP.
+2. Usuario: ensayo de copia de seguridad desde WSL (`make nas-backup`, `make nas-backup-verify`) y QA pendiente de D02.
+3. Decidir el tamaño máximo por archivo para vídeo.
+4. Siguiente hito: S04 necesita tres decisiones del usuario (ROADMAP); si no, P03.
 
 ## Límites conocidos
 - Producción no desplegada; VPN/TLS, copia de seguridad real programada y piloto pendientes (P03/P05).

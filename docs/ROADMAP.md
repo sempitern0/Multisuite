@@ -45,6 +45,11 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - [ ] Reconciliar archivos `ready` ausentes, corruptos o restaurados desde backup.
 - [ ] Conectar contenido con bibliotecas por usuario de Navidrome/servicios (escaneo bajo demanda).
 
+## S03.5 — Fotos y vídeo
+- [ ] QA del usuario tras `make rebuild`: zoom con ratón y en móvil, pantalla completa, un vídeo MP4 y uno de iPhone (MOV), y comprobar que una foto subida ocupa menos y se ve igual.
+- [ ] Decidir el tamaño máximo por archivo para vídeo (hoy 100 MB) y, si sube, validar la subida grande de extremo a extremo.
+- [ ] Opcional: pasar a la foto anterior/siguiente de la carpeta desde el visor.
+
 ## S04 — Publicación administrativa
 - [ ] Cerrar con el usuario: imputación de contenido global a cuotas, borrado por el aportante de contenido publicado, baja del aportante.
 - [ ] Estados personal → pendiente → global (rechazo vuelve a personal); solo admin publica/retira; permisos aplicados en el servicio antes de confirmar.

@@ -12,7 +12,7 @@ use RuntimeException;
 
 class PrivateUploads
 {
-    public function __construct(private StorageReservations $reservations, private StorageInventory $inventory) {}
+    public function __construct(private StorageReservations $reservations, private StorageInventory $inventory, private LosslessOptimizer $optimizer) {}
 
     public function begin(User $user, int $bytes, string $key): PrivateUpload
     {
@@ -97,9 +97,16 @@ class PrivateUploads
             clearstatcache(true, $part);
             $actual = filesize($part);
             $mime = (new finfo(FILEINFO_MIME_TYPE))->file($part);
-            $hash = hash_file('sha256', $part);
-            if ($actual !== $reservation->bytes || $hash === false || $mime === false || ! in_array($mime, (array) config('nas.allowed_mimes', []), true)) {
+            if ($actual !== $reservation->bytes || $mime === false || ! in_array($mime, (array) config('nas.allowed_mimes', []), true)) {
                 throw new RuntimeException('Tamaño o formato no permitido.');
+            }
+            // Same picture in fewer bytes when possible; the person is charged the final size.
+            $this->optimizer->optimize($part, $mime);
+            clearstatcache(true, $part);
+            $actual = filesize($part);
+            $hash = hash_file('sha256', $part);
+            if ($actual === false || $actual < 1 || $actual > $reservation->bytes || $hash === false) {
+                throw new RuntimeException('No se puede verificar el archivo recibido.');
             }
             if (! rename($part, $final)) {
                 throw new RuntimeException('No se puede finalizar el archivo.');
