@@ -30,13 +30,15 @@ El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada ser
 | Dominio | Código clave | Doc |
 | --- | --- | --- |
 | Portada y servicios | `config/portal.php`, `DashboardController` + `Support/ServiceTiles` (qué ve cada persona), `ServiceController`, `resources/views/dashboard.blade.php` | NAVIDROME.md |
+| Listas administrativas | Páginas Livewire `resources/views/pages/admin/{users,invitations,activity}` (autorizan en `boot()`, en cada petición), `Actions/Invitations/{IssueInvitation,RevokeInvitation}` compartidas con `InvitationController`; estado de invitación en `Invitation::status()`/`scopeInStatus()`; búsqueda en `User::scopeSearch()`; límite en `Livewire/Concerns/ThrottlesActions` | USER_MANAGEMENT.md, INVITATIONS.md |
+| Preferencias | `Support/UserPreferences` (columna `users.preferences`), página `pages::settings.preferences`, `Http/Responses/LoginResponse` (página de inicio) | DESIGN.md |
 | Diseño (tema) | `config/ui.php`, `resources/views/themes/nocturne/components` (`x-ui::`, layouts), `resources/css/themes/nocturne.css`, delegadores `resources/views/layouts/{app,auth}.blade.php` | DESIGN.md |
 | Roles y permisos | `User::canInviteRole`, `Policies/UserPolicy`, gates en `Providers/AppServiceProvider` | USER_MANAGEMENT.md |
 | Invitaciones | `InvitationController`, `Models/Invitation`, `Notifications/PortalInvitation` | INVITATIONS.md |
 | Alta manual y primer acceso | `ManualUserController`, `InitialPasswordController`, `Middleware/EnsureInitialPasswordChanged` | USER_MANAGEMENT.md |
 | Cuentas de servicio | `Services/ServiceAccounts`, `Services/NavidromeAccounts`, `config/provisioning.php`, `portal:sync-accounts`, `portal:accounts-status` | SERVICE_ACCOUNTS.md |
 | Sesión musical | `MusicSessionController`, `Services/MusicSessionBridge`, `docker/music-proxy/` | MUSIC_SESSION_BRIDGE.md |
-| Auditoría | `Services/AdminAudit`, `Enums/ServiceAuditAction`, `AdminAuditController` | ADMIN_AUDIT.md |
+| Auditoría | `Services/AdminAudit`, `Enums/ServiceAuditAction`, página Livewire `pages::admin.activity` | ADMIN_AUDIT.md |
 | Mis archivos | `Services/Files/PersonalFiles` (carpetas, papelera, versiones, retención), `Services/Files/FileExports` + `FileExportController` + `portal:exports-run` (ZIP), `Events/PrivateUploadReady` (listener en `AppServiceProvider`), `portal:files-purge`, `FileController`, `Models/{Folder,UserFile}`, `Policies/{FolderPolicy,UserFilePolicy}`, `resources/js/files.js`, `resources/views/files/` | STORAGE.md §5b |
 | Almacenamiento | `Services/Storage/{VolumeProbe,StorageInventory,StorageReservations,StorageOverview,PrivateUploads}`, `StorageController`, `PrivateUploadController`, `Support/Bytes`, `config/nas.php`, `portal:storage-status`, `portal:storage-quota`, `portal:uploads-cleanup`, `portal:dev-bootstrap`, `Services/Storage/HardwareSnapshot`, `scripts/nas-discover.*`, `scripts/nas-apply.*` | STORAGE.md |
 
@@ -45,6 +47,8 @@ Gates: `manage-invitations`, `view-admin-audit`, `view-storage` (owner/admin); `
 Tablas propias: `invitations`, `service_accounts`, `admin_audit_events`, `storage_pools`, `user_storage_quotas`, `storage_reservations`, `private_uploads`, `storage_settings`, `folders`, `user_files`, `file_exports`.
 
 ## Invariantes que no se deben romper
+- Las acciones Livewire que modifican datos llaman a `ThrottlesActions::throttle()` con el limitador con nombre de su ruta: `/livewire/update` no pasa por `throttle:` y así ambos caminos comparten contador y definición.
+- Los componentes Livewire de un solo archivo (`resources/views/pages`) no los analiza PHPStan: solo orquestan. Consultas en scopes de modelo (`User::search`, `Invitation::inStatus`) y mutaciones en Actions.
 - Autorización en servidor en cada lectura/escritura; revalidar roles **bajo bloqueo** en operaciones administrativas (patrón `lockedUsers`).
 - Orden de bloqueo del almacenamiento: usuario → grupo → cuota → reserva.
 - Nunca aceptar rutas, URLs de redirección ni IDs de servicio no registrados desde la petición. Nombres de archivo/carpeta son etiquetas, nunca rutas.

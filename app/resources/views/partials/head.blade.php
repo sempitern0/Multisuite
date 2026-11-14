@@ -9,7 +9,6 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
-@fonts
-
+{{-- Typography belongs to the active theme (system stack in Nocturne): no web fonts. --}}
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 {{-- The active theme is dark-only: no light/dark switcher (@fluxAppearance) on purpose. --}}

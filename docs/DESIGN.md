@@ -1,6 +1,6 @@
 # Diseño de la interfaz (capa de tema)
 
-Estado: **D01 implementado** (fundación, shell, acceso y portada de servicios). Resto de pantallas en D02.
+Estado: **D01 y D02a implementados** (fundación, shell, acceso, portada, listas de administración, ajustes con preferencias). Mis archivos, Almacenamiento y edición de personas en D02b.
 Referencia visual: [design/nocturne-v2/GUIA.md](design/nocturne-v2/GUIA.md) y el prototipo estático `design/nocturne-v2/prototipo-28-pantallas.html` (abrir en el navegador; no forma parte de la app).
 
 ## Objetivo
@@ -29,6 +29,17 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | `field` | `name`, `label`, `type`, `value`, `help`, `id` | Restaura `old()` (salvo contraseñas) y muestra el error de validación de `name` junto al control. |
 | `password` | `name`, `label`, `help` | Botón mostrar/ocultar; nunca rellena el valor. |
 | `checkbox` | `name`, `label`, `checked`, `value` | |
+| `select` | `name`, `label`, `options`, `placeholder`, `help` | Lista desplegable con error junto al control. |
+| `choice-group` | `name`, `label`, `options`, `help` (+ `wire:model`) | Elección única entre pocas opciones (segmentada). |
+| `toolbar` | slot, slot `end` | Filtros sobre una lista (`role="search"`). |
+| `table` | `label`, `paginator`, slot `head` | Tabla con pie de resultados y paginación Livewire; en móvil se apila en tarjetas. |
+| `td` | `label`, `primary`, `sub`, `align` | Celda; `label` da el nombre de columna en móvil. |
+| `table-empty` | `colspan` | Fila de lista vacía. |
+| `pagination` | `paginator` | Anterior/Siguiente sin recargar (`WithPagination`). |
+| `subnav` | `items`, `label` | Navegación secundaria (ajustes) con `wire:navigate`. |
+| `container` | `width` form/text | Limita el ancho de formularios y textos. |
+| `sr` | slot | Texto solo para lectores de pantalla. |
+| `toasts` | — | Avisos breves; escucha el evento `ui-toast`. |
 | `form` | `action`, `method` | Añade CSRF (y `@method` si no es POST) y el espaciado entre campos. |
 | `stack` | `gap` sm/md/lg | Ritmo vertical entre bloques. |
 | `text` | `tone` sub/muted, `as` | Texto secundario. |
@@ -45,6 +56,12 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | `empty-state` | `icon`, `title` | |
 | `nav-item` | `href`, `icon`, `active` | |
 | `icon` | `name` | Iconos SVG propios (sin peticiones externas); ver lista en el componente. |
+
+## Interactividad y movimiento
+- Navegación SPA con `wire:navigate` en menú, subnavegación y enlaces internos; Mis archivos carga normal porque tiene scripts de subida propios.
+- Los componentes Livewire avisan con `NotifiesInterface::toast()` (evento `ui-toast`) solo tras confirmar el servidor; las preferencias cambian `<html>` al momento con el evento `ui-preferences`.
+- Preferencias (`Support/UserPreferences`) aplicadas como `data-motion` (system/on/off), `data-density` (comfortable/compact) y `data-sidebar` (full/compact). «Según el sistema» respeta `prefers-reduced-motion`; «Activadas» permite animaciones aunque el sistema pida reducirlas; «Desactivadas» las quita siempre.
+- Movimiento con intención: una entrada de página por navegación, aparición de avisos, indicador en el botón que espera respuesta (`data-loading`) y atenuado de la tabla mientras filtra. Nada de animaciones decorativas en cada tarjeta.
 
 ## Reglas
 - Vistas nuevas o modificadas: solo componentes `x-ui::`; sin clases `ui-*`, `style`, colores, sombras ni radios. Si falta algo, se añade un componente al tema (en todos los temas) en vez de estilar la vista.

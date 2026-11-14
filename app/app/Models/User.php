@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Support\UserPreferences;
 use Carbon\CarbonInterface;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -18,6 +20,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 
 /**
  * @property list<string>|null $service_access
+ * @property array<string, mixed>|null $preferences
  * @property int $id
  * @property string $role
  * @property string $name
@@ -64,8 +67,33 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'service_access' => 'array',
+            'preferences' => 'array',
             'must_change_password' => 'boolean',
         ];
+    }
+
+    /**
+     * Case-insensitive search by name, email or username (shared by Personas and Almacenamiento).
+     *
+     * @param  Builder<User>  $query
+     */
+    public function scopeSearch(Builder $query, string $term): void
+    {
+        $term = trim($term);
+        if ($term === '') {
+            return;
+        }
+        $pattern = '%'.Str::lower($term).'%';
+        $query->where(function (Builder $search) use ($pattern): void {
+            $search->whereRaw('LOWER(name) LIKE ?', [$pattern])
+                ->orWhereRaw('LOWER(email) LIKE ?', [$pattern])
+                ->orWhereRaw('LOWER(username) LIKE ?', [$pattern]);
+        });
+    }
+
+    public function preferences(): UserPreferences
+    {
+        return UserPreferences::from($this->preferences);
     }
 
     /** Human role name shown in the interface (single source for every view). */

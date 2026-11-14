@@ -1,19 +1,12 @@
-<div class="flex items-start max-md:flex-col">
-    <div class="me-10 w-full pb-4 md:w-[220px]">
-        <flux:navlist aria-label="Ajustes">
-            <flux:navlist.item :href="route('profile.edit')" wire:navigate>Perfil</flux:navlist.item>
-            <flux:navlist.item :href="route('security.edit')" wire:navigate>Seguridad</flux:navlist.item>
-        </flux:navlist>
-    </div>
-
-    <flux:separator class="md:hidden" />
-
-    <div class="flex-1 self-stretch max-md:pt-6">
-        <flux:heading>{{ $heading ?? '' }}</flux:heading>
-        <flux:subheading>{{ $subheading ?? '' }}</flux:subheading>
-
-        <div class="mt-5 w-full max-w-lg">
-            {{ $slot }}
-        </div>
-    </div>
+@props(['heading' => '', 'subheading' => ''])
+<div>
+    <x-ui::page-header eyebrow="Ajustes" :title="$heading" :description="$subheading" />
+    <x-ui::stack gap="lg">
+        <x-ui::subnav label="Ajustes" :items="[
+            ['label' => 'Perfil', 'href' => route('profile.edit'), 'active' => request()->routeIs('profile.edit')],
+            ['label' => 'Seguridad', 'href' => route('security.edit'), 'active' => request()->routeIs('security.edit')],
+            ['label' => 'Preferencias', 'href' => route('preferences.edit'), 'active' => request()->routeIs('preferences.edit')],
+        ]" />
+        <x-ui::container>{{ $slot }}</x-ui::container>
+    </x-ui::stack>
 </div>

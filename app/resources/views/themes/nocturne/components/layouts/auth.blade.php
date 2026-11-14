@@ -1,7 +1,7 @@
 @props(['title' => null, 'eyebrow' => null, 'heading' => null, 'description' => null, 'homeHref' => '/'])
 {{-- Authentication layout: brand panel + one focused card per step (login, confirm, reset...). --}}
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark" data-motion="system" data-density="comfortable" data-sidebar="full">
     <head>
         @include('partials.head')
     </head>
@@ -26,11 +26,7 @@
             </section>
         </main>
 
-        @persist('toast')
-            <flux:toast.group>
-                <flux:toast />
-            </flux:toast.group>
-        @endpersist
+        <x-ui::toasts />
 
         @fluxScripts
     </body>

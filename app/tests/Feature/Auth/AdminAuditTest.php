@@ -7,6 +7,7 @@ use App\Models\AdminAuditEvent;
 use App\Models\User;
 use App\Services\AdminAudit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Mockery\MockInterface;
 use RuntimeException;
 use Tests\TestCase;
@@ -64,8 +65,15 @@ class AdminAuditTest extends TestCase
         $this->delete('/users/'.$member->id, ['confirm_email' => $member->email])->assertRedirect();
         $this->assertModelMissing($member);
         $this->assertDatabaseCount('admin_audit_events', 2);
-        $this->get('/admin/activity?action=user.deleted')->assertOk()->assertSee('Usuario eliminado')->assertViewHas('events', fn ($events) => $events->count() === 1 && $events->first()->action === 'user.deleted');
-        $this->get('/admin/activity?action=invalid')->assertSessionHasErrors('action');
+        $this->get('/admin/activity?action=user.deleted')->assertOk()->assertSee('Usuario eliminado');
+        $rows = fn (string $action): int => substr_count(
+            Livewire::withQueryParams(['action' => $action])->test('pages::admin.activity')->html(),
+            'wire:key="event-',
+        );
+        $this->assertSame(1, $rows('user.deleted'));
+        // Unknown filter values coming from the URL are ignored instead of failing.
+        $this->assertSame(2, $rows('invalid'));
+        $this->get('/admin/activity?action=invalid')->assertOk();
     }
 
     public function test_rejected_and_unchanged_updates_do_not_record_success(): void

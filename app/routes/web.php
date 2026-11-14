@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\AdminAuditController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\FileExportController;
@@ -60,14 +59,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('services/{service}', ServiceController::class)->where('service', '[a-z0-9-]+')->name('services.open');
 
     Route::middleware(['can:manage-invitations', 'password.confirm', 'throttle:admin'])->group(function () {
-        Route::get('admin/activity', AdminAuditController::class)->middleware('can:view-admin-audit')->name('audit.index');
-        Route::get('users', [UserManagementController::class, 'index'])->name('users.index');
+        // Lists are Livewire pages: search, filters and pages change without reloading.
+        Route::livewire('admin/activity', 'pages::admin.activity')->middleware('can:view-admin-audit')->name('audit.index');
+        Route::livewire('users', 'pages::admin.users')->name('users.index');
         Route::get('users/{user}/edit', [UserManagementController::class, 'edit'])->name('users.edit');
         Route::put('users/{user}', [UserManagementController::class, 'update'])->name('users.update');
         Route::delete('users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
         Route::get('users/create', [ManualUserController::class, 'create'])->name('users.create');
         Route::post('users', [ManualUserController::class, 'store'])->name('users.store');
-        Route::get('invitations', [InvitationController::class, 'index'])->name('invitations.index');
+        Route::livewire('invitations', 'pages::admin.invitations')->name('invitations.index');
         Route::post('invitations', [InvitationController::class, 'store'])->name('invitations.store');
         Route::delete('invitations/{invitation}', [InvitationController::class, 'revoke'])->name('invitations.revoke');
     });

@@ -27,3 +27,13 @@ Conservar política de librerías PHP/JS, pero instalarlas solo para el portal c
 Se reutiliza nginx:1.27-alpine, ya fijado en el portal, para servir el puente y reenviar Navidrome sin modificar su imagen. No se añaden paquetes PHP, JS o CSS. El gateway se ejecuta como UID 101, sin capabilities, con raíz read-only y tmpfs; no monta bibliotecas ni socket Docker.
 Contrato revisado en upstream v0.64.2: ui/src/authProvider.js (claves de autenticación) y ui/src/store/persistState.js (state con cola/biblioteca). Fuentes: https://github.com/navidrome/navidrome/blob/v0.64.2/ui/src/authProvider.js y https://github.com/navidrome/navidrome/blob/v0.64.2/ui/src/store/persistState.js.
 Se usa Crypt de Laravel para pases autenticados efímeros, no para entregar credenciales musicales. Actualizar Navidrome requiere revisar este contrato y ejecutar las pruebas. Retirada: desactivar puente en portal y volver al Compose musical autónomo conservando data/music. La actualización general de la versión Nginx heredada y revisión de imágenes corresponde al endurecimiento de producción; no se declara readiness productiva.
+
+## D010 — Tablas, interactividad y animaciones sin librerías nuevas (2026-11-14, D02)
+Necesidad: listas paginadas y filtrables sin recargar, guardado en el sitio, avisos y animaciones con preferencia propia.
+Se usan capacidades ya instaladas: Livewire 4.4.8 (`WithPagination`, `#[Url]`, `#[Computed]`, `wire:model.live`, `wire:navigate`, `wire:confirm`, atributo `data-loading`) y Alpine (incluido en Livewire) para avisos y atributos de `<html>`. Componentes de tabla y paginación propios del tema (`x-ui::table`, `x-ui::pagination`).
+Alternativas evaluadas y descartadas por ahora:
+- rappasoft/laravel-livewire-tables v3.8: fija `livewire/livewire ^3.0`, incompatible con Livewire 4 (notas de la release v3.8.0, consultadas 2026-11-14: https://newreleases.io/project/github/rappasoft/laravel-livewire-tables/release/v3.8.0).
+- power-components/livewire-powergrid: activo y compatible con Livewire 4/Tailwind 4 (Packagist, actualizado 2026-10-31: https://packagist.org/packages/power-components/livewire-powergrid), pero trae tema y vistas propias que romperían la capa de tema sustituible (docs/DESIGN.md) y su tamaño excede el volumen de datos de una suite familiar.
+Además, el entorno del agente no alcanza Packagist, así que no puede generar lockfiles verificables. Revisar PowerGrid si una lista supera miles de filas o necesita exportación/edición en línea.
+Fuente tipográfica: se retira Instrument Sans (bunny, heredada de la plantilla y sin uso en el tema Nocturne, que usa la pila del sistema); desaparece la descarga de ~50 KB por página y el aviso de `fontaine`.
+

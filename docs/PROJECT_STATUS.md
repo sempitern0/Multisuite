@@ -17,11 +17,18 @@ Instantánea a 2026-11-14. Historial detallado: git log y PRs #1–#19. Este arc
 | Mis archivos (S03.1–S03.4) | Carpetas con elementos y tamaño exacto, subida, descarga, vista previa de solo lectura, papelera y versiones, descargas ZIP (selección, carpeta, todo) con reserva temporal y `portal:exports-run`; limitadores de peticiones con nombre por área | CI (`PersonalFilesTest`, `FileExportsTest`); QA del usuario pendiente |
 | Entorno de desarrollo | `make up` prepara NAS de desarrollo y ejecuta `portal:dev-bootstrap` | CI + arranque real del usuario |
 
-Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md); entorno local desechable mientras no haya producción; el diseño va por delante (D02) para que lo nuevo nazca con el tema.
+Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md); entorno local desechable mientras no haya producción; el diseño va por delante para que lo nuevo nazca con el tema; sin librerías de tablas por ahora (D010 en DEPENDENCIES.md).
+
+## En revisión: D02a interfaz interactiva — rama `feat/d02-interactive-ui`
+- Personas, Invitaciones y Actividad son páginas Livewire con tabla, búsqueda/filtros en vivo (estado en la URL) y paginación sin recargar; invitar y revocar ocurren en el sitio con aviso. Autorización en `boot()` en cada petición; las acciones comparten el limitador `admin` de la ruta (`ThrottlesActions`) porque `/livewire/update` no pasa por `throttle:`. Estado de invitación único en `Invitation::status()` (una invitación cuyo emisor perdió permisos aparece como «Caducada o anulada»); búsqueda de personas en `User::scopeSearch()`. `IssueInvitation`/`RevokeInvitation` compartidas con el controlador.
+- Navegación SPA (`wire:navigate`), avisos del tema (`ui-toast`) y entrada de página animada; indicador en botones que esperan y atenuado de tablas al filtrar.
+- Ajustes con subnavegación y nueva página **Preferencias** (guardado al cambiar): animaciones (sistema/activadas/desactivadas, también por encima de `prefers-reduced-motion`), densidad, menú lateral, página de inicio tras entrar y elementos por página. Columna `users.preferences` (migración nueva).
+- Fuente Instrument Sans retirada (sin uso). Sin dependencias nuevas.
+- Tests: `AdminListsTest`, `PreferencesTest` y ajustes en auditoría y verificación de correo. Capturas estáticas de tabla, móvil, preferencias y modo compacto revisadas.
 
 ## Siguiente acción ejecutable
-1. Usuario: `git checkout main && git pull && make up && make npm CMD="run build"`; revisar acceso, 2FA, portada y menú móvil, y probar papelera/versiones/ZIP.
-2. D02: migrar Mis archivos, administración y ajustes al tema (componentes de tabla, modal y explorador).
+1. Usuario: revisar la PR D02a; tras fusionar, `make up` (migra) + `make npm CMD="run build"` y probar Personas, Invitaciones, Actividad y Preferencias.
+2. D02b: Mis archivos, Almacenamiento, crear/editar persona y contenido de Perfil/Seguridad.
 3. En el servidor Linux: `make nas-discover` y `make nas-apply TARGETS="…"`.
 
 ## Límites conocidos
