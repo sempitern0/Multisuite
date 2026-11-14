@@ -8,11 +8,11 @@ El diseño está separado de la lógica para poder sustituirlo sin tocar control
 
 | Capa | Dónde | Qué contiene |
 |---|---|---|
-| Lógica | Controladores, `app/Support/*` (p. ej. `ServiceTiles`), policies/gates | Qué ve cada persona, estados, permisos. Nunca clases CSS. |
-| Vistas de dominio | `resources/views/{dashboard,files,users,…}` y `pages/` | Estructura y textos usando **solo** componentes `x-ui::` y `x-layouts::app|auth`. |
+| Lógica | Controladores, `app/Support/*` (`ServiceTiles`, `Navigation`), policies/gates, `User::roleLabel()` | Qué ve cada persona, estados, permisos, textos de rol. Nunca clases CSS. |
+| Vistas de dominio | `resources/views/{dashboard,files,users,…}` y `pages/` | Estructura y textos usando **solo** componentes `x-ui::` y `x-layouts::app|auth`: sin clases `ui-*` ni `style`. |
 | Tema | `resources/views/themes/{tema}/components/` + `resources/css/themes/{tema}.css` | Aspecto: marcado de cada componente, tokens, clases `ui-*`, layouts, responsive. |
 
-`config/ui.php` (`UI_THEME`, por defecto `nocturne`) registra el namespace `x-ui::` hacia `themes/{tema}/components` (AppServiceProvider). `layouts/app.blade.php` y `layouts/auth.blade.php` solo delegan en `x-ui::layouts.app` / `x-ui::layouts.auth`, así que Livewire (layout por defecto `layouts::app`) y Fortify usan el tema sin saberlo.
+`config/ui.php` (`UI_THEME`, por defecto `nocturne`) registra el namespace `x-ui::` hacia `themes/{tema}/components` (AppServiceProvider). `layouts/app.blade.php` y `layouts/auth.blade.php` delegan en `x-ui::layouts.app` / `x-ui::layouts.auth` y les pasan los datos calculados fuera del tema (`Navigation::for()`, URL de inicio), así que Livewire (layout por defecto `layouts::app`) y Fortify usan el tema sin saberlo.
 
 ## Cambiar de tema
 1. Copiar `resources/views/themes/nocturne` a `themes/<nuevo>` y `resources/css/themes/nocturne.css` a `<nuevo>.css`.
@@ -23,29 +23,38 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 ## Contratos de componentes (`x-ui::`)
 | Componente | Props | Notas |
 |---|---|---|
-| `layouts.app` | `title` | Shell: barra lateral (Servicios, Mis archivos; grupo Administración según gates; cuenta abajo), barra superior, toasts Flux. |
-| `layouts.auth` | `title`, `eyebrow`, `heading`, `description` | Panel visual + tarjeta; el slot contiene el formulario y avisos. |
+| `layouts.app` | `title`, `navigation` | Dibuja `Navigation::for()` (grupos ya filtrados por gates y bloque de cuenta), barra superior, enlace «Saltar al contenido», toasts Flux. Sin lógica de permisos ni rutas. |
+| `layouts.auth` | `title`, `eyebrow`, `heading`, `description`, `home-href`, slot `links` | Panel visual + tarjeta; el slot contiene avisos y formularios con ritmo vertical; `links` va bajo la tarjeta. |
 | `button` | `variant` primary/secondary/ghost/danger, `size` sm, `href`, `icon`, `icon-end`, `block`, `type` | Con `href` se dibuja como enlace. |
 | `field` | `name`, `label`, `type`, `value`, `help`, `id` | Restaura `old()` (salvo contraseñas) y muestra el error de validación de `name` junto al control. |
 | `password` | `name`, `label`, `help` | Botón mostrar/ocultar; nunca rellena el valor. |
 | `checkbox` | `name`, `label`, `checked`, `value` | |
+| `form` | `action`, `method` | Añade CSRF (y `@method` si no es POST) y el espaciado entre campos. |
+| `stack` | `gap` sm/md/lg | Ritmo vertical entre bloques. |
+| `text` | `tone` sub/muted, `as` | Texto secundario. |
+| `heading` | `level` 2/3 | Títulos de sección bajo el `h1`. |
+| `link` | `href` | Acción en texto; sin `href` es un botón. |
+| `meter` | `value` 0–100, `label`, slot (pie) | Barra de progreso accesible; ≥ 90 % cambia de tono. |
 | `notice` | `tone` ok/warn/bad/info | Resultados confirmados por el servidor o errores. |
 | `status` | `tone` ok/warn/bad/muted | Punto + texto corto. |
 | `tag` | `tone` grey/red/blue | |
 | `panel` | `pad` | Superficie. |
 | `page-header` | `title`, `eyebrow`, `description`, slot `actions` | Un `h1` por página. |
-| `service-tile` | `name`, `icon`, `status` ready/pending/soon/offline, `status-label`, `href` | Sin `href` es informativa (no se puede abrir). |
+| `service-grid` | `label` | Rejilla de tarjetas (3 / 2 columnas). |
+| `service-tile` | `name`, `icon`, `status` ready/pending/soon/offline, `status-label`, `href`, `note`, `detail` | Sin `href` es informativa (no se puede abrir). El título queda alineado entre tarjetas. |
 | `empty-state` | `icon`, `title` | |
 | `nav-item` | `href`, `icon`, `active` | |
 | `icon` | `name` | Iconos SVG propios (sin peticiones externas); ver lista en el componente. |
 
 ## Reglas
-- Vistas nuevas o modificadas: componentes `x-ui::` y tokens; sin colores, sombras ni radios escritos a mano. Estilos de ajuste puntual (márgenes) permitidos hasta que exista utilidad del tema.
+- Vistas nuevas o modificadas: solo componentes `x-ui::`; sin clases `ui-*`, `style`, colores, sombras ni radios. Si falta algo, se añade un componente al tema (en todos los temas) en vez de estilar la vista.
+- Las pruebas comprueban `data-layout="app|auth"`, no clases del tema.
 - Las vistas aún no migradas (Flux + Tailwind) heredan la paleta del tema porque `nocturne.css` reasigna `zinc`, `teal` y el acento de Flux; se migran en D02.
 - Nombres de servicio de una palabra (Música, Archivos…); no mostrar nombres técnicos (Navidrome) en la portada.
 - Ocultar un enlace no es autorización: cada ruta mantiene middleware/policies. Los miembros no ven estadísticas globales.
 - Avisos de éxito solo tras confirmación del servidor; sin barras de vista previa en la app.
 - Tema solo oscuro: no hay selector claro/oscuro (`@fluxAppearance` retirado y página Apariencia fuera del menú).
+- Contraste AA comprobado (texto ≥ 4,5:1, contornos de controles ≥ 3:1). Desviaciones mínimas respecto a la guía para cumplirlo: texto atenuado `#818e81` (guía `#778477`), placeholder `#758575` y borde de campos `#5a675b`.
 - Accesibilidad: foco visible amarillo, `aria-current` en navegación, errores con `role="alert"` y `aria-describedby`, `prefers-reduced-motion`, responsive (≤1050 px barra de iconos, ≤700 px menú desplegable, rejilla de 2 columnas).
 
 ## Estado por pantalla

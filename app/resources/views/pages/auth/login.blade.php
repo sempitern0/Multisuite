@@ -1,24 +1,21 @@
 <x-layouts::auth title="Entrar" eyebrow="Bienvenido de nuevo" heading="Entra en Multisuite" description="Usa tu usuario o tu correo y tu contraseña.">
     @if (session('status'))
-        <x-ui::notice style="margin-top:18px">{{ session('status') }}</x-ui::notice>
+        <x-ui::notice>{{ session('status') }}</x-ui::notice>
     @endif
 
-    <div style="margin-top:20px">
-        <x-passkey-verify :label="__('Entrar con una llave de acceso')" :loading-label="__('Comprobando…')" :separator="__('O entra con tu contraseña')" />
-    </div>
+    <x-passkey-verify :label="__('Entrar con una llave de acceso')" :loading-label="__('Comprobando…')" :separator="__('O entra con tu contraseña')" />
 
-    <form method="POST" action="{{ route('login.store') }}">
-        @csrf
+    <x-ui::form :action="route('login.store')">
         <x-ui::field name="email" label="Usuario o correo electrónico" required autofocus autocomplete="username" placeholder="tony o tony@example.com" />
         <x-ui::password name="password" label="Contraseña" required autocomplete="current-password" />
         <x-ui::checkbox name="remember" label="Recordarme en este dispositivo" />
-        <x-ui::button type="submit" block data-test="login-button" style="margin-top:22px">Entrar</x-ui::button>
-    </form>
+        <x-ui::button type="submit" block data-test="login-button">Entrar</x-ui::button>
+    </x-ui::form>
 
-    <div class="ui-auth-links">
+    <x-slot:links>
         @if (Route::has('password.request'))
-            <a class="ui-link" href="{{ route('password.request') }}" wire:navigate>¿Has olvidado tu contraseña?</a>
+            <x-ui::link :href="route('password.request')" wire:navigate>¿Has olvidado tu contraseña?</x-ui::link>
         @endif
-        <span class="ui-muted">¿Necesitas acceso? Pídeselo al administrador.</span>
-    </div>
+        <x-ui::text tone="muted">¿Necesitas acceso? Pídeselo al administrador.</x-ui::text>
+    </x-slot:links>
 </x-layouts::auth>

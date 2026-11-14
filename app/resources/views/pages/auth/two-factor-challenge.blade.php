@@ -1,4 +1,4 @@
-<x-layouts::auth title="Verificación en dos pasos" eyebrow="Verificación en dos pasos" heading="Introduce tu código">
+<x-layouts::auth title="Código de seguridad" eyebrow="Verificación en dos pasos" heading="Introduce tu código">
     <div
         x-cloak
         x-data="{
@@ -23,30 +23,25 @@
             },
         }"
     >
-        <p class="ui-sub" x-show="! showRecoveryInput">Escribe el código de 6 cifras de tu aplicación de autenticación.</p>
-        <p class="ui-sub" x-show="showRecoveryInput">Escribe uno de tus códigos de recuperación.</p>
+        <x-ui::stack>
+            <x-ui::text x-show="! showRecoveryInput">Escribe el código de 6 cifras de tu aplicación de autenticación.</x-ui::text>
+            <x-ui::text x-show="showRecoveryInput">Escribe uno de tus códigos de recuperación.</x-ui::text>
 
-        <form method="POST" action="{{ route('two-factor.login.store') }}">
-            @csrf
-            <div x-show="! showRecoveryInput" x-ref="otp" style="margin-top:22px">
-                <flux:otp x-model="code" length="6" name="code" label="Código de verificación" label:sr-only />
-            </div>
-            <div x-show="showRecoveryInput">
-                <div class="ui-field">
-                    <label class="ui-label" for="recovery_code">Código de recuperación</label>
-                    <input id="recovery_code" class="ui-input" type="text" name="recovery_code" x-ref="recovery_code" x-bind:required="showRecoveryInput" autocomplete="one-time-code" x-model="recovery_code" @error('recovery_code') aria-invalid="true" @enderror>
-                    @error('recovery_code')<p class="ui-error" role="alert">{{ $message }}</p>@enderror
+            <x-ui::form :action="route('two-factor.login.store')">
+                <div x-show="! showRecoveryInput" x-ref="otp">
+                    <flux:otp x-model="code" length="6" name="code" label="Código de verificación" label:sr-only />
+                    @error('code')<x-ui::notice tone="bad">{{ $message }}</x-ui::notice>@enderror
                 </div>
-            </div>
-            @error('code')<p class="ui-error" role="alert">{{ $message }}</p>@enderror
-            <x-ui::button type="submit" block style="margin-top:22px">Continuar</x-ui::button>
-        </form>
+                <div x-show="showRecoveryInput">
+                    <x-ui::field name="recovery_code" label="Código de recuperación" x-ref="recovery_code" x-bind:required="showRecoveryInput" autocomplete="one-time-code" x-model="recovery_code" />
+                </div>
+                <x-ui::button type="submit" block>Continuar</x-ui::button>
+            </x-ui::form>
 
-        <div class="ui-auth-links">
-            <button type="button" class="ui-link" x-on:click="toggleInput()">
+            <x-ui::link x-on:click="toggleInput()">
                 <span x-show="! showRecoveryInput">Usar un código de recuperación</span>
                 <span x-show="showRecoveryInput">Usar la aplicación de autenticación</span>
-            </button>
-        </div>
+            </x-ui::link>
+        </x-ui::stack>
     </div>
 </x-layouts::auth>
