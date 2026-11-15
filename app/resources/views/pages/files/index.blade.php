@@ -308,9 +308,6 @@ new #[Title('Mis archivos')] class extends Component {
                 </x-ui::row>
             @endif
 
-                </x-ui::toolbar>
-            @endif
-
             @php
                 $where = fn (?int $folderId): string => $folderId === null ? 'Mis archivos' : ($l['paths'][$folderId] ?? '');
                 $emptyText = $l['searching'] || $kind !== '' ? 'Nada coincide con la búsqueda o el filtro.' : 'Esta carpeta está vacía. Sube archivos o arrástralos aquí.';
