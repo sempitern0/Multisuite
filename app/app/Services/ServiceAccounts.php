@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ServiceAuditAction;
 use App\Models\ServiceAccount;
 use App\Models\User;
+use App\Services\Files\MediaLibrary;
 use App\Services\Provisioning\ServiceProvisioners;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -262,6 +263,10 @@ class ServiceAccounts
                 }
                 $this->provisioners->for($account->service)->synchronize($account, $account->pending_password);
                 $account->status = 'ready';
+                // The account exists now: its connected folders can get their personal library.
+                if ($user !== null) {
+                    app(MediaLibrary::class)->changed($user);
+                }
                 $account->pending_password = null;
                 $account->credential_expires_at = null;
                 $account->retry_at = null;

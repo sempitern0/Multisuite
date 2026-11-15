@@ -24,7 +24,7 @@ with tempfile.TemporaryDirectory(prefix="multisuite-reading-") as directory:
         assert result.returncode == 0, result.stdout + result.stderr
         return log.read_text().splitlines()
 
-    reading = "compose --env-file reading.env -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml"
+    reading = "compose --env-file reading.env -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml -f deploy/compose.reading-media.dev.yaml"
     assert all("compose.reading.yaml" not in c for c in run("up"))
     (work / "reading.env").write_text("# configured\n")
     for target, command in [("up", "up -d"), ("start", "up -d"), ("stop", "stop"), ("down", "down"), ("up-wait", "up -d --wait --wait-timeout 120"), ("up-logs", "up -d")]:
@@ -45,4 +45,6 @@ with tempfile.TemporaryDirectory(prefix="multisuite-reading-") as directory:
     portal = [c for c in calls if c.endswith(" up -d") and "compose.yaml" in c]
     assert portal[0].count("compose.portal-accounts.example.yaml") == 1, calls
     assert run("reading-status") == [f"{reading} ps"]
+    # Real disks (NAS_DEV=0): no development media mount.
+    assert all("media.dev" not in c for c in run("up", "NAS_DEV=0"))
 print("reading lifecycle: ok")

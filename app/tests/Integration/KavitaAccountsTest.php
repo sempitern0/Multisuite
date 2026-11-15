@@ -9,12 +9,14 @@ use App\Services\ServiceAccounts;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use App\Services\Files\MediaLibrary;
+use Tests\Concerns\PreparesMediaRoot;
 use Tests\TestCase;
 
 /** Full account lifecycle against a disposable Kavita 0.9.1 (CI: application.yml). */
 class KavitaAccountsTest extends TestCase
 {
-    use RefreshDatabase;
+    use PreparesMediaRoot, RefreshDatabase;
 
     private function login(string $url, string $username, string $password): Response
     {
@@ -75,5 +77,47 @@ class KavitaAccountsTest extends TestCase
         $kavita->remove($account);
         $this->assertSame(401, $this->login($url, 'lectora2', 'third-password')->status());
         $kavita->remove($account);
+    }
+
+    public function test_real_kavita_shows_a_connected_folder_only_to_its_owner(): void
+    {
+        $url = getenv('KAVITA_TEST_URL');
+        $root = getenv('MEDIA_TEST_ROOT');
+        if (! $url || ! $root) {
+            $this->markTestSkipped('Disposable Kavita with the media folder mounted required.');
+        }
+        config([
+            'portal.services.reading.enabled' => true,
+            'provisioning.reading.enabled' => true,
+            'provisioning.reading.url' => $url,
+            'provisioning.reading.username' => 'ci-operator',
+            'provisioning.reading.password' => 'ci-operator-password',
+        ]);
+        $this->prepareMediaRoot($root);
+        $this->artisan('portal:reading-setup', ['--wait' => 30])->assertSuccessful();
+        $people = [];
+        foreach (['ana', 'bea'] as $name) {
+            $user = User::factory()->create(['email' => $name.'@example.com']);
+            $user->username = $name;
+            $user->service_access = ['reading'];
+            $user->save();
+            app(ServiceAccounts::class)->enroll($user, ['reading'], $name.'-password');
+            app(ServiceAccounts::class)->syncUser($user);
+            $people[$name] = $user;
+        }
+        $this->storeConnected($people['ana'], 'books', 'manual.pdf', "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
+
+        app(MediaLibrary::class)->sync($people['ana']);
+        app(MediaLibrary::class)->sync($people['bea']);
+
+        $ana = ServiceAccount::where('user_id', $people['ana']->id)->firstOrFail();
+        $this->assertFileExists($root.'/.multisuite-media/reading/'.strtolower($ana->remote_id).'/libros/manual.pdf');
+        $client = app(KavitaAccounts::class)->client();
+        $folder = '/personal/'.strtolower($ana->remote_id).'/libros';
+        $library = collect((array) $client->get('/api/Library/libraries')->json())->first(fn ($library) => in_array($folder, (array) ($library['folders'] ?? []), true));
+        $this->assertNotNull($library, 'Kavita created the personal library from the mounted folder.');
+        $members = collect((array) $client->get('/api/Users', ['includePending' => 'true'])->json())->keyBy('username');
+        $this->assertContains($library['id'], array_column($members['ana']['libraries'], 'id'));
+        $this->assertNotContains($library['id'], array_column($members['bea']['libraries'], 'id'));
     }
 }

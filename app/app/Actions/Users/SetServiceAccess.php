@@ -5,6 +5,7 @@ namespace App\Actions\Users;
 use App\Enums\ServiceAuditAction;
 use App\Models\User;
 use App\Services\AdminAudit;
+use App\Services\Files\MediaLibrary;
 use App\Services\ServiceAccounts;
 use App\Support\LockedUsers;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,8 @@ class SetServiceAccess
                 $target->save();
             }
             $this->audit->recordService($actor, $target, $service, $enabled ? ServiceAuditAction::AccessGranted : ServiceAuditAction::AccessRevoked);
+            // Connected folders follow access: emptied in the service when withdrawn, refilled when granted.
+            app(MediaLibrary::class)->changed($target);
         });
     }
 }

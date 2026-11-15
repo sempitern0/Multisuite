@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ServiceAccount;
 use App\Models\User;
+use App\Services\Provisioning\PersonalLibraries;
 use App\Services\Provisioning\ServiceProvisioner;
 use App\Services\Provisioning\ServiceUrl;
 use Illuminate\Http\Client\ConnectionException;
@@ -23,7 +24,7 @@ use RuntimeException;
  * pending invitation keeps Kavita's public default password) and it is granted only once the
  * person's password is set; locking removes it, which also revokes OPDS keys.
  */
-class KavitaAccounts implements ServiceProvisioner
+class KavitaAccounts implements PersonalLibraries, ServiceProvisioner
 {
     public const LOGIN_ROLE = 'Login';
 
@@ -112,6 +113,78 @@ class KavitaAccounts implements ServiceProvisioner
         });
     }
 
+    public function ensurePersonalLibrary(ServiceAccount $account, ?string $section, string $label): void
+    {
+        $folder = PersonalLibraries::MOUNT.'/'.strtolower($account->remote_id).($section === null ? '' : '/'.$section);
+        $this->guard(function () use ($account, $section, $label, $folder): void {
+            $client = $this->client();
+            $remote = $this->find($client, $account);
+            if ($remote === null || $this->assertManaged($remote)['isPending'] === true) {
+                return;
+            }
+            $library = $this->libraryAt($client, $folder);
+            if ($library === null) {
+                $comics = $section === 'comics';
+                $created = $client->post('/api/Library/create', [
+                    'id' => 0,
+                    // Names are unique in Kavita; the folder (not the name) identifies the library.
+                    'name' => $label.' · '.$remote['username'].' · '.substr(strtolower($account->remote_id), 0, 8),
+                    'type' => $comics ? 1 : 2,
+                    'folders' => [$folder],
+                    'folderWatching' => true,
+                    'includeInDashboard' => true,
+                    'includeInSearch' => true,
+                    'manageCollections' => true,
+                    'manageReadingLists' => true,
+                    'allowScrobbling' => false,
+                    'allowMetadataMatching' => false,
+                    'enableMetadata' => true,
+                    'removePrefixForSortName' => false,
+                    'inheritWebLinksFromFirstChapter' => false,
+                    'metadataProvider' => $comics ? 4 : 2,
+                    'fileGroupTypes' => [1, 2, 3, 4],
+                    'excludePatterns' => [],
+                ]);
+                $this->check($created);
+                $library = $this->libraryAt($client, $folder) ?? throw new RuntimeException('unavailable');
+            }
+            $libraries = $this->libraryIds($remote['libraries'] ?? []);
+            if (! in_array($library['id'], $libraries, true)) {
+                $this->update($client, $remote, (string) $remote['username'], null, [...$libraries, (int) $library['id']]);
+            }
+            $client->post('/api/Library/scan?'.http_build_query(['libraryId' => $library['id'], 'force' => 'false']));
+        });
+    }
+
+    /** @return array<string, mixed>|null the library that reads exactly $folder */
+    private function libraryAt(PendingRequest $client, string $folder): ?array
+    {
+        $response = $client->get('/api/Library/libraries');
+        if (! $response->successful()) {
+            throw new RuntimeException('unavailable');
+        }
+        foreach ((array) $response->json() as $library) {
+            if (is_array($library) && is_int($library['id'] ?? null) && in_array($folder, (array) ($library['folders'] ?? []), true)) {
+                /** @var array<string, mixed> $library */
+                return $library;
+            }
+        }
+
+        return null;
+    }
+
+    /** @param array<string, mixed> $library */
+    private static function isPersonal(array $library): bool
+    {
+        foreach ((array) ($library['folders'] ?? []) as $folder) {
+            if (is_string($folder) && str_starts_with($folder, PersonalLibraries::MOUNT.'/')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /** Signed-in client for the operator account, which must be a Kavita administrator. */
     public function client(): PendingRequest
     {
@@ -187,7 +260,8 @@ class KavitaAccounts implements ServiceProvisioner
         $response = $client->post('/api/Account/invite', [
             'email' => self::identity($account),
             'roles' => self::MEMBER_ROLES,
-            'libraries' => $this->libraryIds($libraries->json()),
+            // Shared libraries only: someone else's personal library is never granted.
+            'libraries' => $this->libraryIds(array_filter((array) $libraries->json(), fn (mixed $library): bool => is_array($library) && ! self::isPersonal($library))),
             'ageRestriction' => ['ageRating' => -1, 'includeUnknowns' => true],
         ]);
         // 400 "already invited" means an earlier attempt got through: the account is found next.
@@ -218,27 +292,31 @@ class KavitaAccounts implements ServiceProvisioner
     }
 
     /**
-     * Sets the name and, when $login is not null, grants or removes sign-in. Libraries, age rating
-     * and every other role are sent back unchanged (Kavita replaces them with what it receives).
+     * Sets the name and, when $login is not null, grants or removes sign-in; $libraries replaces
+     * the library list when given. Everything else is sent back unchanged (Kavita replaces the
+     * whole account with what it receives).
      *
      * @param  array<string, mixed>  $remote
+     * @param  list<int>|null  $libraries
      */
-    private function update(PendingRequest $client, array $remote, string $username, ?bool $login): void
+    private function update(PendingRequest $client, array $remote, string $username, ?bool $login, ?array $libraries = null): void
     {
+        $current = $this->libraryIds($remote['libraries'] ?? []);
+        $libraries ??= $current;
         $roles = array_values(array_filter((array) ($remote['roles'] ?? []), 'is_string'));
         if ($login === true && ! in_array(self::LOGIN_ROLE, $roles, true)) {
             $roles[] = self::LOGIN_ROLE;
         } elseif ($login === false) {
             $roles = array_values(array_diff($roles, [self::LOGIN_ROLE]));
         }
-        if ($remote['username'] === $username && $roles === array_values(array_filter((array) ($remote['roles'] ?? []), 'is_string'))) {
+        if ($remote['username'] === $username && $libraries === $current && $roles === array_values(array_filter((array) ($remote['roles'] ?? []), 'is_string'))) {
             return;
         }
         $this->check($client->post('/api/Account/update', [
             'userId' => $remote['id'],
             'username' => $username,
             'roles' => $roles,
-            'libraries' => $this->libraryIds($remote['libraries'] ?? []),
+            'libraries' => $libraries,
             'ageRestriction' => $remote['ageRestriction'] ?? ['ageRating' => -1, 'includeUnknowns' => true],
             'email' => $remote['email'],
             'identityProvider' => 0,

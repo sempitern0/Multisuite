@@ -37,6 +37,9 @@ jobs:
           python3 tests/reading-lifecycle.py
           docker compose --env-file reading.env.example -f compose.reading.yaml config --quiet
           docker compose --env-file reading.env.example -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml config --quiet
+          docker volume create multisuite-nas-dev >/dev/null
+          docker compose --env-file reading.env.example -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml -f deploy/compose.reading-media.dev.yaml config --quiet
+          docker compose --env-file music.env.example -f compose.music.yaml -f deploy/compose.music-accounts.example.yaml -f deploy/compose.music-media.dev.yaml config --quiet
           docker compose -f compose.yaml -f deploy/compose.portal-accounts.example.yaml -f deploy/compose.portal-reading.example.yaml config --quiet
           python3 tests/nas-disk-discovery.py
           python3 tests/nas-backup.py

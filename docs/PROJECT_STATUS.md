@@ -1,6 +1,6 @@
 # Estado de Multisuite
 
-Instantánea a 2026-11-15 (PRs #1–#35). Se **reescribe** al cerrar cada incremento; el detalle vive en git y en las PRs.
+Instantánea a 2026-11-15 (PRs #1–#35, #36 en revisión). Se **reescribe** al cerrar cada incremento; el detalle vive en git y en las PRs.
 
 ## Integrado en `main`
 | Área | Qué hay | Validación |
@@ -16,17 +16,19 @@ Instantánea a 2026-11-15 (PRs #1–#35). Se **reescribe** al cerrar cada increm
 
 Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md); librería antes que código propio; entorno local desechable mientras no haya producción.
 
-## En revisión: servicios nuevos al entrar — rama `feat/u04-new-services-on-login`
-- Las personas existentes reciben los servicios añadidos después (p. ej. Lectura) al entrar con contraseña, con su cuenta creada en ese momento; nunca los que un administrador dejó fuera o desactivó (`users.services_revoked`).
-- Validación: CI. Siguiente: S04a, carpetas de Mis archivos conectadas a Navidrome y Kavita.
+## En revisión: PR #36 — rama `feat/u04-new-services-on-login`
+- Servicios nuevos al entrar: las personas existentes reciben los servicios añadidos después (p. ej. Lectura) al entrar con contraseña; nunca los que un administrador dejó fuera o desactivó (`users.services_revoked`).
+- S04a carpetas conectadas: Música, Libros y Cómics en Mis archivos de cada persona; lo que sube aparece solo para ella en Navidrome y Kavita (biblioteca personal), sin cifrar y con una sola copia en disco (enlace duro). Sincronización automática tras cada cambio y repaso cada 15 minutos (`portal:media-sync`).
+- Validación: CI (pruebas de funcionalidad e integración con Navidrome y Kavita reales). QA del usuario pendiente (ROADMAP § S04a).
 
 ## Acciones pendientes del usuario
-- `make rebuild` (WebP y ExifTool) y QA de lo reciente (ROADMAP § QA).
+- `make rebuild` (WebP y ExifTool; recrea el volumen NAS de desarrollo con el nombre fijo `multisuite-nas-dev`, así que se pierden los archivos de prueba anteriores) y QA de lo reciente.
 - Guardar `NAS_FILES_KEY` fuera del servidor.
 - Ensayo de copia real: `make nas-backup` y `make nas-backup-verify`.
 
 ## Límites conocidos
 - Producción no desplegada: faltan VPN/TLS, copia programada y piloto (P03/P05).
-- La biblioteca de Navidrome es común: no hay contenido privado por persona.
+- Contenido privado por persona en los servicios solo a través de las carpetas conectadas; las bibliotecas montadas por el operador son comunes.
+- El montaje de las carpetas conectadas en los servicios solo está automatizado en desarrollo (P05).
 - Las cuotas solo cuentan lo que entra por el portal.
 - Hardware real del servidor (discos, capacidad): desconocido; pedirlo al preparar el despliegue.

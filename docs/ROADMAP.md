@@ -11,7 +11,7 @@ Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_ST
 
 ## Orden vigente
 1. **P04.1 Lectura (Kavita)** — en revisión; falta la QA del usuario con libros reales.
-2. **S04a Puente Mis archivos → servicios** — carpetas conectadas por persona (decisiones tomadas 2026-11-15).
+2. **S04a Puente Mis archivos → servicios** — en revisión en la PR #36; falta la QA del usuario.
 3. **S04b** — Publicación administrativa (necesita tres decisiones del usuario).
 4. **P03** — Red privada (VPN/TLS), segundo dispositivo y vinculación de cuentas existentes.
 5. **P05** — Despliegue reproducible y piloto familiar.
@@ -24,13 +24,10 @@ Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúm
 - [ ] P04.4 Notas/documentos con interfaz web, adjuntos y exportación.
 - [ ] Ideas sin decidir: automatizaciones, invitados temporales con caducidad.
 
-## S04a — Puente Mis archivos → servicios
-Decisiones del usuario (2026-11-15): las carpetas conectadas se guardan **sin cifrar, una sola copia** (el servicio debe leerlas; la carpeta lo avisa; el resto de Mis archivos sigue cifrado) y su contenido es **privado de cada persona**.
-- [ ] Carpetas fijas por persona solo para servicios activos: Música → Navidrome; Libros y Cómics → Kavita (Vídeos cuando llegue Jellyfin). No se pueden renombrar ni borrar.
-- [ ] Volumen compartido: el portal escribe, los servicios leen en solo lectura; nombres controlados por el portal, nunca rutas del usuario.
-- [ ] Biblioteca privada por persona en Kavita y Navidrome (creada y asignada solo a su cuenta por el adaptador) y escaneo bajo demanda tras subir o borrar.
-- [ ] Formatos de cómic (CBZ/CBR) admitidos en la subida; la papelera retira del servicio; la cuota cuenta los bytes una vez.
-- [ ] CI con Navidrome y Kavita reales: dos personas, cada una ve solo lo suyo.
+## S04a — Puente Mis archivos → servicios (en revisión, PR #36)
+- [ ] QA del usuario: subir un MP3, un EPUB y un CBZ a sus carpetas, verlos en Navidrome y Kavita con su cuenta, comprobar que otra persona no los ve y que la papelera los retira.
+- [ ] Vídeos → Jellyfin cuando llegue P04.2.
+- [ ] Producción con discos reales: generar el montaje de `.multisuite-media/{servicio}` como `/personal` en los compose de cada servicio (hoy solo en desarrollo) → P05.
 
 ## S04b — Publicación administrativa
 - [ ] Decidir con el usuario: imputación de contenido global a cuotas, borrado por el aportante de contenido publicado, baja del aportante.

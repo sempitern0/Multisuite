@@ -24,7 +24,8 @@ Mismo ciclo que Música (SERVICE_ACCOUNTS.md): invitación o alta con servicios,
 - Kavita asigna sus propios identificadores; cada cuenta se reconoce por la dirección sintética `{uuid}@multisuite.invalid`, con el UUID reservado en Multisuite. Un reintento encuentra la misma cuenta y nunca se adopta una cuenta existente por coincidir el correo real.
 - Alta: invitación **sin** el rol `Login` (una invitación pendiente conserva la contraseña por defecto pública de Kavita), confirmación con el nombre y la contraseña de la persona, y solo entonces se concede `Login`. Se comprueba entrando con la contraseña nueva.
 - Roles de un miembro: `Login`, `Download`, `Bookmark` (y `Pleb`, que Kavita añade). Nunca `Admin` ni `Change Password`: la contraseña se cambia en el portal.
-- Bibliotecas: al crear la cuenta se conceden todas las que existan (biblioteca común, como Música). Las bibliotecas por persona llegan con S04.
+- Bibliotecas: al crear la cuenta se conceden las comunes (Libros, Cómics, Manga, Documentación técnica), nunca las personales de otra persona.
+- Bibliotecas personales (S04a, STORAGE.md § Carpetas conectadas): «Mis libros · {usuario}» y «Mis cómics · {usuario}» sobre `/personal/{uuid}/libros` y `/personal/{uuid}/comics`, creadas por `ensurePersonalLibrary` la primera vez que la persona sube algo, asignadas solo a su cuenta y escaneadas tras cada cambio. El administrador de Kavita las ve todas.
 - Desactivar o suspender retira `Login` (Kavita rechaza el inicio de sesión como «cuenta desactivada») y revoca sus claves OPDS; libros leídos, progreso y listas se conservan. Reactivar devuelve `Login` en su siguiente acceso con contraseña.
 - Una cuenta remota con rol `Admin` o un nombre ocupado por otra cuenta se marcan como conflicto y no se tocan.
 
@@ -32,7 +33,7 @@ Contrato revisado en el código de v0.9.1.4 (`Kavita.Server/Controllers/AccountC
 
 ## Seguridad y límites
 - Escucha solo en `127.0.0.1:5000`. La autenticación del portal no protege el acceso directo: Kavita conserva su propio inicio de sesión. Exponerlo solo tras VPN/TLS (P03).
-- Bibliotecas montadas en solo lectura; configuración, base de datos y portadas en el volumen Docker `kavita-config`. La imagen de Kavita se ejecuta como root y su carpeta de configuración pertenece a otro usuario: conserva solo `CHOWN`, `DAC_OVERRIDE` y `FOWNER` (el resto de capacidades se quitan) y `no-new-privileges`. Las bibliotecas siguen siendo de solo lectura.
+- Bibliotecas montadas en solo lectura (también `/personal`, que escribe el portal); configuración, base de datos y portadas en el volumen Docker `kavita-config`. La imagen de Kavita se ejecuta como root y su carpeta de configuración pertenece a otro usuario: conserva solo `CHOWN`, `DAC_OVERRIDE` y `FOWNER` (el resto de capacidades se quitan) y `no-new-privileges`. Las bibliotecas siguen siendo de solo lectura.
 - Las sesiones ya abiertas en Kavita siguen hasta que caducan aunque se desactive la cuenta (igual que Música; ROADMAP P03).
 - Metadatos externos, scrobbling y recomendaciones requieren la suscripción Kavita+: no se usan. La coincidencia de metadatos queda desactivada en las bibliotecas creadas.
 - Copia de seguridad del volumen `kavita-config`: pendiente de añadir a `make nas-backup` (ROADMAP). Los libros son archivos normales del host y entran en la copia del operador.

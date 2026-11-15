@@ -82,9 +82,13 @@ if [ -f local/nas-targets ]; then
 else
     project=$(setting COMPOSE_PROJECT_NAME .env | tr -d '"')
     project=${project:-$(basename "$PWD" | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9_-')}
-    if "$DOCKER" volume inspect "${project}_nas_private" >/dev/null 2>&1; then
-        mounts="$mounts -v ${project}_nas_private:/source/nas/dev:ro"
-    fi
+    # Fixed name since connected folders (deploy/compose.nas-dev.yaml); older environments used the project prefix.
+    for volume in multisuite-nas-dev "${project}_nas_private"; do
+        if "$DOCKER" volume inspect "$volume" >/dev/null 2>&1; then
+            mounts="$mounts -v $volume:/source/nas/dev:ro"
+            break
+        fi
+    done
 fi
 for extra in $(setting BACKUP_EXTRA_PATHS backup.env); do
     safe_path "$extra"
