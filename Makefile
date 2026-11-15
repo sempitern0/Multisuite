@@ -38,15 +38,26 @@ DC := docker compose
 # Override with MUSIC_AUTO=0 for Laravel-only operation.
 MUSIC_AUTO ?= $(if $(wildcard music.env),1,0)
 MUSIC_DC := docker compose --env-file music.env -f compose.music.yaml
+# A configured reading.env does the same for Lectura (Kavita); READING_AUTO=0 skips it.
+READING_AUTO ?= $(if $(wildcard reading.env),1,0)
+READING_DC := docker compose --env-file reading.env -f compose.reading.yaml
+# Any integrated service attaches the portal to the shared accounts network.
+SERVICES_AUTO := $(if $(filter 1,$(MUSIC_AUTO) $(READING_AUTO)),1,0)
 # Real disks prepared by `make nas-apply` (compose.nas.yaml, local) replace the
 # development NAS volume (deploy/compose.nas-dev.yaml). NAS_DEV=0 also opts out.
 NAS_REAL := $(wildcard compose.nas.yaml)
 NAS_DEV ?= $(if $(NAS_REAL),0,1)
 DC_FILES := -f compose.yaml $(if $(wildcard compose.override.yaml),-f compose.override.yaml)
-ifeq ($(MUSIC_AUTO),1)
+ifeq ($(SERVICES_AUTO),1)
 # Keep host-generated overrides; append service connectivity without rewriting them.
 DC_FILES += -f deploy/compose.portal-accounts.example.yaml
+endif
+ifeq ($(MUSIC_AUTO),1)
 MUSIC_DC += -f deploy/compose.music-accounts.example.yaml
+endif
+ifeq ($(READING_AUTO),1)
+DC_FILES += -f deploy/compose.portal-reading.example.yaml
+READING_DC += -f deploy/compose.reading-accounts.example.yaml
 endif
 ifeq ($(NAS_DEV),1)
 DC_FILES += -f deploy/compose.nas-dev.yaml
@@ -54,7 +65,7 @@ endif
 ifneq ($(NAS_REAL),)
 DC_FILES += -f compose.nas.yaml
 endif
-ifneq ($(MUSIC_AUTO)$(NAS_DEV)$(NAS_REAL),00)
+ifneq ($(SERVICES_AUTO)$(NAS_DEV)$(NAS_REAL),00)
 DC := docker compose $(DC_FILES)
 endif
 # After start: wait for the DB, migrate and fill unset storage limits. Independent of
@@ -66,7 +77,7 @@ STARTER ?=
 # Explicit all-profiles stop also removes containers started manually through a
 # profile not included in the current .env.
 ALL_PROFILES := --profile dev --profile tools --profile workers --profile scheduler --profile redis --profile https --profile postgres --profile mariadb --profile mysql --profile phpmyadmin --profile mailpit --profile pgweb --profile adminer
-.PHONY: nas-discover nas-apply nas-backup nas-backup-verify nas-backup-restore nas-backup-snapshots music-up music-stop music-status music-logs music-config help check status doctor host-config setup reconfigure up up-detached up-wait up-logs start stop restart down build images rebuild ps logs shell artisan composer npm migrate test lint backup env-sync https-setup reset-project worker scheduler redis config tenancy-check
+.PHONY: nas-discover nas-apply nas-backup nas-backup-verify nas-backup-restore nas-backup-snapshots music-up music-stop music-status music-logs music-config reading-up reading-stop reading-status reading-logs reading-config help check status doctor host-config setup reconfigure up up-detached up-wait up-logs start stop restart down build images rebuild ps logs shell artisan composer npm migrate test lint backup env-sync https-setup reset-project worker scheduler redis config tenancy-check
 
 help:
 	@echo "Laravel Foundry - self-hosted Laravel environments with Docker Compose"
@@ -81,6 +92,8 @@ help:
 	@echo "Optional:    make worker | scheduler | redis"
 	@echo "Music:       make music-up | music-stop | music-status | music-logs"
 	@echo "Auto music:  music.env enables Navidrome; use MUSIC_AUTO=0 to skip"
+	@echo "Reading:     make reading-up | reading-stop | reading-status | reading-logs"
+	@echo "Auto read:   reading.env enables Kavita; use READING_AUTO=0 to skip"
 	@echo "Dev NAS:     private storage volume; use NAS_DEV=0 with real disks"
 	@echo "Real disks:  make nas-discover | nas-apply TARGETS='/mnt/disk1' (Linux server)"
 	@echo "NAS backup:  make nas-backup | nas-backup-verify | nas-backup-snapshots | nas-backup-restore TARGET=/empty/dir"
@@ -110,6 +123,9 @@ up: accounts-network
 ifeq ($(MUSIC_AUTO),1)
 	@$(MUSIC_DC) up -d
 endif
+ifeq ($(READING_AUTO),1)
+	@$(READING_DC) up -d
+endif
 	-@$(BOOTSTRAP_STEP)
 	-@$(STATUS_SCRIPT)
 
@@ -122,6 +138,9 @@ up-wait: accounts-network
 ifeq ($(MUSIC_AUTO),1)
 	@$(MUSIC_DC) up -d --wait --wait-timeout 120
 endif
+ifeq ($(READING_AUTO),1)
+	@$(READING_DC) up -d --wait --wait-timeout 120
+endif
 	-@$(BOOTSTRAP_STEP)
 	-$(HTTP_CHECK)
 	-@$(STATUS_SCRIPT)
@@ -131,19 +150,25 @@ up-logs: accounts-network
 ifeq ($(MUSIC_AUTO),1)
 	@$(MUSIC_DC) up -d
 endif
+ifeq ($(READING_AUTO),1)
+	@$(READING_DC) up -d
+endif
 	@$(DC) up
 
 # Retain containers/networks for fast daily resume; no destructive operations.
 start: accounts-network
 	@$(HOST_PREPARE)
 	@$(PREFLIGHT_SCRIPT)
-ifeq ($(MUSIC_AUTO),1)
+ifeq ($(SERVICES_AUTO),1)
 	@$(DC) up -d
 else
 	@$(DC) start
 endif
 ifeq ($(MUSIC_AUTO),1)
 	@$(MUSIC_DC) up -d
+endif
+ifeq ($(READING_AUTO),1)
+	@$(READING_DC) up -d
 endif
 	-@$(BOOTSTRAP_STEP)
 	-@$(STATUS_SCRIPT)
@@ -152,6 +177,9 @@ stop:
 ifeq ($(MUSIC_AUTO),1)
 	@$(MUSIC_DC) stop
 endif
+ifeq ($(READING_AUTO),1)
+	@$(READING_DC) stop
+endif
 	@$(DC) stop
 
 restart: stop start
@@ -159,6 +187,9 @@ restart: stop start
 down:
 ifeq ($(MUSIC_AUTO),1)
 	@$(MUSIC_DC) down
+endif
+ifeq ($(READING_AUTO),1)
+	@$(READING_DC) down
 endif
 	@$(DC) $(ALL_PROFILES) down --remove-orphans
 
@@ -277,9 +308,25 @@ music-logs:
 music-config:
 	@$(MUSIC_DC) config --quiet
 
+# Lectura (Kavita): independent commands fail if reading.env is absent or invalid.
+reading-up: accounts-network
+	@$(READING_DC) up -d
+
+reading-stop:
+	@$(READING_DC) stop
+
+reading-status:
+	@$(READING_DC) ps
+
+reading-logs:
+	@$(READING_DC) logs -f --tail=100 kavita
+
+reading-config:
+	@$(READING_DC) config --quiet
+
 # Shared external network survives either stack's down/recreation.
 .PHONY: accounts-network
 accounts-network:
-ifeq ($(MUSIC_AUTO),1)
+ifeq ($(SERVICES_AUTO),1)
 	@$(ACCOUNTS_NETWORK)
 endif

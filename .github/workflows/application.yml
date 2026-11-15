@@ -16,7 +16,7 @@ concurrency:
 jobs:
   application:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     services:
       storage-postgres:
         image: postgres:17-alpine
@@ -99,3 +99,20 @@ jobs:
             sleep 1
           done
           NAVIDROME_TEST_URL=http://127.0.0.1:4533 php artisan test tests/Integration/NavidromeAccountsTest.php
+      - name: Kavita account integration
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: |
+          trap 'docker rm -f kavita-ci >/dev/null 2>&1; docker volume rm kavita-ci-config >/dev/null 2>&1' EXIT
+          mkdir -p /tmp/kavita-ci/books /tmp/kavita-ci/comics /tmp/kavita-ci/manga /tmp/kavita-ci/docs
+          # Same hardening as compose.reading.yaml.
+          docker run -d --name kavita-ci -p 127.0.0.1:5000:5000 --cap-drop ALL --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER --security-opt no-new-privileges:true \
+            -v kavita-ci-config:/kavita/config \
+            -v /tmp/kavita-ci/books:/books:ro -v /tmp/kavita-ci/comics:/comics:ro \
+            -v /tmp/kavita-ci/manga:/manga:ro -v /tmp/kavita-ci/docs:/docs:ro \
+            jvmilazz0/kavita:0.9.1
+          for attempt in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:5000/api/health >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:5000/api/health >/dev/null || { docker logs --tail 80 kavita-ci; exit 1; }
+          KAVITA_TEST_URL=http://127.0.0.1:5000 php artisan test tests/Integration/KavitaAccountsTest.php || { docker logs --tail 80 kavita-ci; exit 1; }

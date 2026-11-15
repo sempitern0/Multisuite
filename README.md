@@ -6,6 +6,8 @@ NAS doméstico autoalojado con un portal privado (Laravel 13 + Livewire 4 + Flux
 - **Portada** con tarjetas de servicios y acceso controlado (`/services/{id}`).
 - **Acceso privado**: sin registro libre; invitaciones firmadas de un uso, alta manual con contraseña temporal, roles propietario/administrador/miembro, 2FA y passkeys.
 - **Música** con [Navidrome](docs/NAVIDROME.md): stack independiente, cuentas aprovisionadas desde el portal y puente de sesión para dispositivos compartidos.
+- **Lectura** con [Kavita](docs/KAVITA.md): novelas, cómics, manga y documentación técnica (EPUB, PDF, CBZ/CBR), con cuentas gestionadas desde el portal.
+- **Mis archivos**: carpetas privadas cifradas, subida reanudable, vista previa, papelera, versiones y ZIP.
 - **Administración**: usuarios, invitaciones y registro de actividad.
 - **Almacenamiento**: inventario de discos, cuotas por persona con reservas atómicas, recepción privada de archivos y página **Almacenamiento** para repartir el espacio sin conocimientos técnicos ([STORAGE.md](docs/STORAGE.md)).
 
@@ -23,6 +25,8 @@ make test                                 # tests de la aplicación
 
 `make up` aplica migraciones y prepara un **NAS de desarrollo**: volumen Docker privado con su marca y permisos, límite del disco y 10 GB por persona si nadie los ha elegido aún. Los cambios que hagas después en **Almacenamiento** se respetan. Usa `NAS_DEV=0` si `app/.env` apunta a discos reales (el arranque muestra qué ubicaciones están activas) y `DEV_BOOTSTRAP=0` para no migrar automáticamente. En el servidor Linux, `make nas-discover` muestra discos y particiones y `make nas-apply TARGETS="/srv/disco1"` los prepara para el portal sin formatear ni montar nada ([STORAGE.md](docs/STORAGE.md)). El entorno local es desechable: `make reset-project` + `make build` lo recrea desde cero (borra la DB y los archivos de desarrollo).
 
+Lectura: copiar `reading.env.example` a `reading.env` y `make up` la arranca y la prepara ([guía](docs/KAVITA.md)).
+
 Solo música, sin Laravel: copiar `music.env.example` a `music.env`, crear carpetas y `docker compose --env-file music.env -f compose.music.yaml up -d` ([guía](docs/NAVIDROME.md)). `make up MUSIC_AUTO=0` arranca solo el portal.
 
 No ejecutar `make setup`/`reset-project` sobre la app existente: el starter ya está versionado en `app/`.
@@ -35,7 +39,7 @@ No ejecutar `make setup`/`reset-project` sobre la app existente: el starter ya e
 | Estado y pendientes | [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) · [docs/ROADMAP.md](docs/ROADMAP.md) |
 | Almacenamiento y cuotas | [docs/STORAGE.md](docs/STORAGE.md) |
 | Usuarios, invitaciones, auditoría | [USER_MANAGEMENT](docs/USER_MANAGEMENT.md) · [INVITATIONS](docs/INVITATIONS.md) · [ADMIN_AUDIT](docs/ADMIN_AUDIT.md) |
-| Servicios | [NAVIDROME](docs/NAVIDROME.md) · [SERVICE_ACCOUNTS](docs/SERVICE_ACCOUNTS.md) · [MUSIC_SESSION_BRIDGE](docs/MUSIC_SESSION_BRIDGE.md) |
+| Servicios | [NAVIDROME](docs/NAVIDROME.md) · [KAVITA](docs/KAVITA.md) · [SERVICE_ACCOUNTS](docs/SERVICE_ACCOUNTS.md) · [MUSIC_SESSION_BRIDGE](docs/MUSIC_SESSION_BRIDGE.md) |
 | Entornos y dependencias | [ENVIRONMENTS](docs/ENVIRONMENTS.md) · [DEPENDENCIES](docs/DEPENDENCIES.md) |
 | Plantilla Laravel Foundry (despliegue, hosting, entornos de desarrollo) | [docs/foundry/](docs/foundry/DEPLOYMENT.md) |
 

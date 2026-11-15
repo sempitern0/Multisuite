@@ -64,5 +64,18 @@ Sin dependencias nuevas: la extensión `sodium` viene incluida en PHP 8.4 (image
 - Uso (`resources/js/avatar-editor.js`): selección cuadrada fija mostrada como círculo, imagen que se mueve y amplía debajo y que nunca deja hueco (cálculo propio sobre la matriz del evento `transform`: la receta con clon de la documentación 2.0 falla en 2.3, comprobado en el navegador). Cropper.js debe iniciarse con el recuadro ya visible: si mide 0 × 0, la selección queda vacía, recorte con `$toCanvas` a 512 px. Sustituye ~250 líneas propias. La rueda sola sigue desplazando la página (Ctrl/⌘ + rueda amplía), como en el visor.
 - En el servidor no cambia nada: GD (con WebP) vuelve a decodificar, recortar y guardar un WebP de 256 px. Las imágenes PHP se compilan con `--with-webp` (`libwebp-dev` de bookworm).
 
+## D015 — ExifTool para quitar metadatos de las fotos (2026-11-15, S03.8)
+- **ExifTool** (paquete Debian `libimage-exiftool-perl` 12.57 de bookworm, https://packages.debian.org/bookworm/libimage-exiftool-perl, consultado 2026-11-15; proyecto https://exiftool.org, publicaciones cada pocas semanas desde 2003). Es la herramienta de referencia para leer y escribir metadatos: cubre JPEG, PNG, GIF y WebP (y vídeo, para el siguiente paso), reescribe solo los metadatos sin tocar los píxeles y permite conservar orientación y perfil de color. Licencia libre (la de Perl: Artistic/GPL). Actualizaciones de seguridad a través de Debian. Coste: Perl en la imagen (unos 20 MB).
+- Descartadas: recodificar con GD o Imagick (pierde calidad, contra la regla de no recodificar originales), `jpegtran -copy none` (solo JPEG y además pierde orientación y perfil de color) y librerías PHP de EXIF como PEL (solo JPEG/TIFF, sin escritura de PNG/WebP).
+- Se invoca con `Process` y argumentos en lista (sin shell) sobre una copia con nombre controlado; ver `Services/Storage/ImageMetadata`.
+- De paso, la imagen de producción instala también `libjpeg-turbo-progs`: faltaba, así que `jpegtran` no optimizaba en producción.
+- Requiere reconstruir las imágenes (`make rebuild`).
+
+## D016 — Kavita 0.9.1 para Lectura (2026-11-15, P04.1)
+- **Kavita** (`jvmilazz0/kavita:0.9.1`, publicación v0.9.1.4 de 2026-09-01; GPL-3.0; https://github.com/Kareadita/Kavita y https://www.kavitareader.com, consultados 2026-11-15). Servidor de lectura con lectores propios para EPUB, PDF y cómics/manga (CBZ, CBR, CB7, imágenes), OPDS, multiusuario y permisos por biblioteca. Unos 364 commits en los últimos doce meses con actividad todos los meses. Se ejecuta como servicio aparte (contenedor), así que su licencia GPL no afecta al portal.
+- Descartado Komga (MIT, excelente en cómics pero con lectura de EPUB/PDF más limitada) porque se quieren novelas y cómics por igual; Calibre-Web (centrado en libros, cómics básicos) y Audiobookshelf (orientado a audiolibros).
+- Kavita+ (de pago: metadatos externos, scrobbling) no se usa.
+- La etiqueta `0.9.1` sigue las correcciones de esa versión; fijar por digest al preparar producción (P05). Adaptador probado en CI contra la imagen real.
+
 ## Política: librería antes que código propio (decisión del usuario, 2026-11-15)
 Para cada función nueva se busca primero una librería o herramienta segura, mantenida y usada por la comunidad (criterios de AGENTS.md); el código propio queda para cuando no exista una adecuada. Que el entorno del agente no alcance un registro (npm, Packagist) no es motivo para reimplementar: se pide acceso o se genera el lockfile donde haya red.
