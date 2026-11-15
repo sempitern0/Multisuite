@@ -332,6 +332,10 @@ class PersonalFilesTest extends TestCase
         $this->assertSame('video/mp4', $part->headers->get('Content-Type'));
         $this->assertSame('bytes 4-7/'.strlen($video), $part->headers->get('Content-Range'));
 
+        $song = "ID3\x03\x00\x00\x00\x00\x00\x0a".str_repeat("\x00", 10)."\xff\xfb\x90\x64".str_repeat("\x00", 24);
+        $this->upload($this->owner, 'cancion.mp3', $song)->assertOk();
+        $this->get('/files/'.$this->entry('cancion.mp3')->id)->assertOk()->assertSee('<audio', false)->assertSee('Reproducir cancion.mp3');
+
         Process::fake(fn () => Process::result(exitCode: 127));
         $this->upload($this->owner, 'foto.jpg', base64_decode(self::JPEG))->assertOk();
         $this->get('/files/'.$this->entry('foto.jpg')->id)->assertOk()->assertSee('data-viewer', false)->assertSee('Tamaño real');

@@ -57,9 +57,10 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | `segmented` | `label` | Grupo de botones excluyentes (p. ej. cambiar de vista); cada botón lleva `aria-pressed`. |
 | `file-grid` | `view` gallery/list, `label` | Archivos y carpetas en mosaico: galería con miniaturas o lista compacta en columnas. |
 | `file-card` | `href`, `name`, `icon`, `meta`, `thumb` image/video, `src`, `spa`, `fresh`; slots `select`, `actions` | Elemento de `file-grid`. La miniatura solo se carga en galería y de forma diferida. |
+| `tile-art` | `name` | Fondo vectorial decorativo de una tarjeta de servicio según su icono (music, folder, video, book, image; otro nombre: patrón neutro). Lo dibuja `service-tile`; sin texto ni significado propio. |
 | `entry` | `href`, `icon`, `spa` | Nombre de archivo o carpeta con icono, como enlace. En tablas se recorta a dos líneas; el nombre completo queda en el tooltip. |
 | `uploader` | `store-url`, `upload-url`, `max-bytes`, `folder`, `hint` | Selector de archivos con lista de progreso; lo maneja `resources/js/files.js` (ganchos `data-uploader*`, estado en `data-state`) y emite `files-uploaded`. |
-| `preview` | `kind` image/video/pdf/text/rich/none, `src`, `title`, `note` | Superficie de vista previa de solo lectura. `image` es un visor con zoom y `video` el reproductor del navegador; su comportamiento vive en `resources/js/viewer.js` (`data-viewer`, `data-player`). |
+| `preview` | `kind` image/video/pdf/text/rich/none, `src`, `title`, `note` | Superficie de vista previa de solo lectura. `image` es un visor con zoom (Ctrl/⌘ + rueda o pellizco; la rueda sola desplaza la página o mueve la imagen ampliada), `video` y `audio` usan el reproductor del navegador; su comportamiento vive en `resources/js/viewer.js` (`data-viewer`, `data-player`). |
 | `prose` | slot | Contenido largo ya convertido a HTML seguro (Markdown saneado). |
 | `form` | `action`, `method`, `inline` | Añade CSRF (y `@method` si no es POST) y el espaciado entre campos. `inline`: un campo y su botón en la misma línea, alineados por abajo. |
 | `stack` | `gap` sm/md/lg | Ritmo vertical entre bloques. |

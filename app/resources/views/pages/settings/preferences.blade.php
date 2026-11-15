@@ -13,8 +13,6 @@ new #[Title('Preferencias')] class extends Component {
 
     public string $density = 'comfortable';
 
-    public string $sidebar = 'full';
-
     public string $start = 'services';
 
     public string $per_page = '25';
@@ -47,10 +45,6 @@ new #[Title('Preferencias')] class extends Component {
         <x-ui::choice-group name="density" label="Densidad" wire:model.live="density"
             help="Compacta muestra más información en pantalla con menos espacio entre elementos."
             :options="['comfortable' => 'Cómoda', 'compact' => 'Compacta']" />
-
-        <x-ui::choice-group name="sidebar" label="Menú lateral" wire:model.live="sidebar"
-            help="Solo iconos deja más espacio para el contenido en pantallas grandes."
-            :options="['full' => 'Completo', 'compact' => 'Solo iconos']" />
 
         <x-ui::choice-group name="start" label="Página de inicio" wire:model.live="start"
             help="Lo primero que verás al entrar."

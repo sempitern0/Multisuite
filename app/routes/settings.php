@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Settings\SidebarPreferenceController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
+    Route::put('settings/sidebar', SidebarPreferenceController::class)->middleware('throttle:files')->name('preferences.sidebar');
 
     Route::livewire('settings/profile', 'pages::settings.profile')->name('profile.edit');
 });

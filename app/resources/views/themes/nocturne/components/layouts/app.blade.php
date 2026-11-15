@@ -29,6 +29,9 @@
                 </nav>
                 @php($account = $navigation['account'])
                 <div class="ui-sidebar-bottom">
+                    <button type="button" class="ui-nav-item ui-collapse" data-sidebar-toggle data-save="{{ $navigation['sidebar']['save'] }}" data-csrf="{{ csrf_token() }}" aria-expanded="{{ $navigation['sidebar']['compact'] ? 'false' : 'true' }}" title="{{ $navigation['sidebar']['compact'] ? 'Expandir el menú' : 'Contraer el menú' }}">
+                        <x-ui::icon name="sidebar" /><span class="ui-hide-compact">Contraer menú</span>
+                    </button>
                     <div class="ui-person">
                         <span class="ui-avatar" aria-hidden="true">{{ $account['initials'] }}</span>
                         <span class="ui-hide-compact ui-person-text">
@@ -39,7 +42,7 @@
                     <x-ui::nav-item :href="$account['settings']['href']" :icon="$account['settings']['icon']" :active="$account['settings']['active']" :spa="$account['settings']['spa']">{{ $account['settings']['label'] }}</x-ui::nav-item>
                     <form method="POST" action="{{ $account['logout'] }}">
                         @csrf
-                        <button type="submit" class="ui-nav-item" data-test="logout-button">
+                        <button type="submit" class="ui-nav-item" data-test="logout-button" title="Cerrar sesión">
                             <x-ui::icon name="logout" /><span class="ui-hide-compact">Cerrar sesión</span>
                         </button>
                     </form>

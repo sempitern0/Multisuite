@@ -3,12 +3,14 @@
     Contract: one-word service name, icon, short status (ready|pending|soon|offline),
     optional note (what to do) and detail (e.g. the account name).
     Only pass `href` when the server allows opening it; without it the tile is informative.
+    The background art follows the icon (x-ui::tile-art), so each service is recognisable at a glance.
 --}}
 @php
     $tone = ['ready' => 'ok', 'pending' => 'warn', 'soon' => 'muted', 'offline' => 'bad'][$status] ?? 'muted';
     $tag = $href !== null ? 'a' : 'div';
 @endphp
 <{{ $tag }} @if ($href !== null) href="{{ $href }}" aria-label="Abrir {{ $name }}" @endif data-status="{{ $status }}" {{ $attributes->merge(['class' => 'ui-service-tile']) }}>
+    <x-ui::tile-art :name="$icon" />
     <span class="ui-tile-icon"><x-ui::icon :name="$icon" /></span>
     <span class="ui-tile-title">{{ $name }}</span>
     <span class="ui-tile-note">

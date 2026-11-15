@@ -295,6 +295,7 @@ new #[Title('Mis archivos')] class extends Component {
                 $emptyText = $l['searching'] || $kind !== '' ? 'Nada coincide con la búsqueda o el filtro.' : 'Esta carpeta está vacía. Sube archivos o arrástralos aquí.';
             @endphp
 
+            <div data-range-select>
             @if ($l['view'] === 'details')
                 <x-ui::table label="Contenido de la carpeta">
                     <x-slot:head>
@@ -353,6 +354,7 @@ new #[Title('Mis archivos')] class extends Component {
                     @endforeach
                 </x-ui::file-grid>
             @endif
+            </div>
         </x-ui::stack>
 
         @if ($folder !== null)
