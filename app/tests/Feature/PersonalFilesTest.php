@@ -311,12 +311,12 @@ class PersonalFilesTest extends TestCase
 
     public function test_selection_bar_trashes_several_files_and_back_arrow_returns_to_the_parent(): void
     {
-        $this->upload($this->owner, 'a.txt', 'a')->assertOk();
-        $this->upload($this->owner, 'b.txt', 'b')->assertOk();
-        $this->upload($this->owner, 'c.txt', 'c')->assertOk();
+        $this->upload($this->owner, 'a.txt', 'nota uno')->assertOk();
+        $this->upload($this->owner, 'b.txt', 'nota dos')->assertOk();
+        $this->upload($this->owner, 'c.txt', 'nota tres')->assertOk();
         $other = User::factory()->create();
         app(StorageReservations::class)->setUserQuota($other, 500000);
-        $this->upload($other, 'ajeno.txt', 'x')->assertOk();
+        $this->upload($other, 'ajeno.txt', 'nota ajena')->assertOk();
         $foreign = UserFile::where('user_id', $other->id)->firstOrFail();
         $this->actingAs($this->owner);
         $a = $this->entry('a.txt');
