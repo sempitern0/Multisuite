@@ -34,10 +34,19 @@ enum FileKind: string
         return self::Other;
     }
 
-    /** Filter options: value => plural label. @return array<string, string> */
+    /**
+     * Filter options: value => plural label.
+     *
+     * @return array<string, string>
+     */
     public static function options(): array
     {
-        return array_column(array_map(fn (self $kind): array => [$kind->value, $kind->plural()], self::cases()), 1, 0);
+        $options = [];
+        foreach (self::cases() as $kind) {
+            $options[$kind->value] = $kind->plural();
+        }
+
+        return $options;
     }
 
     public function plural(): string
