@@ -22,6 +22,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 
 /**
  * @property list<string>|null $service_access
+ * @property list<string>|null $services_revoked
  * @property array<string, mixed>|null $preferences
  * @property int $id
  * @property string $role
@@ -92,6 +93,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'service_access' => 'array',
+            'services_revoked' => 'array',
             'preferences' => 'array',
             'must_change_password' => 'boolean',
             'suspended_at' => 'datetime',

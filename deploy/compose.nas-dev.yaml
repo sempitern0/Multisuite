@@ -32,9 +32,10 @@ services:
       - |
         root=/nas/private
         [ -f "$$root/.multisuite-volume-id" ] || printf 'private\n' > "$$root/.multisuite-volume-id"
-        mkdir -p "$$root/.multisuite-private"
-        chown ${DEV_UID:-1000}:${DEV_GID:-1000} "$$root" "$$root/.multisuite-volume-id" "$$root/.multisuite-private"
-        chmod 0755 "$$root"
+        mkdir -p "$$root/.multisuite-private" "$$root/.multisuite-media/music" "$$root/.multisuite-media/reading"
+        chown ${DEV_UID:-1000}:${DEV_GID:-1000} "$$root" "$$root/.multisuite-volume-id" "$$root/.multisuite-private" \
+          "$$root/.multisuite-media" "$$root/.multisuite-media/music" "$$root/.multisuite-media/reading"
+        chmod 0755 "$$root" "$$root/.multisuite-media" "$$root/.multisuite-media/music" "$$root/.multisuite-media/reading"
         chmod 0644 "$$root/.multisuite-volume-id"
         chmod 0700 "$$root/.multisuite-private"
         echo "Dev NAS ready at $$root"
@@ -42,4 +43,7 @@ services:
   worker: *nas-runtime
   scheduler: *nas-runtime
 volumes:
+  # Fixed name: Navidrome and Kavita (separate Compose projects) mount its .multisuite-media
+  # sub-folders read-only to show each person's connected folders (deploy/compose.*-media.dev.yaml).
   nas_private:
+    name: multisuite-nas-dev

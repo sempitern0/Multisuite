@@ -22,7 +22,7 @@ class PersonalFiles
 {
     public const MAX_DEPTH = 8;
 
-    public function __construct(private PrivateUploads $uploads) {}
+    public function __construct(private PrivateUploads $uploads, private ConnectedFolders $connected, private MediaLibrary $media) {}
 
     /** Display names are labels only: they never become paths on disk. */
     public static function cleanName(string $name, int $max): string
@@ -240,9 +240,11 @@ class PersonalFiles
         return DB::transaction(function () use ($user, $id, $name): Folder {
             User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             $folder = Folder::where('user_id', $user->id)->lockForUpdate()->findOrFail($id);
+            $this->assertNotConnected($folder);
             $this->assertFreeFolderName($user, $folder->parent_id, $name, $folder->id);
             $folder->name = $name;
             $folder->save();
+            $this->media->changed($user);
 
             return $folder;
         });
@@ -254,6 +256,7 @@ class PersonalFiles
         DB::transaction(function () use ($user, $id): void {
             User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             $folder = Folder::where('user_id', $user->id)->lockForUpdate()->findOrFail($id);
+            $this->assertNotConnected($folder);
             if (Folder::where('parent_id', $folder->id)->exists() || UserFile::where('folder_id', $folder->id)->exists()) {
                 throw new RuntimeException('La carpeta no está vacía.');
             }
@@ -272,7 +275,8 @@ class PersonalFiles
         return DB::transaction(function () use ($user, $folderId, $name, $bytes, $key): UserFile {
             // Ownership of the target folder first: a foreign folder must not reserve quota.
             $folder = $this->folder($user, $folderId);
-            $upload = $this->uploads->begin($user, $bytes, $key); // Locks the user row.
+            // Inside a connected folder the file is kept unencrypted for its service.
+            $upload = $this->uploads->begin($user, $bytes, $key, $this->connected->of($folder)); // Locks the user row.
             $existing = UserFile::where('upload_id', $upload->id)->first();
             if ($existing !== null) {
                 if ($existing->user_id !== $user->id) {
@@ -308,6 +312,7 @@ class PersonalFiles
             }
             $file->name = $name;
             $file->save();
+            $this->media->changed($user);
 
             return $file;
         });
@@ -351,6 +356,7 @@ class PersonalFiles
             $file->folder_id = null;
             $file->trashed_at = now();
             $file->save();
+            $this->media->changed($user);
 
             return $file;
         });
@@ -372,6 +378,7 @@ class PersonalFiles
             $file->trashed_at = null;
             $file->name = $this->freeFileName($user, $folder?->id, $file->name, $file->id);
             $file->save();
+            $this->media->changed($user);
 
             return $file;
         });
@@ -423,6 +430,7 @@ class PersonalFiles
                 throw new RuntimeException('Solo se puede restaurar una versión de un archivo que no esté en la papelera.');
             }
             $this->swap($current, $version, true);
+            $this->media->changed($user);
 
             return $version;
         });
@@ -447,6 +455,7 @@ class PersonalFiles
         if ($previous !== null) {
             $this->swap($previous, $new, false);
         }
+        $this->media->changed($user);
     }
 
     /**
@@ -505,6 +514,7 @@ class PersonalFiles
         DB::transaction(function () use ($user, $file): void {
             $this->uploads->purge($user, $file->upload_id);
             UserFile::whereKey($file->id)->delete();
+            $this->media->changed($user);
         });
     }
 
@@ -516,6 +526,13 @@ class PersonalFiles
         $reservation = $file->reservation()->firstOrFail();
 
         return ['blob' => $blob, 'mime' => (string) $upload->mime, 'size' => (int) $reservation->actual_bytes];
+    }
+
+    private function assertNotConnected(Folder $folder): void
+    {
+        if ($folder->isConnected()) {
+            throw new RuntimeException('Esta carpeta está conectada con '.config('portal.services.'.ConnectedFolders::definition((string) $folder->media_link)['service'].'.name').': no se puede renombrar ni eliminar.');
+        }
     }
 
     private function assertFreeFolderName(User $user, ?int $parentId, string $name, ?int $ignore): void

@@ -4,6 +4,7 @@ namespace App\Actions\Users;
 
 use App\Models\User;
 use App\Services\AdminAudit;
+use App\Services\Files\MediaLibrary;
 use App\Services\ServiceAccounts;
 use App\Support\LockedUsers;
 use Illuminate\Support\Facades\DB;
@@ -53,6 +54,7 @@ class SetSuspension
                 $this->accounts->awaitPassword($target);
             }
             $this->audit->record($actor, $target, $suspend ? 'user.suspended' : 'user.reactivated');
+            app(MediaLibrary::class)->changed($target);
         });
     }
 }

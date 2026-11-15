@@ -61,6 +61,9 @@ READING_DC += -f deploy/compose.reading-accounts.example.yaml
 endif
 ifeq ($(NAS_DEV),1)
 DC_FILES += -f deploy/compose.nas-dev.yaml
+# Services read the people's connected folders from the same development volume.
+MUSIC_DC += -f deploy/compose.music-media.dev.yaml
+READING_DC += -f deploy/compose.reading-media.dev.yaml
 endif
 ifneq ($(NAS_REAL),)
 DC_FILES += -f compose.nas.yaml

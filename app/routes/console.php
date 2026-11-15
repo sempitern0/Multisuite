@@ -10,6 +10,9 @@ Artisan::command('inspire', function () {
 
 Schedule::command('portal:sync-accounts')->everyMinute()->withoutOverlapping();
 
+// Connected folders: changes sync at once; this pass repairs anything a failure left behind.
+Schedule::command('portal:media-sync')->everyFifteenMinutes()->withoutOverlapping()->runInBackground();
+
 Schedule::command('portal:uploads-cleanup')->everyTenMinutes()->withoutOverlapping();
 
 Schedule::command('portal:files-purge')->dailyAt('03:30')->withoutOverlapping();

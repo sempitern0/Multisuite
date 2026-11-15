@@ -87,8 +87,11 @@ jobs:
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: |
           docker network create navidrome-ci
+          # Connected folders: the portal mirrors into this tree, Navidrome reads it as /personal.
+          mkdir -p /tmp/nas-ci-music/.multisuite-media/music
           trap 'docker rm -f music-gateway-ci navidrome-ci >/dev/null 2>&1; docker network rm navidrome-ci >/dev/null' EXIT
-          docker run -d --name navidrome-ci --network navidrome-ci --network-alias navidrome navidrome/navidrome:0.64.2
+          docker run -d --name navidrome-ci --network navidrome-ci --network-alias navidrome \
+            -v /tmp/nas-ci-music/.multisuite-media/music:/personal:ro navidrome/navidrome:0.64.2
           docker run -d --name music-gateway-ci --network navidrome-ci -p 127.0.0.1:4533:8080 \
             --user 101:101 --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true \
             -v "$PWD/../docker/music-proxy/nginx.conf:/etc/nginx/nginx.conf:ro" \
@@ -98,21 +101,22 @@ jobs:
             if curl -fsS http://127.0.0.1:4533/ping >/dev/null; then break; fi
             sleep 1
           done
-          NAVIDROME_TEST_URL=http://127.0.0.1:4533 php artisan test tests/Integration/NavidromeAccountsTest.php
+          NAVIDROME_TEST_URL=http://127.0.0.1:4533 MEDIA_TEST_ROOT=/tmp/nas-ci-music php artisan test tests/Integration/NavidromeAccountsTest.php
       - name: Kavita account integration
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: |
           trap 'docker rm -f kavita-ci >/dev/null 2>&1; docker volume rm kavita-ci-config >/dev/null 2>&1' EXIT
-          mkdir -p /tmp/kavita-ci/books /tmp/kavita-ci/comics /tmp/kavita-ci/manga /tmp/kavita-ci/docs
+          mkdir -p /tmp/kavita-ci/books /tmp/kavita-ci/comics /tmp/kavita-ci/manga /tmp/kavita-ci/docs /tmp/nas-ci-reading/.multisuite-media/reading
           # Same hardening as compose.reading.yaml.
           docker run -d --name kavita-ci -p 127.0.0.1:5000:5000 --cap-drop ALL --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER --security-opt no-new-privileges:true \
             -v kavita-ci-config:/kavita/config \
             -v /tmp/kavita-ci/books:/books:ro -v /tmp/kavita-ci/comics:/comics:ro \
             -v /tmp/kavita-ci/manga:/manga:ro -v /tmp/kavita-ci/docs:/docs:ro \
+            -v /tmp/nas-ci-reading/.multisuite-media/reading:/personal:ro \
             jvmilazz0/kavita:0.9.1
           for attempt in $(seq 1 90); do
             if curl -fsS http://127.0.0.1:5000/api/health >/dev/null; then break; fi
             sleep 2
           done
           curl -fsS http://127.0.0.1:5000/api/health >/dev/null || { docker logs --tail 80 kavita-ci; exit 1; }
-          KAVITA_TEST_URL=http://127.0.0.1:5000 php artisan test tests/Integration/KavitaAccountsTest.php || { docker logs --tail 80 kavita-ci; exit 1; }
+          KAVITA_TEST_URL=http://127.0.0.1:5000 MEDIA_TEST_ROOT=/tmp/nas-ci-reading php artisan test tests/Integration/KavitaAccountsTest.php || { docker logs --tail 80 kavita-ci; exit 1; }

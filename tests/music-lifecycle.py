@@ -26,7 +26,8 @@ with tempfile.TemporaryDirectory(prefix="multisuite-music-") as directory:
     (work / "music.env").write_text("# configured\n")
     for target, command in [("up", "up -d"), ("up-detached", "up -d"), ("start", "up -d"), ("stop", "stop"), ("down", "down"), ("up-wait", "up -d --wait --wait-timeout 120"), ("up-logs", "up -d")]:
         calls = run(target)
-        assert f"compose --env-file music.env -f compose.music.yaml -f deploy/compose.music-accounts.example.yaml {command}" in calls, calls
+        # The development NAS (default) also mounts the connected «Música» folders.
+        assert f"compose --env-file music.env -f compose.music.yaml -f deploy/compose.music-accounts.example.yaml -f deploy/compose.music-media.dev.yaml {command}" in calls, calls
         assert all("-v" not in call.split() for call in calls), calls
     calls = run("up")
     assert calls[0] == "network inspect multisuite-accounts", calls

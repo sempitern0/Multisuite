@@ -1,0 +1,15 @@
+# Development only, applied by Make with reading.env and the development NAS: Kavita reads each
+# person's connected «Libros» and «Cómics» folders (MediaLibrary) from /personal, read-only.
+services:
+  kavita:
+    volumes:
+      - type: volume
+        source: nas
+        target: /personal
+        read_only: true
+        volume:
+          subpath: .multisuite-media/reading
+volumes:
+  nas:
+    external: true
+    name: multisuite-nas-dev

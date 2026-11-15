@@ -1,0 +1,15 @@
+# Development only, applied by Make with music.env and the development NAS: Navidrome reads
+# each person's connected «Música» folder (MediaLibrary) from /personal, read-only.
+services:
+  navidrome:
+    volumes:
+      - type: volume
+        source: nas
+        target: /personal
+        read_only: true
+        volume:
+          subpath: .multisuite-media/music
+volumes:
+  nas:
+    external: true
+    name: multisuite-nas-dev

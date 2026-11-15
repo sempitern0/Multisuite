@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ServiceAccount;
 use App\Models\User;
+use App\Services\Provisioning\PersonalLibraries;
 use App\Services\Provisioning\ServiceProvisioner;
 use App\Services\Provisioning\ServiceUrl;
 use Illuminate\Http\Client\ConnectionException;
@@ -11,7 +12,7 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
-class NavidromeAccounts implements ServiceProvisioner
+class NavidromeAccounts implements PersonalLibraries, ServiceProvisioner
 {
     public function synchronize(ServiceAccount $account, #[\SensitiveParameter] string $password): void
     {
@@ -106,6 +107,59 @@ class NavidromeAccounts implements ServiceProvisioner
                 throw new RuntimeException('unavailable');
             }
             $this->verify($client, $account, $expectedName);
+        } catch (ConnectionException) {
+            throw new RuntimeException('unavailable');
+        }
+    }
+
+    /**
+     * Navidrome 0.64 libraries (server/nativeapi/library.go): created with defaultNewUsers off so
+     * nobody else receives it, then added to this account's library list. Navidrome scans a new
+     * library at once and watches it afterwards (ND_SCANSCHEDULE as a fallback).
+     */
+    public function ensurePersonalLibrary(ServiceAccount $account, ?string $section, string $label): void
+    {
+        $path = PersonalLibraries::MOUNT.'/'.strtolower($account->remote_id).($section === null ? '' : '/'.$section);
+        try {
+            $client = $this->client();
+            $remote = $client->get('/api/user/'.$account->remote_id);
+            if ($remote->status() === 404) {
+                return;
+            }
+            if (! $remote->successful()) {
+                throw new RuntimeException('unavailable');
+            }
+            $user = User::findOrFail($account->user_id);
+            $this->assertIdentity($remote->json(), $account, [$account->username, $user->username ?? $account->username]);
+            $libraries = $client->get('/api/library');
+            if (! $libraries->successful()) {
+                throw new RuntimeException('unavailable');
+            }
+            $id = null;
+            foreach ((array) $libraries->json() as $library) {
+                if (is_array($library) && ($library['path'] ?? null) === $path) {
+                    $id = (int) $library['id'];
+                }
+            }
+            if ($id === null) {
+                $created = $client->post('/api/library', ['name' => $label.' · '.$remote->json('userName'), 'path' => $path, 'defaultNewUsers' => false]);
+                if (! $created->successful() || ! is_numeric($created->json('id'))) {
+                    // Typically the personal folder is not mounted in the Navidrome container.
+                    throw new RuntimeException($created->clientError() ? 'configuration' : 'unavailable');
+                }
+                $id = (int) $created->json('id');
+            }
+            $assigned = $client->get('/api/user/'.$account->remote_id.'/library');
+            if (! $assigned->successful()) {
+                throw new RuntimeException('unavailable');
+            }
+            $ids = array_values(array_map(fn (mixed $library): int => (int) (is_array($library) ? ($library['id'] ?? 0) : 0), (array) $assigned->json()));
+            if (! in_array($id, $ids, true)) {
+                $updated = $client->put('/api/user/'.$account->remote_id.'/library', ['libraryIds' => [...$ids, $id]]);
+                if (! $updated->successful()) {
+                    throw new RuntimeException('unavailable');
+                }
+            }
         } catch (ConnectionException) {
             throw new RuntimeException('unavailable');
         }

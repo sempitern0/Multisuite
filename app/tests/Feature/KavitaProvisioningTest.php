@@ -25,6 +25,15 @@ class KavitaProvisioningTest extends TestCase
 
     private int $invites = 0;
 
+    /** @var array<int, array<string, mixed>> */
+    private array $libraries = [
+        1 => ['id' => 1, 'name' => 'Libros', 'folders' => ['/books']],
+        4 => ['id' => 4, 'name' => 'Documentación técnica', 'folders' => ['/docs']],
+    ];
+
+    /** @var list<int> */
+    private array $scanned = [];
+
     private bool $passwordResetFails = false;
 
     private const TOKEN = 'to k+en/=';
@@ -56,7 +65,9 @@ class KavitaProvisioningTest extends TestCase
                 ? Http::response(['token' => 'jwt', 'roles' => ['Admin', 'Login']])
                 : $this->memberLogin((string) $data['username'], (string) $data['password']),
             $path === '/api/Users' => Http::response(array_values(array_map($member, $this->users))),
-            $path === '/api/Library/libraries' => Http::response([['id' => 1, 'name' => 'Libros'], ['id' => 4, 'name' => 'Documentación técnica']]),
+            $path === '/api/Library/libraries' => Http::response(array_values($this->libraries)),
+            $path === '/api/Library/create' => $this->createLibrary($data),
+            $path === '/api/Library/scan' => $this->scan((int) $query['libraryId']),
             $path === '/api/Account/invite' => $this->invite($data),
             $path === '/api/Account/invite-url' => Http::response(json_encode('registration/confirm-email?token='.urlencode(self::TOKEN).'&email='.urlencode($this->users[(int) $query['userId']]['email'])), 200, ['Content-Type' => 'application/json']),
             $path === '/api/Account/confirm-email' => $this->confirm($data),
@@ -65,6 +76,27 @@ class KavitaProvisioningTest extends TestCase
             $path === '/api/Users/delete-user' => $this->deleteMember((string) $query['username']),
             default => Http::response([], 404),
         };
+    }
+
+    /** @param array<string, mixed> $data */
+    private function createLibrary(array $data)
+    {
+        foreach ($this->libraries as $library) {
+            if ($library['name'] === $data['name']) {
+                return Http::response('library-name-exists', 400);
+            }
+        }
+        $id = max(array_keys($this->libraries)) + 1;
+        $this->libraries[$id] = ['id' => $id, 'name' => $data['name'], 'folders' => $data['folders'], 'type' => $data['type']];
+
+        return Http::response(['id' => $id]);
+    }
+
+    private function scan(int $library)
+    {
+        $this->scanned[] = $library;
+
+        return Http::response();
     }
 
     private function memberLogin(string $username, string $password)
@@ -288,6 +320,34 @@ class KavitaProvisioningTest extends TestCase
 
         $this->assertNotContains('Login', $this->remote($account)['roles']);
         $this->assertSame('leaked-password', $this->remote($account)['password']);
+    }
+
+    public function test_a_personal_library_is_created_for_its_owner_only_and_never_given_to_new_accounts(): void
+    {
+        $user = $this->reader();
+        app(ServiceAccounts::class)->enroll($user, ['reading'], 'first-password');
+        app(ServiceAccounts::class)->syncUser($user);
+        $account = ServiceAccount::firstOrFail();
+        $kavita = app(KavitaAccounts::class);
+
+        $kavita->ensurePersonalLibrary($account, 'comics', 'Mis cómics');
+        $kavita->ensurePersonalLibrary($account, 'comics', 'Mis cómics');
+
+        $personal = array_values(array_filter($this->libraries, fn (array $library): bool => $library['folders'] === ['/personal/'.strtolower($account->remote_id).'/comics']));
+        $this->assertCount(1, $personal);
+        $this->assertSame(1, $personal[0]['type']);
+        $this->assertContains($personal[0]['id'], array_column($this->remote($account)['libraries'], 'id'));
+        $this->assertContains($personal[0]['id'], $this->scanned);
+
+        // Someone invited afterwards gets the shared libraries, never another person's.
+        $other = User::factory()->create(['email' => 'otra@example.com']);
+        $other->username = 'otra';
+        $other->service_access = ['reading'];
+        $other->save();
+        app(ServiceAccounts::class)->enroll($other, ['reading'], 'other-password');
+        app(ServiceAccounts::class)->syncUser($other);
+        $otherAccount = ServiceAccount::where('user_id', $other->id)->firstOrFail();
+        $this->assertSame([1, 4], array_column($this->remote($otherAccount)['libraries'], 'id'));
     }
 
     public function test_reading_card_and_access_follow_the_same_rules_as_music(): void

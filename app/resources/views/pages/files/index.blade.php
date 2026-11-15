@@ -6,6 +6,7 @@ use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
 use App\Models\Folder;
 use App\Models\UserStorageQuota;
+use App\Services\Files\ConnectedFolders;
 use App\Services\Files\FileExports;
 use App\Services\Files\PersonalFiles;
 use App\Support\DomainErrors;
@@ -53,6 +54,23 @@ new #[Title('Mis archivos')] class extends Component {
     {
         $this->folderId = $folderId;
         $this->folderName = $this->folder->name ?? '';
+        // The person's folders for Música, Libros… appear as soon as the service is available.
+        if ($folderId === null) {
+            app(ConnectedFolders::class)->ensure(Auth::user());
+        }
+    }
+
+    /**
+     * Service this folder (or its top-level ancestor) feeds, for the notice and icons.
+     *
+     * @return array{service: string, name: string, section: string|null, icon: string, library: string, mimes: list<string>}|null
+     */
+    #[Computed]
+    public function connection(): ?array
+    {
+        $connection = app(ConnectedFolders::class)->of($this->folder);
+
+        return $connection === null ? null : ConnectedFolders::definition($connection);
     }
 
     /** Owner-scoped lookup (someone else's folder is "not found") on every request. */
@@ -245,7 +263,7 @@ new #[Title('Mis archivos')] class extends Component {
         :back="$folder === null ? null : ($parent === null ? route('files.index') : route('files.folder', $parent))"
         :back-label="$folder === null ? '' : ($parent->name ?? 'Mis archivos')">
         <x-slot:actions>
-            @if ($folder !== null)
+            @if ($folder !== null && ! $folder->isConnected())
                 <x-ui::button variant="ghost" icon="settings" label="Opciones de la carpeta" x-on:click="$dispatch('ui-dialog-open', 'folder-options')" />
             @endif
             @unless ($empty)
@@ -258,6 +276,14 @@ new #[Title('Mis archivos')] class extends Component {
             @endif
         </x-slot:actions>
     </x-ui::page-header>
+    @if ($this->connection)
+        @php
+            $serviceName = config('portal.services.'.$this->connection['service'].'.name');
+        @endphp
+        <x-ui::notice>
+            Lo que subas aquí aparece en {{ $serviceName }}, en «{{ $this->connection['library'] }}», y solo lo ves tú. Para que {{ $serviceName }} pueda leerlos, los archivos de esta carpeta no se cifran.
+        </x-ui::notice>
+    @endif
 
     <x-ui::stack gap="lg">
         <x-pages::files.tabs active="files" />
@@ -321,9 +347,9 @@ new #[Title('Mis archivos')] class extends Component {
                     @foreach ($l['folders'] as $child)
                         <tr wire:key="folder-{{ $child->id }}">
                             <x-ui::td check><input type="checkbox" value="{{ $child->id }}" wire:model="selectedFolders" aria-label="Seleccionar carpeta {{ $child->name }}"></x-ui::td>
-                            <x-ui::td><x-ui::entry :href="route('files.folder', $child)" icon="folder" spa>{{ $child->name }}</x-ui::entry></x-ui::td>
+                            <x-ui::td><x-ui::entry :href="route('files.folder', $child)" :icon="$child->isConnected() ? \App\Services\Files\ConnectedFolders::definition($child->media_link)['icon'] : 'folder'" spa>{{ $child->name }}</x-ui::entry></x-ui::td>
                             @if ($l['searching'])<x-ui::td label="Ubicación">{{ $where($child->parent_id) }}</x-ui::td>@endif
-                            <x-ui::td label="Tipo" nowrap>Carpeta</x-ui::td>
+                            <x-ui::td label="Tipo" nowrap>{{ $child->isConnected() ? 'Conectada con '.config('portal.services.'.\App\Services\Files\ConnectedFolders::definition($child->media_link)['service'].'.name') : 'Carpeta' }}</x-ui::td>
                             <x-ui::td label="Subido" nowrap>{{ $child->created_at?->format('d/m/Y') }}</x-ui::td>
                             <x-ui::td label="Tamaño" nowrap>{{ $describe($l['summaries'][$child->id] ?? ['items' => 0, 'bytes' => 0]) }}</x-ui::td>
                             <x-ui::td align="end"></x-ui::td>
@@ -352,7 +378,7 @@ new #[Title('Mis archivos')] class extends Component {
             @else
                 <x-ui::file-grid :view="$l['view']" label="Contenido de la carpeta">
                     @foreach ($l['folders'] as $child)
-                        <x-ui::file-card wire:key="folder-{{ $child->id }}" :href="route('files.folder', $child)" spa icon="folder" :name="$child->name"
+                        <x-ui::file-card wire:key="folder-{{ $child->id }}" :href="route('files.folder', $child)" spa :icon="$child->isConnected() ? \App\Services\Files\ConnectedFolders::definition($child->media_link)['icon'] : 'folder'" :name="$child->name"
                             :meta="($l['searching'] ? $where($child->parent_id).' · ' : '').$describe($l['summaries'][$child->id] ?? ['items' => 0, 'bytes' => 0])">
                             <x-slot:select><input type="checkbox" value="{{ $child->id }}" wire:model="selectedFolders" aria-label="Seleccionar carpeta {{ $child->name }}"></x-slot:select>
                         </x-ui::file-card>

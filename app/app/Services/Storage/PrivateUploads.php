@@ -6,6 +6,7 @@ use App\Events\PrivateUploadReady;
 use App\Models\PrivateUpload;
 use App\Models\StorageReservation;
 use App\Models\User;
+use App\Services\Files\ConnectedFolders;
 use finfo;
 use HashContext;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,8 @@ class PrivateUploads
 
     public function __construct(private StorageReservations $reservations, private StorageInventory $inventory, private LosslessOptimizer $optimizer, private ImageMetadata $metadata) {}
 
-    public function begin(User $user, int $bytes, string $key): PrivateUpload
+    /** $connection: a connected folder (ConnectedFolders) receives it unencrypted for its service. */
+    public function begin(User $user, int $bytes, string $key, ?string $connection = null): PrivateUpload
     {
         if (! config('nas.uploads_enabled') || $bytes < 1 || $bytes > (int) config('nas.upload_max_bytes')) {
             throw new RuntimeException('Subida deshabilitada o tamaño no permitido.');
@@ -27,7 +29,7 @@ class PrivateUploads
         $this->cipher();
         [$root, $pool, $location] = $this->destination();
 
-        return DB::transaction(function () use ($user, $bytes, $key, $root, $pool, $location): PrivateUpload {
+        return DB::transaction(function () use ($user, $bytes, $key, $root, $pool, $location, $connection): PrivateUpload {
             $this->reservations->reserve($user, $pool, $bytes, $key);
             $upload = PrivateUpload::find($key);
             if ($upload !== null) {
@@ -43,6 +45,7 @@ class PrivateUploads
             $upload->id = $key;
             $upload->location_id = $location;
             $upload->root_hash = hash('sha256', $root);
+            $upload->media_link = $connection;
             $upload->state = 'pending';
             $upload->save();
 
@@ -87,14 +90,16 @@ class PrivateUploads
             if ($received === 0) {
                 // The type is decided by the first bytes, so a refused file stops at once.
                 $mime = (new finfo(FILEINFO_MIME_TYPE))->buffer($data);
-                if ($mime === false || ! in_array($mime, (array) config('nas.allowed_mimes', []), true)) {
+                $allowed = [...(array) config('nas.allowed_mimes', []), ...($upload->media_link === null ? [] : ConnectedFolders::definition($upload->media_link)['mimes'])];
+                if ($mime === false || ! in_array($mime, $allowed, true)) {
                     throw new RuntimeException('Tamaño o formato no permitido.');
                 }
                 $upload->mime = $mime;
                 // Sealed as it arrives (no plaintext on disk), except pictures: their metadata is
                 // removed (and a JPEG repacked) once the whole file is here, then they are sealed.
+                // A connected folder keeps it unencrypted: its service reads the same bytes.
                 $whole = $this->metadata->wants($mime) || $this->optimizer->wants($mime, $reservation->bytes);
-                $upload->cipher = $this->cipher() !== null && ! $whole ? FileCipher::FORMAT : null;
+                $upload->cipher = $this->cipher() !== null && ! $whole && $upload->media_link === null ? FileCipher::FORMAT : null;
             }
             $hash = $this->hashUpTo($upload, $part, $sealed, $received);
             hash_update($hash, $data);
@@ -192,9 +197,11 @@ class PrivateUploads
     /** Whole-file uploads (encryption off, or an optimised JPEG): encrypt once if needed, then publish. */
     private function publishWhole(PrivateUpload $upload, string $part, string $sealed, string $final): void
     {
-        $cipher = $this->cipher();
+        $cipher = $upload->media_link === null ? $this->cipher() : null;
         if ($cipher === null) {
-            if (! rename($part, $final)) {
+            // Connected files are also read by the service (through MediaLibrary's link); the
+            // private directory itself stays 0700, so nobody else can reach them there.
+            if (($upload->media_link !== null && ! chmod($part, 0644)) || ! rename($part, $final)) {
                 throw new RuntimeException('No se puede finalizar el archivo.');
             }
 
@@ -361,6 +368,23 @@ class PrivateUploads
         }
 
         return (new StoredBlob($path, $upload->cipher, 'file:'.$upload->id))->check();
+    }
+
+    /**
+     * Path of a confirmed, unencrypted file of a connected folder (for MediaLibrary's links),
+     * or null when it is not one. Same root and state checks as blob().
+     */
+    public function connectedPath(PrivateUpload $upload): ?string
+    {
+        if ($upload->state !== 'ready' || $upload->media_link === null || $upload->cipher !== null) {
+            return null;
+        }
+        [$root, , $location] = $this->destination();
+        $this->checkRoot($upload, $root, $location);
+        $path = $root.'/'.$upload->id.'.blob';
+        clearstatcache(true, $path);
+
+        return ! is_link($path) && is_file($path) ? $path : null;
     }
 
     /** The cipher for new files, or null when encryption is turned off. Throws when on without a key. */

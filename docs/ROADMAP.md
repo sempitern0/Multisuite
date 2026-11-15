@@ -11,9 +11,10 @@ Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_ST
 
 ## Orden vigente
 1. **P04.1 Lectura (Kavita)** — en revisión; falta la QA del usuario con libros reales.
-2. **S04** — Publicación administrativa y bibliotecas por persona (necesita tres decisiones del usuario).
-3. **P03** — Red privada (VPN/TLS), segundo dispositivo y vinculación de cuentas existentes.
-4. **P05** — Despliegue reproducible y piloto familiar.
+2. **S04a Puente Mis archivos → servicios** — en revisión en la PR #36; falta la QA del usuario.
+3. **S04b** — Publicación administrativa (necesita tres decisiones del usuario).
+4. **P03** — Red privada (VPN/TLS), segundo dispositivo y vinculación de cuentas existentes.
+5. **P05** — Despliegue reproducible y piloto familiar.
 
 ## P04 — Servicios (uno por PR)
 Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúmenes, copia y restauración, cuotas y aislamiento; adaptador `ServiceProvisioner` con prueba en CI contra la versión fijada.
@@ -23,10 +24,14 @@ Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúm
 - [ ] P04.4 Notas/documentos con interfaz web, adjuntos y exportación.
 - [ ] Ideas sin decidir: automatizaciones, invitados temporales con caducidad.
 
-## S04 — Publicación y bibliotecas
+## S04a — Puente Mis archivos → servicios (en revisión, PR #36)
+- [ ] QA del usuario: subir un MP3, un EPUB y un CBZ a sus carpetas, verlos en Navidrome y Kavita con su cuenta, comprobar que otra persona no los ve y que la papelera los retira.
+- [ ] Vídeos → Jellyfin cuando llegue P04.2.
+- [ ] Producción con discos reales: generar el montaje de `.multisuite-media/{servicio}` como `/personal` en los compose de cada servicio (hoy solo en desarrollo) → P05.
+
+## S04b — Publicación administrativa
 - [ ] Decidir con el usuario: imputación de contenido global a cuotas, borrado por el aportante de contenido publicado, baja del aportante.
 - [ ] Estados personal → pendiente → global; solo admin publica/retira; permisos aplicados en el servicio antes de confirmar; auditoría e idempotencia sin duplicar bytes.
-- [ ] Bibliotecas por persona en los servicios (Navidrome y lectura) con escaneo bajo demanda.
 
 ## P03 — Identidad y red privada
 - [ ] VPN (Tailscale u otra), TLS, permisos mínimos y revocación; prueba desde un segundo dispositivo real.
