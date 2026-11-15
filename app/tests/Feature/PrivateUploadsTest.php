@@ -9,11 +9,12 @@ use App\Services\Storage\StorageReservations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Tests\Concerns\ReadsEncryptedFiles;
 use Tests\TestCase;
 
 class PrivateUploadsTest extends TestCase
 {
-    use RefreshDatabase;
+    use ReadsEncryptedFiles, RefreshDatabase;
 
     private string $root;
 
@@ -65,7 +66,8 @@ class PrivateUploadsTest extends TestCase
         $uploads->begin($this->user, strlen($body), $id);
         $this->receive($id, $body);
         $this->receive($id, 'ignored replay');
-        $this->assertSame($body, file_get_contents($this->root.'/.multisuite-private/'.$id.'.blob'));
+        $this->assertSame($body, $this->decrypted($this->root.'/.multisuite-private/'.$id.'.blob', 'file:'.$id));
+        $this->assertStringNotContainsString($body, (string) file_get_contents($this->root.'/.multisuite-private/'.$id.'.blob'));
         $this->assertDatabaseHas('private_uploads', ['id' => $id, 'state' => 'ready', 'sha256' => hash('sha256', $body)]);
         $this->assertSame(strlen($body), StoragePool::findOrFail('disk')->used_bytes);
         $this->assertSame(0, StoragePool::findOrFail('disk')->reserved_bytes);
@@ -130,7 +132,8 @@ class PrivateUploadsTest extends TestCase
         $this->artisan('portal:uploads-cleanup')->assertExitCode(0);
         $put(400, substr($body, 400))->assertOk()->assertJsonPath('state', 'ready');
 
-        $this->assertSame($body, file_get_contents($this->root.'/.multisuite-private/'.$id.'.blob'));
+        $this->assertSame($body, $this->decrypted($this->root.'/.multisuite-private/'.$id.'.blob', 'file:'.$id));
+        $this->assertStringNotContainsString($body, (string) file_get_contents($this->root.'/.multisuite-private/'.$id.'.blob'));
         $this->assertSame(strlen($body), StoragePool::findOrFail('disk')->used_bytes);
         $this->assertSame(0, StoragePool::findOrFail('disk')->reserved_bytes);
         $this->getJson('/uploads/'.$id)->assertExactJson(['id' => $id, 'state' => 'ready', 'received' => strlen($body)]);

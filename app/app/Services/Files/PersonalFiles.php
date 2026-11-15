@@ -7,6 +7,7 @@ use App\Models\Folder;
 use App\Models\User;
 use App\Models\UserFile;
 use App\Services\Storage\PrivateUploads;
+use App\Services\Storage\StoredBlob;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -507,14 +508,14 @@ class PersonalFiles
         });
     }
 
-    /** @return array{path: string, mime: string, size: int} */
+    /** @return array{blob: StoredBlob, mime: string, size: int} */
     public function readable(User $user, UserFile $file): array
     {
-        $path = $this->uploads->readablePath($user, $file->upload_id);
+        $blob = $this->uploads->blob($user, $file->upload_id);
         $upload = $file->upload()->firstOrFail();
         $reservation = $file->reservation()->firstOrFail();
 
-        return ['path' => $path, 'mime' => (string) $upload->mime, 'size' => (int) $reservation->actual_bytes];
+        return ['blob' => $blob, 'mime' => (string) $upload->mime, 'size' => (int) $reservation->actual_bytes];
     }
 
     private function assertFreeFolderName(User $user, ?int $parentId, string $name, ?int $ignore): void

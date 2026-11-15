@@ -42,6 +42,9 @@ class DevBootstrap extends Command
 
             return self::FAILURE;
         }
+        if (config('nas.encrypt_files') && $this->call('portal:files-key') !== self::SUCCESS) {
+            return self::FAILURE;
+        }
 
         try {
             $report = $inventory->inspect();

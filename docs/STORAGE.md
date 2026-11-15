@@ -152,6 +152,7 @@ Decisión del usuario (2026-11-13): gestor de archivos propio del portal con car
 | Descargas ZIP: selección, carpeta y exportar todo (S03.4) | Rama `feat/s03-zip-exports` |
 | GUI de almacenamiento y cuota por defecto (S02.3) | Rama `feat/s02-storage-admin-gui`, pendiente de CI y QA visual |
 | Visor de imágenes, vídeo en el navegador, JPEG sin pérdida y subida por fragmentos (S03.5) | Rama `feat/s03-media-viewer`; CI, pendiente de prueba en navegador |
+| Cifrado en reposo de archivos y ZIP (S03.7) | Rama `feat/s03-file-encryption`; CI |
 | Copia de seguridad externa con restic, retención, comprobación y ensayo de restauración (S05.1) | Integrado (PR #25); probado con Docker simulado, pendiente de una copia real en el servidor |
 | Mover entre carpetas, reconciliación, bibliotecas por usuario, publicación y movimientos | Pendiente (ROADMAP S03–S05) |
 
@@ -169,6 +170,17 @@ Decisión del usuario (2026-11-13): gestor de archivos propio del portal con car
 - **Optimización sin pérdida al subir** (`NAS_OPTIMIZE_IMAGES`, activada): un JPEG se reempaqueta con `jpegtran` antes de confirmarlo. Los píxeles y los metadatos (fecha, ubicación, perfil de color) son idénticos; cambian los bytes, así que el archivo descargado no es igual bit a bit al que se subió y ocupa algo menos. A la persona se le descuenta el tamaño final. Si la herramienta falta, tarda más de 20 s o el resultado no es la misma imagen más pequeña, se guarda el original.
 - PNG, WebP, GIF y vídeo se guardan sin cambios: no existe una reducción sin pérdida que merezca la pena para vídeo, y nunca se recodifica.
 - Tamaño: sin límite práctico por archivo (tope de seguridad de 100 GiB, ver Límites); cuenta el espacio de la persona.
+
+## Cifrado en reposo (S03.7)
+
+Objetivo: quien obtenga la base de datos o el disco de datos, pero no la configuración secreta del servidor, no puede leer los archivos. No sustituye a los permisos del portal ni protege frente a alguien con acceso completo al servidor en marcha.
+
+- **Qué se cifra**: el contenido de cada archivo de Mis archivos (y sus versiones) y los ZIP de Descargas. Nombres, carpetas, tamaños y tipos siguen en la base de datos sin cifrar.
+- **Cómo** (`Services/Storage/FileCipher`, formato `msf1`): libsodium XChaCha20-Poly1305 en bloques de 64 KiB; cada bloque autentica la cabecera, su posición y si es el último, así que se detecta cualquier modificación, reordenación o recorte. Cada archivo tiene su propia clave, derivada con HKDF-SHA256 de la clave maestra y su identificador. Los rangos (vídeo y audio con avance) solo descifran los bloques necesarios (`Http/Responses/BlobResponse`).
+- **Clave maestra**: `NAS_FILES_KEY` en `app/.env`, nunca en la base de datos ni en el disco de datos. `make up` la crea en desarrollo (`portal:dev-bootstrap` → `portal:files-key`); en producción, una vez: `make artisan CMD="portal:files-key"`. El comando nunca sustituye una clave existente. **Guarda una copia fuera del servidor**: sin ella los archivos son irrecuperables, también desde la copia de seguridad (que guarda los archivos cifrados y no incluye `.env`).
+- **Sin clave**, con `NAS_ENCRYPT_FILES=true` (por defecto), el portal rechaza subidas nuevas en lugar de guardarlas sin cifrar, y los archivos cifrados no se abren. `NAS_ENCRYPT_FILES=false` desactiva el cifrado para archivos nuevos.
+- **Archivos anteriores al cifrado** (`private_uploads.cipher` vacío) se siguen leyendo sin cambios; no hay migración porque el producto aún no tiene datos reales.
+- **Límites conocidos**: mientras una subida llega existe una copia temporal sin cifrar (`.part`) que se cifra y borra al recibir el último fragmento (la optimización sin pérdida y la detección del tipo necesitan el contenido); las subidas abandonadas las borra la limpieza. Los ZIP se escriben directamente cifrados, sin copias intermedias. El cifrado añade 24 bytes y 16 bytes por cada 64 KiB (≈0,03 %), que no cuentan en la cuota. Rotar la clave maestra no está implementado.
 
 ## Copia de seguridad (S05.1)
 
@@ -191,6 +203,6 @@ Reglas que aplica el script: se niega si el destino local está en el mismo disc
 ### Ensayo y restauración
 - `make nas-backup-verify`: restaura la última copia en un volumen temporal, carga el volcado en un PostgreSQL limpio y sin red, cuenta personas y migraciones, comprueba las marcas de los discos y borra el volumen. `FILES=0` ensaya solo la base de datos cuando no hay espacio para todos los archivos. No toca datos reales.
 - `make nas-backup-snapshots` lista las copias; `make nas-backup-restore TARGET=/carpeta/vacía [SNAPSHOT=id]` restaura solo en una carpeta vacía (`TARGET/source/portal-db/portal.dump`, `source/nas/<montaje>` y `source/navidrome`).
-- Restaurar: volver a poner en servicio un servidor nuevo es una operación de producción y se hace a mano y con autorización: preparar discos (`make nas-apply`), copiar `source/nas/<montaje>/` a `<montaje>/multisuite/` conservando propietario y permisos (`cp -a`), `make up`, cargar el volcado (`docker compose cp` + `pg_restore --clean --if-exists --no-owner` en el contenedor `postgres`) y, con Música detenida, copiar `source/navidrome` a `NAVIDROME_DATA_PATH`. Los secretos (`.env`, `app/.env`, `music.env`, `backup.env`) no van en la copia: guardarlos aparte.
+- Restaurar: volver a poner en servicio un servidor nuevo es una operación de producción y se hace a mano y con autorización: preparar discos (`make nas-apply`), copiar `source/nas/<montaje>/` a `<montaje>/multisuite/` conservando propietario y permisos (`cp -a`), `make up`, cargar el volcado (`docker compose cp` + `pg_restore --clean --if-exists --no-owner` en el contenedor `postgres`) y, con Música detenida, copiar `source/navidrome` a `NAVIDROME_DATA_PATH`. Los secretos (`.env`, `app/.env`, `music.env`, `backup.env`) no van en la copia: guardarlos aparte, en especial `NAS_FILES_KEY` (sin ella los archivos restaurados no se pueden abrir).
 
 Tests: `python3 tests/nas-backup.py`, `make test CMD="--filter=BackupStatusTest"`, `make test CMD="--filter=Storage"`, `--filter=PrivateUploadsTest`, `--filter=PersonalFilesTest`, `--filter=BytesTest`.

@@ -5,14 +5,15 @@ namespace App\Services\Files;
 use App\Models\FileExport;
 use App\Models\Folder;
 use App\Models\User;
+use App\Services\Storage\FileCipher;
 use App\Services\Storage\PrivateUploads;
 use App\Services\Storage\StorageReservations;
+use App\Services\Storage\StoredBlob;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
-use ZipArchive;
 
 /**
  * ZIP downloads of a selection, a folder or everything. The archive is written to the
@@ -104,29 +105,52 @@ class FileExports
             if (file_exists($part) || is_link($part) || file_exists($final) || is_link($final)) {
                 throw new RuntimeException('Quedan restos de un intento anterior.');
             }
-            $zip = new ZipArchive;
-            if ($zip->open($part, ZipArchive::CREATE | ZipArchive::EXCL) !== true) {
+            // Streamed straight into its final form (encrypted when the server encrypts
+            // files): no plaintext copy of the archive or its files ever lands on disk.
+            $cipher = $this->uploads->cipher();
+            $writer = $cipher?->writer($part, 'export:'.$export->id);
+            $plain = $writer === null ? @fopen($part, 'xb') : null;
+            if ($writer === null && ($plain === false || ! chmod($part, 0600))) {
                 throw new RuntimeException('No se pudo crear el ZIP.');
             }
-            foreach ($export->items as $item) {
-                $source = $this->uploads->readablePath($user, $item['upload']);
-                if (! $zip->addFile($source, $item['path'], 0, 0, ZipArchive::FL_ENC_UTF_8) || ! $zip->setCompressionName($item['path'], ZipArchive::CM_STORE)) {
-                    throw new RuntimeException('No se pudo añadir un archivo al ZIP.');
+            $zipBytes = 0;
+            $zip = new ZipStreamWriter(function (string $bytes) use ($writer, $plain, &$zipBytes): void {
+                $zipBytes += strlen($bytes);
+                if ($writer !== null) {
+                    $writer->write($bytes);
+                } elseif (fwrite($plain, $bytes) !== strlen($bytes)) {
+                    throw new RuntimeException('No se pudo escribir el ZIP (¿disco lleno?).');
                 }
-            }
-            if (! $zip->close()) {
-                throw new RuntimeException('No se pudo terminar el ZIP (¿disco lleno?).');
+            });
+            try {
+                foreach ($export->items as $item) {
+                    $source = $this->uploads->blob($user, $item['upload']);
+                    $zip->addFile($item['path'], fn (callable $write) => $source->stream(0, $source->size(), $write));
+                }
+                $zip->finish();
+                if ($writer !== null) {
+                    $writer->finish();
+                } elseif (! fflush($plain) || ! fsync($plain) || ! fclose($plain)) {
+                    throw new RuntimeException('No se pudo terminar el ZIP (¿disco lleno?).');
+                }
+            } catch (Throwable $exception) {
+                $writer?->abort();
+                if (is_resource($plain)) {
+                    fclose($plain);
+                }
+                throw $exception;
             }
             clearstatcache(true, $part);
             $size = (int) filesize($part);
             if ($size < 1 || $size > $export->estimated_bytes) {
                 throw new RuntimeException('El ZIP ocupa más de lo reservado.');
             }
-            if (! chmod($part, 0600) || ! rename($part, $final)) {
+            if (! rename($part, $final)) {
                 throw new RuntimeException('No se pudo publicar el ZIP.');
             }
             $export->state = 'ready';
-            $export->bytes = $size;
+            $export->bytes = $zipBytes;
+            $export->cipher = $writer === null ? null : FileCipher::FORMAT;
             $export->expires_at = now()->addHours(max(1, (int) config('nas.export_ttl_hours')));
             $export->save();
         } catch (Throwable $exception) {
@@ -145,8 +169,8 @@ class FileExports
         }
     }
 
-    /** @return string Absolute path of a ready archive owned by the user. */
-    public function downloadPath(User $user, string $id): string
+    /** A ready archive owned by the user, readable as plaintext. */
+    public function download(User $user, string $id): StoredBlob
     {
         $export = FileExport::where('user_id', $user->id)->findOrFail($id);
         if ($export->state !== 'ready' || $export->expires_at === null || $export->expires_at->isPast()) {
@@ -158,7 +182,7 @@ class FileExports
             throw new RuntimeException('El ZIP no está en el disco.');
         }
 
-        return $final;
+        return (new StoredBlob($final, $export->cipher, 'export:'.$export->id))->check();
     }
 
     public function discard(User $user, string $id): void
@@ -247,12 +271,13 @@ class FileExports
      */
     private function estimate(array $items): int
     {
-        $bytes = 4096;
+        $bytes = 4096 + ZipStreamWriter::END_BYTES;
         foreach ($items as $item) {
-            $bytes += $item['size'] + 256 + 2 * strlen($item['path']);
+            $bytes += $item['size'] + ZipStreamWriter::overhead($item['path']);
         }
 
-        return $bytes;
+        // Encryption adds a header and one tag per 64 KiB chunk.
+        return $bytes + 64 + 16 * (intdiv($bytes, 65536) + 1);
     }
 
     /** @return array{folders: array<int, Folder>, children: array<int, list<int>>} */

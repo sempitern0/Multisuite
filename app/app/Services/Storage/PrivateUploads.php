@@ -22,6 +22,8 @@ class PrivateUploads
         if (! config('nas.uploads_enabled') || $bytes < 1 || $bytes > (int) config('nas.upload_max_bytes')) {
             throw new RuntimeException('Subida deshabilitada o tamaño no permitido.');
         }
+        // Fail closed: with encryption on, nothing is stored until the key exists.
+        $this->cipher();
         [$root, $pool, $location] = $this->destination();
 
         return DB::transaction(function () use ($user, $bytes, $key, $root, $pool, $location): PrivateUpload {
@@ -127,7 +129,24 @@ class PrivateUploads
             if ($actual === false || $actual < 1 || $actual > $reservation->bytes || $hash === false) {
                 throw new RuntimeException('No se puede verificar el archivo recibido.');
             }
-            if (! rename($part, $final)) {
+            $cipher = $this->cipher();
+            if ($cipher !== null) {
+                // Encrypted at rest: the plaintext part only exists while the upload arrives.
+                $sealed = $base.'.enc';
+                if (file_exists($sealed) || is_link($sealed)) {
+                    throw new RuntimeException('Quedan restos de un cifrado anterior.');
+                }
+                try {
+                    $cipher->encryptFile($part, $sealed, 'file:'.$upload->id);
+                } catch (\Throwable $exception) {
+                    @unlink($sealed);
+                    throw $exception instanceof RuntimeException ? $exception : new RuntimeException('No se pudo cifrar el archivo.');
+                }
+                if (! rename($sealed, $final) || ! unlink($part)) {
+                    throw new RuntimeException('No se puede finalizar el archivo.');
+                }
+                $upload->cipher = FileCipher::FORMAT;
+            } elseif (! rename($part, $final)) {
                 throw new RuntimeException('No se puede finalizar el archivo.');
             }
             // A crash/rollback leaves pending + reserved, with bytes for cleanup.
@@ -184,7 +203,7 @@ class PrivateUploads
             if ($upload->state !== 'pending' || $reservation->state !== 'reserved') {
                 throw new RuntimeException('No se puede cancelar contenido confirmado.');
             }
-            foreach (['.part', '.blob'] as $suffix) {
+            foreach (['.part', '.enc', '.blob'] as $suffix) {
                 $path = $base.$suffix;
                 if (is_link($path) || (file_exists($path) && (! is_file($path) || ! unlink($path)))) {
                     throw new RuntimeException('Limpieza incompleta: se conserva la reserva.');
@@ -230,10 +249,10 @@ class PrivateUploads
     }
 
     /**
-     * Absolute path of a confirmed blob owned by the user, for streaming only.
-     * The root identity, state and file type are re-checked on every read.
+     * A confirmed file owned by the user, ready to read as plaintext. The root identity,
+     * state and file type are re-checked on every read.
      */
-    public function readablePath(User $user, string $key): string
+    public function blob(User $user, string $key): StoredBlob
     {
         $reservation = StorageReservation::whereKey($key)->where('user_id', $user->id)->firstOrFail();
         $upload = PrivateUpload::whereKey($key)->firstOrFail();
@@ -248,7 +267,17 @@ class PrivateUploads
             throw new RuntimeException('El archivo no está disponible en el disco.');
         }
 
-        return $path;
+        return (new StoredBlob($path, $upload->cipher, 'file:'.$upload->id))->check();
+    }
+
+    /** The cipher for new files, or null when encryption is turned off. Throws when on without a key. */
+    public function cipher(): ?FileCipher
+    {
+        if (! config('nas.encrypt_files')) {
+            return null;
+        }
+
+        return FileCipher::fromConfig() ?? throw new RuntimeException('Falta la clave de cifrado de archivos: el responsable técnico debe ejecutar portal:files-key (docs/STORAGE.md).');
     }
 
     /** @return array{PrivateUpload, StorageReservation, string} */

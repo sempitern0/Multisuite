@@ -3,6 +3,11 @@
 return [
     // JSON is decoded only by the inventory, never while booting the application.
     'uploads_enabled' => env('NAS_UPLOADS_ENABLED', false),
+
+    // Encryption at rest of private files and ZIP exports (App\Services\Storage\FileCipher).
+    // The key lives only in this secret configuration: back it up outside the server.
+    'encrypt_files' => (bool) env('NAS_ENCRYPT_FILES', true),
+    'files_key' => env('NAS_FILES_KEY', ''),
     'upload_location' => env('NAS_UPLOAD_LOCATION', ''),
     // Safety ceiling per file (100 GiB). Files arrive in 8 MiB chunks, so web server and
     // PHP body limits do not apply; the real bound is each person's space.

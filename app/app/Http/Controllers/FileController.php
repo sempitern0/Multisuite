@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Responses\BlobResponse;
 use App\Services\Files\FilePreview;
 use App\Services\Files\PersonalFiles;
 use App\Support\DomainErrors;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use RuntimeException;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Non-page endpoints of Mis archivos: upload registration (JSON, used by files.js) and
@@ -41,7 +41,7 @@ class FileController extends Controller
         return response()->json(['id' => $file->id, 'upload' => $file->upload_id, 'name' => $file->name], 201);
     }
 
-    public function content(Request $request, int $fileId): BinaryFileResponse
+    public function content(Request $request, int $fileId): Response
     {
         $file = $this->files->file($request->user(), $fileId);
         Gate::authorize('view', $file);
@@ -57,7 +57,8 @@ class FileController extends Controller
             in_array($kind, ['text', 'markdown'], true) => 'text/plain; charset=utf-8',
             default => $readable['mime'],
         };
-        $response = response()->file($readable['path'], [
+
+        return BlobResponse::make($request, $readable['blob'], $file->name, $inline ? 'inline' : 'attachment', [
             'Content-Type' => $type,
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, no-store',
@@ -68,9 +69,5 @@ class FileController extends Controller
                 ? "default-src 'none'; object-src 'self'; frame-ancestors 'self'"
                 : "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'self'; sandbox",
         ]);
-        $fallback = (string) preg_replace('/[^A-Za-z0-9._ -]+/', '_', Str::ascii($file->name));
-        $response->setContentDisposition($inline ? 'inline' : 'attachment', $file->name, trim($fallback, ' .') !== '' ? $fallback : 'archivo');
-
-        return $response;
     }
 }
