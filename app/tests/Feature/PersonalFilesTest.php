@@ -412,7 +412,8 @@ class PersonalFilesTest extends TestCase
         Process::fake(fn () => Process::result(exitCode: 127));
         $this->upload($this->owner, 'rio.jpg', base64_decode(self::JPEG))
             ->assertUnprocessable()->assertJsonValidationErrors('upload');
-        $this->assertDatabaseMissing('user_files', ['name' => 'rio.jpg']);
+        $this->assertDatabaseMissing('private_uploads', ['id' => $this->entry('rio.jpg')->upload_id, 'state' => 'ready']);
+        $this->assertFileDoesNotExist($this->blob($this->entry('rio.jpg')));
         $this->assertSame([], glob($this->root.'/.multisuite-private/*.meta.*'));
 
         // Switched off by the operator: stored as received.
