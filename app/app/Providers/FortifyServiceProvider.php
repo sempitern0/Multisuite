@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\LoginResponse;
 use App\Models\User;
+use App\Services\ServiceAccounts;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 use Laravel\Fortify\Contracts\TwoFactorLoginResponse as TwoFactorLoginResponseContract;
 use Laravel\Fortify\Fortify;
@@ -59,7 +61,18 @@ class FortifyServiceProvider extends ServiceProvider
             $identifier = Str::lower(trim((string) $request->input('email')));
             $user = User::where(str_contains($identifier, '@') ? 'email' : 'username', $identifier)->first();
 
-            return $user && Hash::check((string) $request->input('password'), $user->password) ? $user : null;
+            $password = (string) $request->input('password');
+            if (! $user || ! Hash::check($password, $user->password)) {
+                return null;
+            }
+            // Told only to someone who already proved the password.
+            if ($user->isSuspended()) {
+                throw ValidationException::withMessages([Fortify::username() => 'Esta cuenta está suspendida. Habla con quien administra Multisuite.']);
+            }
+            // Services waiting for a password (access granted again) receive it now, after the response.
+            app(ServiceAccounts::class)->resume($user, $password);
+
+            return $user;
         });
     }
 

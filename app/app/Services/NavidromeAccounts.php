@@ -4,12 +4,13 @@ namespace App\Services;
 
 use App\Models\ServiceAccount;
 use App\Models\User;
+use App\Services\Provisioning\ServiceProvisioner;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
-class NavidromeAccounts
+class NavidromeAccounts implements ServiceProvisioner
 {
     public function synchronize(ServiceAccount $account, #[\SensitiveParameter] string $password): void
     {
@@ -59,6 +60,52 @@ class NavidromeAccounts
             $account->username = $targetUsername;
         } catch (ConnectionException) {
             // Never propagate HTTP exceptions containing credential-bearing requests.
+            throw new RuntimeException('unavailable');
+        }
+    }
+
+    public function rename(ServiceAccount $account, string $username): void
+    {
+        // A random password is never needed here: Navidrome keeps the current one when none is sent.
+        $this->update($account, [$account->username, $username], ['userName' => $username], $username);
+    }
+
+    public function lock(ServiceAccount $account): void
+    {
+        // The new password is generated and discarded: nobody, the portal included, can sign in with it.
+        $this->update($account, [$account->username], ['password' => bin2hex(random_bytes(32))], $account->username);
+    }
+
+    /**
+     * Changes an existing remote account, keeping its settings. Accepts any of $knownNames
+     * so a retry after a lost response still recognises the account. A missing account is left alone.
+     *
+     * @param  list<string>  $knownNames
+     * @param  array<string, string>  $changes
+     */
+    private function update(ServiceAccount $account, array $knownNames, #[\SensitiveParameter] array $changes, string $expectedName): void
+    {
+        try {
+            $client = $this->client();
+            $remote = $client->get('/api/user/'.$account->remote_id);
+            if ($remote->status() === 404) {
+                return;
+            }
+            if (! $remote->successful()) {
+                throw new RuntimeException('unavailable');
+            }
+            $this->assertIdentity($remote->json(), $account, $knownNames);
+            $payload = (array) $remote->json();
+            unset($payload['password'], $payload['currentPassword']);
+            $updated = $client->put('/api/user/'.$account->remote_id, [...$payload, ...$changes]);
+            if (in_array($updated->status(), [409, 422], true)) {
+                throw new RuntimeException('conflict');
+            }
+            if (! $updated->successful()) {
+                throw new RuntimeException('unavailable');
+            }
+            $this->verify($client, $account, $expectedName);
+        } catch (ConnectionException) {
             throw new RuntimeException('unavailable');
         }
     }

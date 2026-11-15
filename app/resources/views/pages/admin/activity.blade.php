@@ -91,7 +91,7 @@ new #[Title('Actividad')] class extends Component {
                     <x-ui::td label="Sobre">{{ $event->subject_name }}</x-ui::td>
                     <x-ui::td label="Detalles">
                         @if (! empty($event->details['fields']))
-                            Campos: {{ implode(', ', array_map(fn ($field) => ['name' => 'nombre', 'email' => 'correo', 'role' => 'rol'][$field] ?? $field, $event->details['fields'])) }}.
+                            Campos: {{ implode(', ', array_map(fn ($field) => ['name' => 'nombre', 'email' => 'correo', 'role' => 'rol', 'username' => 'nombre de usuario'][$field] ?? $field, $event->details['fields'])) }}.
                         @endif
                         @if (($event->details['previous_role'] ?? null) !== null && $event->details['previous_role'] !== $event->details['role'])
                             Rol: {{ $event->details['previous_role'] }} → {{ $event->details['role'] }}.

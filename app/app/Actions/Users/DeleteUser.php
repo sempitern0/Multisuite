@@ -5,7 +5,7 @@ namespace App\Actions\Users;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Services\AdminAudit;
-use App\Services\NavidromeAccounts;
+use App\Services\Provisioning\ServiceProvisioners;
 use App\Services\Storage\StorageReservations;
 use App\Support\LockedUsers;
 use Illuminate\Support\Facades\DB;
@@ -27,15 +27,19 @@ class DeleteUser
             }
             app(StorageReservations::class)->prepareUserDeletion($target);
             $accounts = $target->serviceAccounts()->orderBy('id')->lockForUpdate()->get();
-            if ($accounts->contains(fn ($account) => $account->service !== 'music')) {
+            $provisioners = app(ServiceProvisioners::class);
+            if ($accounts->contains(fn ($account) => ! $provisioners->supports($account->service))) {
                 throw ValidationException::withMessages(['deletion' => 'Esta cuenta tiene un servicio cuya baja todavía no está automatizada.']);
             }
+            $service = null;
             try {
                 foreach ($accounts as $account) {
-                    app(NavidromeAccounts::class)->remove($account);
+                    $service = $account->service;
+                    $provisioners->for($account->service)->remove($account);
                 }
             } catch (RuntimeException) {
-                throw ValidationException::withMessages(['deletion' => 'No se pudo confirmar la baja en Música. Revisa la conexión y vuelve a intentarlo. La cuenta de Multisuite se ha conservado.']);
+                $name = config('portal.services.'.($service ?? '').'.name', 'el servicio');
+                throw ValidationException::withMessages(['deletion' => 'No se pudo confirmar la baja en '.$name.'. Revisa la conexión y vuelve a intentarlo. La cuenta de Multisuite se ha conservado.']);
             }
             Password::broker()->deleteToken($target);
             Invitation::where('email', $target->email)->update(['expires_at' => now()]);

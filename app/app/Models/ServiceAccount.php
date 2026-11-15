@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ServiceAccounts;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 
@@ -19,6 +20,20 @@ use Illuminate\Database\Eloquent\Model;
 class ServiceAccount extends Model
 {
     protected $hidden = ['pending_password'];
+
+    /** @return array{label: string, tone: 'ok'|'warn'|'bad'|'muted'} human state for the interface (single source) */
+    public function state(): array
+    {
+        return match ($this->status) {
+            'ready' => ['label' => 'Activa', 'tone' => 'ok'],
+            ServiceAccounts::LOCKED => ['label' => 'Desactivada', 'tone' => 'muted'],
+            ServiceAccounts::AWAITING_PASSWORD => ['label' => 'Se activará en su próximo acceso con contraseña', 'tone' => 'warn'],
+            'expired' => ['label' => 'Caducada: se reintentará en su próximo acceso', 'tone' => 'warn'],
+            'conflict' => ['label' => 'Ese usuario ya existe en el servicio', 'tone' => 'bad'],
+            'configuration' => ['label' => 'El servicio no está configurado', 'tone' => 'bad'],
+            default => ['label' => 'Preparándose', 'tone' => 'warn'],
+        };
+    }
 
     /** @return array<string, string> */
     protected function casts(): array
