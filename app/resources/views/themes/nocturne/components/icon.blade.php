@@ -37,6 +37,7 @@
         'activity' => '<path d="M3 12h4l2.5-6.5 5 13 2.5-6.5h4"/>',
         'invite' => '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/><path d="M17.5 2.5v4M15.5 4.5h4" />',
         'sidebar' => '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16M15.5 9.5 13 12l2.5 2.5"/>',
+        'arrow-left' => '<path d="M19 12H5M11 6l-6 6 6 6"/>',
         'download' => '<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/>',
         'upload' => '<path d="M12 20V9M7 13.5l5-5 5 5M5 4h14"/>',
         'user' => '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',

@@ -70,10 +70,7 @@ new #[Title('Crear cuenta')] class extends Component {
 }; ?>
 
 <div>
-    <x-ui::page-header eyebrow="Personas" title="Crear cuenta" description="Para quien no puede recibir una invitación. No se envía ningún correo: tú le entregas una contraseña temporal y deberá cambiarla la primera vez que entre.">
-        <x-slot:actions>
-            <x-ui::button variant="ghost" :href="route('users.index')" wire:navigate>Volver a Personas</x-ui::button>
-        </x-slot:actions>
+    <x-ui::page-header eyebrow="Personas" :back="route('users.index')" back-label="Personas" title="Crear cuenta" description="Para quien no puede recibir una invitación. No se envía ningún correo: tú le entregas una contraseña temporal y deberá cambiarla la primera vez que entre.">
     </x-ui::page-header>
 
     <x-ui::container>

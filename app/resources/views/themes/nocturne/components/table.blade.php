@@ -1,11 +1,12 @@
-@props(['label', 'paginator' => null, 'empty' => 'No hay nada que mostrar.'])
+@props(['label', 'paginator' => null, 'empty' => 'No hay nada que mostrar.', 'quiet' => false])
 {{--
     Contract: data table. Slots: `head` (a <tr> of <th>) and the default slot (<tr> rows).
     Give each <td> a data-label (column name) for the stacked mobile layout and
     data-align="end" for action cells. Pass a Livewire paginator to get the footer.
     Render an empty row yourself with <x-ui::table-empty> when there are no rows.
+    quiet: row actions appear on hover or keyboard focus (always on touch screens).
 --}}
-<div {{ $attributes->merge(['class' => 'ui-table-wrap']) }} wire:loading.class="is-loading">
+<div {{ $attributes->merge(['class' => 'ui-table-wrap']) }} @if ($quiet) data-quiet @endif wire:loading.class="is-loading">
     <div class="ui-table-scroll">
         <table class="ui-table">
             <caption class="ui-sr-only">{{ $label }}</caption>

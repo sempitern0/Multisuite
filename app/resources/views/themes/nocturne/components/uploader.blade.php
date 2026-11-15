@@ -9,11 +9,10 @@
     `files-uploaded` with the new file ids as files finish.
 --}}
 <div wire:ignore data-uploader data-store-url="{{ $storeUrl }}" data-upload-url="{{ $uploadUrl }}" data-folder="{{ $folder }}" data-max-bytes="{{ $maxBytes }}" data-csrf="{{ csrf_token() }}" {{ $attributes->merge(['class' => 'ui-uploader']) }}>
-    <label class="ui-btn ui-btn-primary ui-uploader-pick">
+    <label class="ui-btn ui-btn-primary ui-uploader-pick" title="{{ $hint ? $hint.' ' : '' }}También puedes arrastrar archivos a esta página.">
         <x-ui::icon name="upload" /><span>{{ $label }}</span>
         <input type="file" multiple class="ui-sr-only" data-uploader-input>
     </label>
-    <p class="ui-help">{{ $hint ? $hint.' ' : '' }}También puedes arrastrar archivos a esta página.</p>
     <div class="ui-dropzone" data-uploader-drop hidden aria-hidden="true">
         <x-ui::icon name="upload" /><span>Suelta los archivos para subirlos aquí</span>
     </div>

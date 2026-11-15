@@ -6,6 +6,7 @@ use App\Models\UserFile;
 use App\Services\Files\PersonalFiles;
 use App\Support\DomainErrors;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -23,6 +24,30 @@ trait ManagesOwnFiles
         $this->authorizeOwnFile($fileId);
 
         return DomainErrors::guard('file_trash', fn () => app(PersonalFiles::class)->trash(Auth::user(), $fileId));
+    }
+
+    /**
+     * Several files at once (selection bar): one request budget for the whole batch,
+     * the owner lookup and policy for each file, all or nothing.
+     *
+     * @param  list<int>  $fileIds
+     */
+    protected function trashOwnFiles(array $fileIds): int
+    {
+        $this->throttle('files');
+        $files = app(PersonalFiles::class);
+        $user = Auth::user();
+        foreach ($fileIds as $fileId) {
+            Gate::authorize('update', $files->file($user, $fileId));
+        }
+
+        return DomainErrors::guard('file_trash', fn () => DB::transaction(function () use ($files, $user, $fileIds): int {
+            foreach ($fileIds as $fileId) {
+                $files->trash($user, $fileId);
+            }
+
+            return count($fileIds);
+        }));
     }
 
     protected function restoreOwnFile(int $fileId): UserFile

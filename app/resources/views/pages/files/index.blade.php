@@ -153,6 +153,7 @@ new #[Title('Mis archivos')] class extends Component {
         $folder = DomainErrors::guard('newFolder', fn () => $files->createFolder(Auth::user(), $this->folderId, $this->newFolder));
         $this->reset('newFolder');
         unset($this->listing);
+        $this->dispatch('ui-dialog-close', name: 'new-folder');
         $this->toast('Carpeta «'.$folder->name.'» creada');
     }
 
@@ -164,6 +165,7 @@ new #[Title('Mis archivos')] class extends Component {
         $folder = DomainErrors::guard('folderName', fn () => $files->renameFolder(Auth::user(), (int) $this->folderId, $this->folderName));
         $this->folderName = $folder->name;
         unset($this->folder, $this->listing);
+        $this->dispatch('ui-dialog-close', name: 'folder-options');
         $this->toast('Carpeta renombrada');
     }
 
@@ -183,6 +185,17 @@ new #[Title('Mis archivos')] class extends Component {
         $this->selectedFiles = array_values(array_diff($this->selectedFiles, [$fileId, (string) $fileId]));
         unset($this->listing);
         $this->toast($this->trashedMessage($file));
+    }
+
+    /** Bulk move to trash from the selection bar (files only; folders are not trashed). */
+    public function trashSelected(): void
+    {
+        $ids = array_values(array_unique(array_map('intval', array_filter($this->selectedFiles, 'is_numeric'))));
+        abort_if($ids === [] || count($ids) > 500, 422);
+        $moved = $this->trashOwnFiles($ids);
+        $this->selectedFiles = [];
+        unset($this->listing);
+        $this->toast($moved === 1 ? '1 archivo movido a la papelera' : $moved.' archivos movidos a la papelera');
     }
 
     public function export(string $scope, FileExports $exports): void
@@ -220,37 +233,42 @@ new #[Title('Mis archivos')] class extends Component {
         $empty = $l['folders']->isEmpty() && $l['entries']->isEmpty();
     @endphp
 
+    @php
+        $trail = array_values($l['breadcrumbs']);
+        $parent = count($trail) > 1 ? $trail[count($trail) - 2] : null;
+        $summary = $describe($l['summaries'][$folder->id ?? 0] ?? ['items' => 0, 'bytes' => 0]);
+        $usage = $l['limit'] > 0 ? ' · Usas '.$fmt($l['used']).' de '.$fmt($l['limit']) : '';
+        $selected = '$wire.selectedFiles.length + $wire.selectedFolders.length';
+    @endphp
     <x-ui::breadcrumbs :items="$crumbs" />
-    <x-ui::page-header :title="$folder->name ?? 'Mis archivos'" :description="'En esta carpeta: '.$describe($l['summaries'][$folder->id ?? 0] ?? ['items' => 0, 'bytes' => 0])">
+    <x-ui::page-header :title="$folder->name ?? 'Mis archivos'" :description="$summary.$usage"
+        :back="$folder === null ? null : ($parent === null ? route('files.index') : route('files.folder', $parent))"
+        :back-label="$folder === null ? '' : ($parent->name ?? 'Mis archivos')">
         <x-slot:actions>
-            <x-ui::button variant="ghost" icon="trash" :href="route('files.trash')" wire:navigate>Papelera</x-ui::button>
-            <x-ui::button variant="ghost" icon="archive" :href="route('files.exports.index')" wire:navigate>Descargas ZIP</x-ui::button>
+            @if ($folder !== null)
+                <x-ui::button variant="ghost" icon="settings" label="Opciones de la carpeta" x-on:click="$dispatch('ui-dialog-open', 'folder-options')" />
+            @endif
+            @unless ($empty)
+                <x-ui::button variant="ghost" icon="archive" :label="$folder === null ? 'Descargar todo en ZIP' : 'Descargar esta carpeta en ZIP'" wire:click="export('{{ $folder === null ? 'all' : 'folder' }}')" />
+            @endunless
+            <x-ui::button variant="secondary" icon="plus" x-on:click="$dispatch('ui-dialog-open', 'new-folder')">Nueva carpeta</x-ui::button>
+            @if ($l['enabled'] && $l['limit'] > 0)
+                <x-ui::uploader :store-url="route('files.store')" :upload-url="url('uploads')" :folder="$folder->id ?? null" :max-bytes="$l['maxBytes']"
+                    :hint="'Hasta '.$fmt($l['maxBytes']).' por archivo.'" />
+            @endif
         </x-slot:actions>
     </x-ui::page-header>
 
     <x-ui::stack gap="lg">
+        <x-pages::files.tabs active="files" />
+
         @if (! $l['enabled'])
             <x-ui::notice tone="info">Los archivos privados todavía no están activados en este servidor. El responsable técnico debe preparar una ubicación privada (docs/STORAGE.md). Mientras tanto puedes ver lo que ya tengas guardado.</x-ui::notice>
         @elseif ($l['limit'] === 0)
             <x-ui::notice tone="info">Aún no tienes espacio asignado. Pide a un administrador que te asigne espacio en Almacenamiento.</x-ui::notice>
+        @elseif (\App\Support\Bytes::percent($l['used'], $l['limit']) >= 90)
+            <x-ui::notice tone="warn">Te queda poco espacio: usas {{ $fmt($l['used']) }} de {{ $fmt($l['limit']) }}. Vacía la papelera o pide más espacio a un administrador.</x-ui::notice>
         @endif
-
-        @if ($l['enabled'] && $l['limit'] > 0)
-            <x-ui::uploader :store-url="route('files.store')" :upload-url="url('uploads')" :folder="$folder->id ?? null" :max-bytes="$l['maxBytes']"
-                :hint="'Hasta '.$fmt($l['maxBytes']).' por archivo. Documentos, PDF, imágenes, vídeo, texto y audio.'" />
-        @endif
-
-        <x-ui::toolbar>
-            <x-ui::form wire:submit="createFolder">
-                <x-ui::field name="newFolder" label="Nueva carpeta" wire:model="newFolder" maxlength="120" required placeholder="Ej. Facturas 2026" />
-                <x-ui::button type="submit" variant="secondary" icon="plus">Crear carpeta</x-ui::button>
-            </x-ui::form>
-            @if ($l['limit'] > 0)
-                <x-slot:end>
-                    <x-ui::meter :value="\App\Support\Bytes::percent($l['used'], $l['limit'])" label="Espacio usado">{{ $fmt($l['used']) }} de {{ $fmt($l['limit']) }}</x-ui::meter>
-                </x-slot:end>
-            @endif
-        </x-ui::toolbar>
 
         @if ($l['pending'] > 0)
             <x-ui::text tone="muted">{{ $l['pending'] }} {{ $l['pending'] === 1 ? 'subida sin terminar' : 'subidas sin terminar' }}. Si cerraste la página a mitad, el espacio se libera solo al cabo de unos 30–40 minutos.</x-ui::text>
@@ -260,16 +278,22 @@ new #[Title('Mis archivos')] class extends Component {
         @endforeach
 
         <x-ui::stack gap="sm">
-            <x-ui::toolbar>
+            <x-ui::selection-bar :show="$selected.' > 0'">
+                <span class="ui-selection-count" x-text="(n => n === 1 ? '1 elemento seleccionado' : n + ' elementos seleccionados')({{ $selected }})"></span>
+                <x-ui::button variant="secondary" size="sm" icon="archive" wire:click="export('selection')">Descargar en ZIP</x-ui::button>
+                <x-ui::button variant="secondary" size="sm" icon="trash" wire:click="trashSelected" x-bind:disabled="$wire.selectedFiles.length === 0" title="Las carpetas no van a la papelera; solo los archivos seleccionados">Mover a la papelera</x-ui::button>
+                <x-ui::button variant="ghost" size="sm" icon="close" label="Quitar la selección" x-on:click="$wire.selectedFiles = []; $wire.selectedFolders = []" />
+            </x-ui::selection-bar>
+            <x-ui::toolbar surface x-show="{{ $selected }} === 0">
                 <x-ui::field name="q" type="search" :label="$folder === null ? 'Buscar en Mis archivos' : 'Buscar en Mis archivos (todas las carpetas)'" maxlength="100" placeholder="Nombre del archivo o carpeta" wire:model.live.debounce.300ms="search" />
                 <x-ui::select name="tipo" label="Tipo" :options="['' => 'Todos'] + \App\Enums\FileKind::options()" wire:model.live="kind" />
                 <x-ui::select name="orden" label="Ordenar por" :options="\App\Services\Files\PersonalFiles::SORTS" wire:model.live="sort" />
                 <x-ui::button variant="ghost" :icon="$direction === 'asc' ? 'sort-asc' : 'sort-desc'" :label="$direction === 'asc' ? 'Orden ascendente (pulsa para invertir)' : 'Orden descendente (pulsa para invertir)'" wire:click="toggleDirection" />
                 <x-slot:end>
                     <x-ui::segmented label="Vista">
-                        <x-ui::button variant="ghost" size="sm" icon="view-details" label="Detalles" :aria-pressed="$l['view'] === 'details' ? 'true' : 'false'" wire:click="setView('details')" />
-                        <x-ui::button variant="ghost" size="sm" icon="view-list" label="Lista" :aria-pressed="$l['view'] === 'list' ? 'true' : 'false'" wire:click="setView('list')" />
-                        <x-ui::button variant="ghost" size="sm" icon="grid" label="Galería" :aria-pressed="$l['view'] === 'gallery' ? 'true' : 'false'" wire:click="setView('gallery')" />
+                        <x-ui::button variant="ghost" size="sm" icon="view-details" :aria-pressed="$l['view'] === 'details' ? 'true' : 'false'" wire:click="setView('details')">Detalles</x-ui::button>
+                        <x-ui::button variant="ghost" size="sm" icon="view-list" :aria-pressed="$l['view'] === 'list' ? 'true' : 'false'" wire:click="setView('list')">Lista</x-ui::button>
+                        <x-ui::button variant="ghost" size="sm" icon="grid" :aria-pressed="$l['view'] === 'gallery' ? 'true' : 'false'" wire:click="setView('gallery')">Galería</x-ui::button>
                     </x-ui::segmented>
                 </x-slot:end>
             </x-ui::toolbar>
@@ -281,15 +305,6 @@ new #[Title('Mis archivos')] class extends Component {
                 </x-ui::row>
             @endif
 
-            @if (! $empty)
-                <x-ui::toolbar>
-                    <x-ui::button variant="secondary" size="sm" icon="archive" wire:click="export('selection')">Descargar selección en ZIP</x-ui::button>
-                    @if (! $l['searching'])
-                        <x-ui::button variant="ghost" size="sm" wire:click="export('{{ $folder === null ? 'all' : 'folder' }}')">{{ $folder === null ? 'Exportar todo en ZIP' : 'Descargar esta carpeta en ZIP' }}</x-ui::button>
-                    @endif
-                </x-ui::toolbar>
-            @endif
-
             @php
                 $where = fn (?int $folderId): string => $folderId === null ? 'Mis archivos' : ($l['paths'][$folderId] ?? '');
                 $emptyText = $l['searching'] || $kind !== '' ? 'Nada coincide con la búsqueda o el filtro.' : 'Esta carpeta está vacía. Sube archivos o arrástralos aquí.';
@@ -297,7 +312,7 @@ new #[Title('Mis archivos')] class extends Component {
 
             <div data-range-select>
             @if ($l['view'] === 'details')
-                <x-ui::table label="Contenido de la carpeta">
+                <x-ui::table label="Contenido de la carpeta" quiet>
                     <x-slot:head>
                         <tr><th><x-ui::sr>Seleccionar</x-ui::sr></th><th>Nombre</th>@if ($l['searching'])<th>Ubicación</th>@endif<th>Tipo</th><th>Subido</th><th>Tamaño</th><th data-align="end"><x-ui::sr>Acciones</x-ui::sr></th></tr>
                     </x-slot:head>
@@ -357,18 +372,29 @@ new #[Title('Mis archivos')] class extends Component {
             </div>
         </x-ui::stack>
 
-        @if ($folder !== null)
-            <x-ui::panel aria-labelledby="folder-settings">
-                <x-ui::stack gap="md">
-                    <x-ui::heading id="folder-settings">Opciones de la carpeta</x-ui::heading>
-                    <x-ui::form wire:submit="renameFolder" inline>
-                        <x-ui::field name="folderName" label="Nombre de la carpeta" wire:model="folderName" maxlength="120" required />
-                        <x-ui::button type="submit" variant="secondary">Guardar nombre</x-ui::button>
-                    </x-ui::form>
-                    <x-ui::text tone="muted">Solo se pueden eliminar carpetas vacías.</x-ui::text>
-                    <x-ui::button variant="danger" icon="trash" wire:click="deleteFolder">Eliminar carpeta</x-ui::button>
-                </x-ui::stack>
-            </x-ui::panel>
-        @endif
     </x-ui::stack>
+
+    <x-ui::dialog name="new-folder" title="Nueva carpeta" x-on:close="$wire.set('newFolder', '')">
+        <x-ui::form wire:submit="createFolder">
+            <x-ui::field name="newFolder" label="Nombre" wire:model="newFolder" maxlength="120" required placeholder="Ej. Facturas 2026" autofocus />
+            <x-ui::actions>
+                <x-ui::button variant="ghost" x-on:click="$dispatch('ui-dialog-close', 'new-folder')">Cancelar</x-ui::button>
+                <x-ui::button type="submit" icon="plus">Crear carpeta</x-ui::button>
+            </x-ui::actions>
+        </x-ui::form>
+    </x-ui::dialog>
+
+    @if ($folder !== null)
+        <x-ui::dialog name="folder-options" title="Opciones de la carpeta">
+            <x-ui::stack gap="md">
+                <x-ui::form wire:submit="renameFolder" inline>
+                    <x-ui::field name="folderName" label="Nombre de la carpeta" wire:model="folderName" maxlength="120" required />
+                    <x-ui::button type="submit" variant="secondary">Guardar nombre</x-ui::button>
+                </x-ui::form>
+                <x-ui::separator />
+                <x-ui::text tone="muted">Solo se pueden eliminar carpetas vacías.</x-ui::text>
+                <x-ui::button variant="danger" icon="trash" wire:click="deleteFolder">Eliminar carpeta</x-ui::button>
+            </x-ui::stack>
+        </x-ui::dialog>
+    @endif
 </div>
