@@ -1,12 +1,13 @@
 # Estado de Multisuite
 
-Instantánea a 2026-11-15 (PRs #1–#34). Se **reescribe** al cerrar cada incremento; el detalle vive en git y en las PRs.
+Instantánea a 2026-11-15 (PRs #1–#35). Se **reescribe** al cerrar cada incremento; el detalle vive en git y en las PRs.
 
 ## Integrado en `main`
 | Área | Qué hay | Validación |
 | --- | --- | --- |
 | Acceso y personas | Invitaciones firmadas, alta manual, roles owner/admin/member, usuario o correo, 2FA y llaves de acceso. Ficha de persona: datos, rol, nombre de usuario (también en los servicios), servicios por persona, suspensión, baja. Foto de perfil con Cropper.js (WebP 256 px privado) | CI con Navidrome real; QA del usuario pendiente |
 | Portada y servicios | Portada con tarjetas, `/services/{id}` con destinos administrados; puerto `ServiceProvisioner` con un adaptador por servicio | CI |
+| Lectura (Kavita 0.9.1) | Stack autónomo con `reading.env`, `portal:reading-setup` (cuenta de servicio y bibliotecas Libros, Cómics, Manga, Documentación técnica), cuentas gestionadas como Música | CI con Kavita real; QA con libros reales pendiente |
 | Música (Navidrome 0.64.2) | Stack autónomo, cuentas aprovisionadas con reintentos cifrados de una hora, renombrado y bloqueo, puente de sesión (no es SSO) | CI con Navidrome real; QA del navegador pendiente |
 | Mis archivos | Carpetas, subida por fragmentos reanudable, explorador con búsqueda/filtros/vistas, vista previa (imagen con zoom, vídeo, audio, PDF, Markdown, texto), papelera y versiones, ZIP, cifrado en reposo, metadatos de fotos fuera con ExifTool | CI + usuario |
 | Almacenamiento | Inventario de discos, cuotas y reservas transaccionales, página Almacenamiento, `make nas-discover`/`nas-apply`, copia externa con restic (`make nas-backup`) | CI (Docker simulado); sin prueba en servidor real |
@@ -15,10 +16,9 @@ Instantánea a 2026-11-15 (PRs #1–#34). Se **reescribe** al cerrar cada increm
 
 Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md); librería antes que código propio; entorno local desechable mientras no haya producción.
 
-## En revisión: P04.1 Lectura con Kavita — rama `feat/p04-1-kavita`
-- Stack autónomo `compose.reading.yaml` (Kavita 0.9.1, solo local, bibliotecas en solo lectura) integrado en `make up` con `reading.env`; `portal:reading-setup` crea la cuenta de servicio y las bibliotecas Libros, Cómics, Manga y Documentación técnica.
-- Tarjeta «Lectura» y cuentas gestionadas como Música (alta, contraseña, renombrado, activar/desactivar, suspensión, baja) mediante el adaptador `KavitaAccounts`.
-- Validación: CI con Kavita real y con un Kavita simulado para fallos y reintentos. Pendiente: QA del usuario con libros reales.
+## En revisión: servicios nuevos al entrar — rama `feat/u04-new-services-on-login`
+- Las personas existentes reciben los servicios añadidos después (p. ej. Lectura) al entrar con contraseña, con su cuenta creada en ese momento; nunca los que un administrador dejó fuera o desactivó (`users.services_revoked`).
+- Validación: CI. Siguiente: S04a, carpetas de Mis archivos conectadas a Navidrome y Kavita.
 
 ## Acciones pendientes del usuario
 - `make rebuild` (WebP y ExifTool) y QA de lo reciente (ROADMAP § QA).

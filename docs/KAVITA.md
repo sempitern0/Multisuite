@@ -13,14 +13,14 @@ Lectura de novelas, cómics, manga y documentación técnica con [Kavita](https:
 | Manga | `KAVITA_MANGA_PATH` | Manga |
 | Documentación técnica | `KAVITA_DOCS_PATH` | Book |
 
-3. Copiar los libros a esas carpetas (Kavita las vigila y las escanea). Abrir Lectura desde la portada en `http://127.0.0.1:5000`.
+3. Copiar los libros a esas carpetas del servidor (Kavita las vigila; si tarda, Kavita → Ajustes del servidor → Bibliotecas → Escanear). Este contenido es común para todos y solo lo puede añadir quien tenga acceso al servidor; la subida desde Mis archivos a una biblioteca privada por persona es el siguiente hito (ROADMAP § S04). Abrir Lectura desde la portada en `http://127.0.0.1:5000`.
 
 Comandos: `make reading-up | reading-stop | reading-status | reading-logs | reading-config`. `make up READING_AUTO=0` arranca sin Lectura. Las bibliotecas se pueden renombrar o ampliar desde Kavita (Ajustes del servidor → Bibliotecas); el portal solo crea las que faltan por nombre y nunca modifica las existentes.
 
 Producción: fijar `KAVITA_ADMIN_USERNAME` y `KAVITA_ADMIN_PASSWORD` en `app/.env` (secretos del operador) y ejecutar una vez `make artisan CMD="portal:reading-setup"`. Si Kavita ya tiene otro administrador, el comando se niega y pide las credenciales correctas.
 
 ## Cuentas (adaptador `KavitaAccounts`)
-Mismo ciclo que Música (SERVICE_ACCOUNTS.md): invitación o alta con servicios, cambio de contraseña, renombrado, activar/desactivar, suspensión y baja desde la ficha de persona.
+Mismo ciclo que Música (SERVICE_ACCOUNTS.md): invitación o alta con servicios, cambio de contraseña, renombrado, activar/desactivar, suspensión y baja desde la ficha de persona. Las personas que ya existían antes de activar Lectura la reciben automáticamente la próxima vez que entran con contraseña.
 - Kavita asigna sus propios identificadores; cada cuenta se reconoce por la dirección sintética `{uuid}@multisuite.invalid`, con el UUID reservado en Multisuite. Un reintento encuentra la misma cuenta y nunca se adopta una cuenta existente por coincidir el correo real.
 - Alta: invitación **sin** el rol `Login` (una invitación pendiente conserva la contraseña por defecto pública de Kavita), confirmación con el nombre y la contraseña de la persona, y solo entonces se concede `Login`. Se comprueba entrando con la contraseña nueva.
 - Roles de un miembro: `Login`, `Download`, `Bookmark` (y `Pleb`, que Kavita añade). Nunca `Admin` ni `Change Password`: la contraseña se cambia en el portal.

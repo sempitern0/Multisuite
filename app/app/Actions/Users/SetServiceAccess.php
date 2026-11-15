@@ -33,6 +33,7 @@ class SetServiceAccess
             }
             if ($enabled) {
                 $target->service_access = [...$access, $service];
+                $target->services_revoked = array_values(array_diff($target->services_revoked ?? [], [$service]));
                 $target->save();
                 $this->accounts->awaitPassword($target);
             } else {
@@ -46,6 +47,8 @@ class SetServiceAccess
                     }
                 }
                 $target->service_access = array_values(array_diff($access, [$service]));
+                // Remembered so the next sign-in does not grant it back as a "new" service.
+                $target->services_revoked = array_values(array_unique([...($target->services_revoked ?? []), $service]));
                 $target->save();
             }
             $this->audit->recordService($actor, $target, $service, $enabled ? ServiceAuditAction::AccessGranted : ServiceAuditAction::AccessRevoked);

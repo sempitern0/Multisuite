@@ -52,6 +52,7 @@ class InvitationController extends Controller
             $user->password = $data['password'];
             $user->role = $invitation->role;
             $user->service_access = $invitation->services ?? [];
+            $user->services_revoked = app(ServiceAccounts::class)->notGranted($user->service_access);
             // Possession of the link delivered to this mailbox proves email access.
             $user->email_verified_at = now();
             $user->save();

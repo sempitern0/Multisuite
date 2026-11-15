@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ServiceAuditAction;
 use App\Models\ServiceAccount;
 use App\Models\User;
 use App\Services\Provisioning\ServiceProvisioners;
@@ -76,6 +77,7 @@ class ServiceAccounts
             $locked->must_change_password = false;
             $locked->save();
             if ($initialActivation) {
+                $this->grantNewServices($locked);
                 $this->enroll($locked, $locked->service_access ?? [], $password);
             }
             foreach (ServiceAccount::where('user_id', $user->id)->lockForUpdate()->get() as $account) {
@@ -101,6 +103,10 @@ class ServiceAccounts
             if ($locked === null || $locked->must_change_password) {
                 return false;
             }
+            // Services added to the portal since the person last signed in join now.
+            if ($this->grantNewServices($locked)) {
+                $this->awaitPassword($locked);
+            }
             $accounts = ServiceAccount::where('user_id', $locked->id)
                 ->whereIn('status', [self::AWAITING_PASSWORD, 'expired'])->lockForUpdate()->get()
                 ->filter(fn (ServiceAccount $account): bool => $this->entitled($locked, $account->service));
@@ -114,6 +120,43 @@ class ServiceAccounts
             $userId = $user->id;
             defer(fn () => $this->syncUser(User::findOrFail($userId)));
         }
+    }
+
+    /**
+     * Grants every available service the person has never had, unless an administrator left it
+     * out or turned it off ($services_revoked). Must run inside the caller's transaction with the
+     * user row locked. A null access list already means "everything" and is left alone.
+     *
+     * @return bool whether anything was granted
+     */
+    public function grantNewServices(User $locked): bool
+    {
+        if ($locked->service_access === null || $locked->suspended_at !== null) {
+            return false;
+        }
+        $new = array_values(array_diff($this->available(), $locked->service_access, $locked->services_revoked ?? []));
+        if ($new === []) {
+            return false;
+        }
+        $locked->service_access = [...$locked->service_access, ...$new];
+        $locked->save();
+        foreach ($new as $service) {
+            app(AdminAudit::class)->recordService(null, $locked, $service, ServiceAuditAction::AccessGranted);
+        }
+
+        return true;
+    }
+
+    /**
+     * Services left out when an account is created or an invitation accepted: they stay out
+     * until an administrator grants them.
+     *
+     * @param  list<string>  $granted
+     * @return list<string>
+     */
+    public function notGranted(array $granted): array
+    {
+        return array_values(array_diff($this->available(), $granted));
     }
 
     /**

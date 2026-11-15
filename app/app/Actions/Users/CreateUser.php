@@ -51,6 +51,7 @@ class CreateUser
             $user->password = $data['password'];
             $user->role = $data['role'];
             $user->service_access = $data['services'] ?? [];
+            $user->services_revoked = app(ServiceAccounts::class)->notGranted($user->service_access);
             $user->email_verified_at = now();
             $user->must_change_password = true;
             $user->created_by_admin_id = $actor->id;
