@@ -66,7 +66,7 @@ class FileController extends Controller
             // Browsers refuse to run their PDF viewer inside a CSP sandbox.
             'Content-Security-Policy' => $inline && $kind === 'pdf'
                 ? "default-src 'none'; object-src 'self'; frame-ancestors 'self'"
-                : "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'self'; sandbox",
+                : "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'self'; sandbox",
         ]);
         $fallback = (string) preg_replace('/[^A-Za-z0-9._ -]+/', '_', Str::ascii($file->name));
         $response->setContentDisposition($inline ? 'inline' : 'attachment', $file->name, trim($fallback, ' .') !== '' ? $fallback : 'archivo');

@@ -44,13 +44,13 @@ class PrivateUploadsTest extends TestCase
         parent::tearDown();
     }
 
-    private function receive(string $id, string $body): void
+    private function receive(string $id, string $body, int $offset = 0): void
     {
         $stream = fopen('php://temp', 'w+b');
         fwrite($stream, $body);
         rewind($stream);
         try {
-            app(PrivateUploads::class)->receive($this->user, $id, $stream);
+            app(PrivateUploads::class)->receive($this->user, $id, $stream, $offset);
         } finally {
             fclose($stream);
         }
@@ -91,18 +91,52 @@ class PrivateUploadsTest extends TestCase
 
     public function test_truncated_and_html_files_are_not_committed(): void
     {
-        foreach (['short', '<html><body>unsafe</body></html>'] as $body) {
-            $id = (string) Str::uuid();
-            app(PrivateUploads::class)->begin($this->user, $body === 'short' ? 20 : strlen($body), $id);
-            try {
-                $this->receive($id, $body);
-                $this->fail('Invalid content accepted');
-            } catch (RuntimeException) {
-                $this->assertDatabaseHas('private_uploads', ['id' => $id, 'state' => 'pending']);
-            }
-            app(PrivateUploads::class)->cancel($this->user, $id);
+        // A short body is an unfinished upload: kept pending, never committed.
+        $short = (string) Str::uuid();
+        app(PrivateUploads::class)->begin($this->user, 20, $short);
+        $this->receive($short, 'short');
+        $this->assertDatabaseHas('private_uploads', ['id' => $short, 'state' => 'pending']);
+        $this->assertSame(5, app(PrivateUploads::class)->received($this->user, $short));
+        app(PrivateUploads::class)->cancel($this->user, $short);
+
+        $body = '<html><body>unsafe</body></html>';
+        $id = (string) Str::uuid();
+        app(PrivateUploads::class)->begin($this->user, strlen($body), $id);
+        try {
+            $this->receive($id, $body);
+            $this->fail('Invalid content accepted');
+        } catch (RuntimeException) {
+            $this->assertDatabaseHas('private_uploads', ['id' => $id, 'state' => 'pending']);
         }
+        app(PrivateUploads::class)->cancel($this->user, $id);
         $this->assertSame(0, StoragePool::findOrFail('disk')->used_bytes);
+    }
+
+    public function test_chunks_append_in_order_resume_after_a_lost_response_and_keep_the_reservation_alive(): void
+    {
+        $id = (string) Str::uuid();
+        $body = str_repeat('Lorem ipsum dolor sit amet. ', 20);
+        $put = fn (int $offset, string $chunk) => $this->call('PUT', '/uploads/'.$id.'?offset='.$offset, [], [], [], ['CONTENT_TYPE' => 'application/octet-stream', 'HTTP_ACCEPT' => 'application/json'], $chunk);
+        $this->actingAs($this->user)->postJson('/uploads', ['key' => $id, 'bytes' => strlen($body)])->assertCreated();
+
+        $put(0, substr($body, 0, 200))->assertOk()->assertJsonPath('state', 'pending');
+        $this->travel(25)->minutes();
+        // The same chunk again (its response was lost): the server says where to continue.
+        $put(0, substr($body, 0, 200))->assertStatus(409)->assertExactJson(['state' => 'pending', 'received' => 200]);
+        $put(300, substr($body, 300))->assertStatus(409)->assertJsonPath('received', 200);
+        $this->getJson('/uploads/'.$id)->assertOk()->assertJsonPath('received', 200);
+        $put(200, substr($body, 200, 200))->assertOk()->assertJsonPath('state', 'pending');
+        $this->travel(25)->minutes();
+        $this->artisan('portal:uploads-cleanup')->assertExitCode(0);
+        $put(400, substr($body, 400))->assertOk()->assertJsonPath('state', 'ready');
+
+        $this->assertSame($body, file_get_contents($this->root.'/.multisuite-private/'.$id.'.blob'));
+        $this->assertSame(strlen($body), StoragePool::findOrFail('disk')->used_bytes);
+        $this->assertSame(0, StoragePool::findOrFail('disk')->reserved_bytes);
+        $this->getJson('/uploads/'.$id)->assertExactJson(['id' => $id, 'state' => 'ready', 'received' => strlen($body)]);
+        $this->call('PUT', '/uploads/'.$id.'?offset=-1', [], [], [], ['CONTENT_TYPE' => 'application/octet-stream'], 'x')->assertStatus(400);
+        $this->actingAs(User::factory()->create());
+        $put(0, 'x')->assertNotFound();
     }
 
     public function test_cleanup_recovers_crash_after_rename_but_before_database_commit(): void
@@ -153,6 +187,6 @@ class PrivateUploadsTest extends TestCase
         $this->actingAs($this->user)->postJson('/uploads', ['key' => $id, 'bytes' => 5])->assertCreated();
         $this->call('PUT', '/uploads/'.$id, [], [], [], ['CONTENT_TYPE' => 'application/octet-stream', 'HTTP_ACCEPT' => 'application/json'], 'hello')
             ->assertOk()->assertJsonPath('state', 'ready');
-        $this->getJson('/uploads/'.$id)->assertOk()->assertExactJson(['id' => $id, 'state' => 'ready']);
+        $this->getJson('/uploads/'.$id)->assertOk()->assertExactJson(['id' => $id, 'state' => 'ready', 'received' => 5]);
     }
 }

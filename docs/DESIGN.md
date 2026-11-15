@@ -25,7 +25,7 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 |---|---|---|
 | `layouts.app` | `title`, `navigation` | Dibuja `Navigation::for()` (grupos ya filtrados por gates y bloque de cuenta), barra superior, enlace «Saltar al contenido», toasts Flux. Sin lógica de permisos ni rutas. |
 | `layouts.auth` | `title`, `eyebrow`, `heading`, `description`, `home-href`, slot `links` | Panel visual + tarjeta; el slot contiene avisos y formularios con ritmo vertical; `links` va bajo la tarjeta. |
-| `button` | `variant` primary/secondary/ghost/danger, `size` sm, `href`, `icon`, `icon-end`, `block`, `type` | Con `href` se dibuja como enlace. |
+| `button` | `variant` primary/secondary/ghost/danger, `size` sm, `href`, `icon`, `icon-end`, `block`, `type`, `label` | Con `href` se dibuja como enlace. Con `icon` + `label` y sin contenido es un botón de solo icono: `label` es el tooltip y el nombre accesible (un `aria-label` explícito con el nombre del elemento tiene prioridad). Las acciones de fila de las tablas usan iconos. |
 | `field` | `name`, `label`, `type`, `value`, `help`, `id` | Restaura `old()` (salvo contraseñas) y muestra el error de validación de `name` junto al control. |
 | `password` | `name`, `label`, `help` | Botón mostrar/ocultar; nunca rellena el valor. |
 | `checkbox` | `name`, `label`, `checked`, `value` | |
@@ -33,7 +33,7 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | `choice-group` | `name`, `label`, `options`, `help` (+ `wire:model`) | Elección única entre pocas opciones (segmentada). |
 | `toolbar` | slot, slot `end` | Filtros sobre una lista (`role="search"`). |
 | `table` | `label`, `paginator`, slot `head` | Tabla con pie de resultados y paginación Livewire; en móvil se apila en tarjetas. |
-| `td` | `label`, `primary`, `sub`, `align` | Celda; `label` da el nombre de columna en móvil. |
+| `td` | `label`, `primary`, `sub`, `align`, `nowrap` | Celda; `label` da el nombre de columna en móvil. `align="end"` es la celda de acciones: sus botones forman una fila alineada y la columna ocupa lo justo. `nowrap` para valores cortos (tamaños, fechas). |
 | `table-empty` | `colspan` | Fila de lista vacía. |
 | `pagination` | `paginator` | Anterior/Siguiente sin recargar (`WithPagination`). |
 | `subnav` | `items`, `label` | Navegación secundaria (ajustes) con `wire:navigate`. |
@@ -47,16 +47,18 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | `rows`, `row`, `list` | slot | Panel con filas separadas, línea con dos extremos y lista explicativa. |
 | `dialog` | `name`, `title`, `description` | Diálogo modal con contenido propio; se abre y cierra por nombre con los eventos `ui-dialog-open` / `ui-dialog-close` (también desde Livewire) y sobrevive a las actualizaciones. |
 | `actions` | slot | Fila final de botones (diálogos, formularios). |
-| `separator` | slot | Línea divisoria con texto opcional. |
+| `separator` | slot | Línea divisoria con texto opcional (sin texto, línea continua). |
 | `copy-field` | `value`, `label` | Valor de solo lectura con botón de copiar. |
 | `code-list` | `items`, `label` | Lista corta de códigos para copiar a mano. |
 | `qr` | `label`, slot (SVG) | Código QR sobre fondo claro para que la cámara lo lea en tema oscuro. |
 | `breadcrumbs` | `items` ({label, href}) | Ubicación; el último elemento es la página actual. |
-| `entry` | `href`, `icon`, `spa` | Nombre de archivo o carpeta con icono, como enlace. |
+| `uploader` | `store-url`, `upload-url`, `max-bytes`, `folder`, `label`, `hint` | Botón de subir, zona para soltar archivos sobre la página y bandeja flotante de progreso (resumen con barra total, lista desplegable con los errores primero, cierre al terminar). `files.js` clona `<template data-tray-row>` y solo cambia `data-state` (queued, uploading, ok, bad), textos y anchos. |
+| `size-picker` (compacto) | `compact`, `visible-label` | Fila de una línea para celdas de tabla y barras de herramientas; las etiquetas quedan solo para lectores de pantalla salvo `visible-label`. |
+| `entry` | `href`, `icon`, `spa` | Nombre de archivo o carpeta con icono, como enlace. En tablas se recorta a dos líneas; el nombre completo queda en el tooltip. |
 | `uploader` | `store-url`, `upload-url`, `max-bytes`, `folder`, `hint` | Selector de archivos con lista de progreso; lo maneja `resources/js/files.js` (ganchos `data-uploader*`, estado en `data-state`) y emite `files-uploaded`. |
-| `preview` | `kind` image/pdf/text/rich/none, `src`, `title`, `note` | Superficie de vista previa de solo lectura. |
+| `preview` | `kind` image/video/pdf/text/rich/none, `src`, `title`, `note` | Superficie de vista previa de solo lectura. `image` es un visor con zoom y `video` el reproductor del navegador; su comportamiento vive en `resources/js/viewer.js` (`data-viewer`, `data-player`). |
 | `prose` | slot | Contenido largo ya convertido a HTML seguro (Markdown saneado). |
-| `form` | `action`, `method` | Añade CSRF (y `@method` si no es POST) y el espaciado entre campos. |
+| `form` | `action`, `method`, `inline` | Añade CSRF (y `@method` si no es POST) y el espaciado entre campos. `inline`: un campo y su botón en la misma línea, alineados por abajo. |
 | `stack` | `gap` sm/md/lg | Ritmo vertical entre bloques. |
 | `text` | `tone` sub/muted, `as` | Texto secundario. |
 | `heading` | `level` 2/3 | Títulos de sección bajo el `h1`. |

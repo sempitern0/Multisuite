@@ -12,7 +12,10 @@ use RuntimeException;
 
 class PrivateUploads
 {
-    public function __construct(private StorageReservations $reservations, private StorageInventory $inventory) {}
+    /** Idle time an upload may wait between chunks before cleanup reclaims it. */
+    public const RESERVATION_MINUTES = 30;
+
+    public function __construct(private StorageReservations $reservations, private StorageInventory $inventory, private LosslessOptimizer $optimizer) {}
 
     public function begin(User $user, int $bytes, string $key): PrivateUpload
     {
@@ -44,16 +47,22 @@ class PrivateUploads
         });
     }
 
-    /** @param resource $input */
-    public function receive(User $user, string $key, $input): PrivateUpload
+    /**
+     * Appends one chunk (or the whole body) at $offset. Chunks keep every request under
+     * the web server and PHP body limits, so a file is bounded only by NAS_UPLOAD_MAX_BYTES
+     * and the quota. The last chunk verifies type, optimises losslessly, hashes and commits.
+     *
+     * @param  resource  $input
+     */
+    public function receive(User $user, string $key, $input, int $offset = 0): PrivateUpload
     {
         if (! config('nas.uploads_enabled')) {
             throw new RuntimeException('Subidas deshabilitadas.');
         }
 
-        // A database lock serializes writers and cleanup, including across hosts.
+        // A database lock serializes chunks, writers and cleanup, including across hosts.
         // Do not retry this transaction: the input stream cannot be replayed.
-        return DB::transaction(function () use ($user, $key, $input): PrivateUpload {
+        return DB::transaction(function () use ($user, $key, $input, $offset): PrivateUpload {
             [$upload, $reservation, $base] = $this->locked($user, $key);
             if ($upload->state === 'ready') {
                 return $upload;
@@ -63,10 +72,14 @@ class PrivateUploads
             }
             $part = $base.'.part';
             $final = $base.'.blob';
-            if (file_exists($part) || is_link($part) || file_exists($final) || is_link($final)) {
+            if (is_link($part) || file_exists($final) || is_link($final) || (file_exists($part) && ! is_file($part))) {
                 throw new RuntimeException('Quedan datos de un intento anterior. Cancela la subida antes de empezar otra.');
             }
-            $output = @fopen($part, 'x+b');
+            $received = $this->receivedBytes($part);
+            if ($offset !== $received) {
+                throw new UploadOffsetMismatch($received);
+            }
+            $output = @fopen($part, 'ab');
             if ($output === false) {
                 throw new RuntimeException('No se puede crear el archivo privado.');
             }
@@ -74,7 +87,7 @@ class PrivateUploads
                 if (! chmod($part, 0600)) {
                     throw new RuntimeException('No se pueden restringir los permisos.');
                 }
-                $size = 0;
+                $size = $received;
                 while (! feof($input)) {
                     $chunk = fread($input, 65536);
                     if ($chunk === false || ($chunk === '' && ! feof($input))) {
@@ -88,18 +101,31 @@ class PrivateUploads
                         throw new RuntimeException('Escritura incompleta; revisa el espacio disponible.');
                     }
                 }
-                if ($size !== $reservation->bytes || ! fflush($output) || ! fsync($output)) {
-                    throw new RuntimeException('El tamaño recibido no coincide o no se ha persistido.');
+                if (! fflush($output) || ! fsync($output)) {
+                    throw new RuntimeException('No se ha podido persistir el fragmento.');
                 }
             } finally {
                 fclose($output);
             }
+            if ($size < $reservation->bytes) {
+                // Still arriving: keep the reservation alive while chunks keep coming.
+                $this->reservations->extend($user, $key, self::RESERVATION_MINUTES);
+
+                return $upload;
+            }
             clearstatcache(true, $part);
             $actual = filesize($part);
             $mime = (new finfo(FILEINFO_MIME_TYPE))->file($part);
-            $hash = hash_file('sha256', $part);
-            if ($actual !== $reservation->bytes || $hash === false || $mime === false || ! in_array($mime, (array) config('nas.allowed_mimes', []), true)) {
+            if ($actual !== $reservation->bytes || $mime === false || ! in_array($mime, (array) config('nas.allowed_mimes', []), true)) {
                 throw new RuntimeException('Tamaño o formato no permitido.');
+            }
+            // Same picture in fewer bytes when possible; the person is charged the final size.
+            $this->optimizer->optimize($part, $mime);
+            clearstatcache(true, $part);
+            $actual = filesize($part);
+            $hash = hash_file('sha256', $part);
+            if ($actual === false || $actual < 1 || $actual > $reservation->bytes || $hash === false) {
+                throw new RuntimeException('No se puede verificar el archivo recibido.');
             }
             if (! rename($part, $final)) {
                 throw new RuntimeException('No se puede finalizar el archivo.');
@@ -115,6 +141,37 @@ class PrivateUploads
 
             return $upload;
         });
+    }
+
+    /** Bytes stored so far for a pending upload owned by the user (resume after a failed chunk). */
+    public function received(User $user, string $key): int
+    {
+        $upload = PrivateUpload::whereKey($key)->firstOrFail();
+        $reservation = StorageReservation::whereKey($key)->where('user_id', $user->id)->firstOrFail();
+        if ($upload->state === 'ready') {
+            return (int) $reservation->actual_bytes;
+        }
+        if ($upload->state !== 'pending') {
+            return 0;
+        }
+        [$root, , $location] = $this->destination();
+        $this->checkRoot($upload, $root, $location);
+
+        return $this->receivedBytes($root.'/'.$upload->id.'.part');
+    }
+
+    private function receivedBytes(string $part): int
+    {
+        clearstatcache(true, $part);
+        if (! file_exists($part)) {
+            return 0;
+        }
+        $size = filesize($part);
+        if (is_link($part) || ! is_file($part) || $size === false) {
+            throw new RuntimeException('El archivo parcial no es válido.');
+        }
+
+        return $size;
     }
 
     public function cancel(User $user, string $key): void

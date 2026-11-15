@@ -61,10 +61,10 @@ new #[Title('Descargas ZIP')] class extends Component {
                     </x-ui::td>
                     <x-ui::td align="end">
                         @if ($export->state === 'ready')
-                            <x-ui::button size="sm" icon="download" :href="route('files.exports.download', ['exportId' => $export->id])">Descargar</x-ui::button>
+                            <x-ui::button size="sm" icon="download" label="Descargar" :href="route('files.exports.download', ['exportId' => $export->id])" :aria-label="'Descargar '.$export->name" />
                         @endif
                         @if (in_array($export->state, ['ready', 'failed'], true))
-                            <x-ui::button variant="ghost" size="sm" wire:click="discard('{{ $export->id }}')" :aria-label="'Eliminar '.$export->name">Eliminar</x-ui::button>
+                            <x-ui::button variant="ghost" size="sm" icon="trash" label="Eliminar" wire:click="discard('{{ $export->id }}')" :aria-label="'Eliminar '.$export->name" />
                         @endif
                     </x-ui::td>
                 </tr>

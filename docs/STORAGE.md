@@ -30,10 +30,10 @@ Recomendación de topología para el operador:
 ## 2. Uso desde la interfaz (propietario/administrador)
 
 Menú **Almacenamiento** (`/admin/storage`, requiere confirmación reciente de contraseña):
-- **Discos**: barra con contenido del portal, otros datos, margen y libre; límite actual y máximo recomendado. El propietario elige el límite con opciones predefinidas («Todo lo recomendado», «No usar este disco», 1 GB…4 TB) u «Otra cantidad» (número + MB/GB/TB).
-- **Reparto**: total de límites, total prometido, reparto equitativo sugerido y aviso de sobreasignación.
-- **Espacio por defecto** para personas nuevas (solo propietario).
-- **Personas**: barra de uso y selector de espacio máximo. El propietario gestiona a cualquiera (incluido él mismo); un administrador solo a miembros. Reducir por debajo de lo usado/reservado se rechaza con mensaje junto al formulario.
+- **Resumen**: límite total de los discos, ocupado, prometido (con aviso si supera lo que hay) y estado de la copia de seguridad.
+- **Discos del portal** (tabla): barra con contenido del portal, otros datos, margen y libre; límite, usado y máximo recomendado; el propietario cambia el límite en la misma fila («Todo lo recomendado», «No usar este disco», 1 GB…4 TB u «Otra cantidad»). Avisos breves debajo solo si hay subidas interrumpidas o un límite por encima del espacio real.
+- **Personas** (tabla con búsqueda y paginación): uso y espacio máximo editable en la fila. El propietario gestiona a cualquiera (incluido él mismo); un administrador solo a miembros. Reducir por debajo de lo usado/reservado se rechaza con mensaje junto al selector. El **espacio por defecto** para personas nuevas está junto a la búsqueda (solo propietario).
+- **Discos del servidor** (tabla, solo lectura): particiones de `make nas-discover`.
 - Cada cambio queda en **Actividad** (`storage.user_quota`, `storage.pool_limit`, `storage.default_quota`) con tamaño anterior y nuevo; sin rutas.
 - Los miembros ven «Tu almacenamiento» en la portada cuando tienen espacio asignado. La ficha de usuario enlaza a su cuota.
 
@@ -103,11 +103,11 @@ Desactivada por defecto. Activar: ubicación dedicada con `.multisuite-volume-id
 | Acción | Petición | Resultado |
 | --- | --- | --- |
 | Reservar | `POST /uploads` `{"key":"<UUID>","bytes":123}` | 201, idempotente |
-| Recibir | `PUT /uploads/<UUID>` binario `application/octet-stream` | `ready` tras verificar tamaño, MIME (MPEG/FLAC/OGG/WAV, PDF, texto) y SHA-256 |
-| Consultar | `GET /uploads/<UUID>` | Estado propio, sin rutas |
+| Recibir | `PUT /uploads/<UUID>?offset=N` binario `application/octet-stream`, en fragmentos de 8 MiB | Añade el fragmento; `409` con `received` si no continúa donde terminó el anterior; con el último, `ready` tras verificar tamaño, MIME y SHA-256 |
+| Consultar | `GET /uploads/<UUID>` | Estado propio y bytes recibidos, sin rutas |
 | Cancelar | `DELETE /uploads/<UUID>` | Borra restos y después libera |
 
-Sesión del portal + CSRF, 20 peticiones/min. Escritura `.part` exclusiva → fsync → rename a `.blob` → commit en la misma transacción. Un fallo deja la reserva `pending`; nunca se libera a ciegas. Nginx/PHP pueden almacenar el cuerpo antes de Laravel: ajustar `client_max_body_size` y límites PHP antes de admitir archivos grandes. Sin multipart, chunks ni reanudación todavía.
+Sesión del portal + CSRF. Registrar, consultar y cancelar usan el limitador `uploads` (60/min); los fragmentos, `upload-chunks` (1200/min, por encima de una red de 1 Gbit). Cada fragmento se añade a `.part` bajo el bloqueo de la subida, con fsync, y renueva la reserva 30 min; el último verifica, optimiza sin pérdida, renombra a `.blob` y confirma en la misma transacción. Una subida abandonada caduca y la limpieza la borra. Un fallo deja la reserva `pending`; nunca se libera a ciegas. El navegador reintenta cada fragmento hasta 3 veces y, tras un corte, pregunta cuánto llegó y continúa desde ahí.
 
 ## 5b. Mis archivos (S03.2)
 
@@ -119,7 +119,7 @@ Decisión del usuario (2026-11-13): gestor de archivos propio del portal con car
 - **Tipos admitidos** (`config/nas.php` → `allowed_mimes`, detectados con fileinfo): audio, PDF, texto/Markdown/CSV/JSON, JPEG/PNG/GIF/WebP, EPUB y ofimática (Word/Excel/PowerPoint/OpenDocument). Rechazados: comprimidos, ejecutables, HTML y SVG. Un `.md` que contenga etiquetas como `<script>` o `<html>` se detecta como HTML y se rechaza al subirlo.
 - **Vista previa**: imágenes (`<img>`), PDF (visor nativo del navegador en iframe del mismo origen), Markdown renderizado con `html_input=strip` y sin enlaces inseguros, texto escapado (máx. 1 MiB). El resto, solo descarga.
 - **Cabeceras de contenido**: `nosniff`, `Cache-Control: private, no-store`, `Cross-Origin-Resource-Policy: same-origin`, CSP `default-src 'none'` con `sandbox` (salvo PDF, porque los navegadores no abren su visor en sandbox). Descargas siempre `application/octet-stream` + `attachment`. Soporta peticiones Range.
-- **Límites**: `NAS_UPLOAD_MAX_BYTES` (100 MiB por defecto) debe ser ≤ `client_max_body_size` de Nginx (110 MiB). Subidas secuenciales con progreso; un fallo cancela su reserva al momento.
+- **Límites**: el único límite práctico es el espacio de cada persona (Almacenamiento). `NAS_UPLOAD_MAX_BYTES` (100 GiB por defecto) es solo un tope de seguridad por archivo. Como los archivos viajan en fragmentos de 8 MiB, Nginx (`client_max_body_size 16m`) y PHP (`post_max_size` 8M por defecto, que el fragmento no debe superar) no limitan el tamaño total. Hasta 3 archivos a la vez, cada uno en fragmentos ordenados; un fallo definitivo cancela su reserva al momento.
 - **Totales de carpeta**: cada carpeta muestra sus elementos directos y el tamaño exacto acumulado (incluye subcarpetas), calculados con los bytes verificados de la base de datos; las subidas sin terminar no cuentan.
 - **Papelera (S03.3)**: «Mover a la papelera» saca el archivo de su carpeta (que puede quedar vacía y borrarse) y guarda la carpeta original. Restaurar lo devuelve allí, o a la raíz si ya no existe; si el nombre está ocupado, se guarda como «nombre (2)». Mientras está en la papelera **sigue contando en la cuota**.
 - **Borrado definitivo**: `PrivateUploads::purge` borra el blob, comprueba que ha desaparecido y, en la misma transacción, `StorageReservations::releaseCommitted` devuelve los bytes a la cuota y al disco (reserva `purged`, subida `purged`). Las versiones se purgan antes que el archivo, cada una en su propia transacción. Si el volumen no está disponible o hay un enlace simbólico, no se borra nada y todo sigue contado (fallo cerrado).
@@ -151,8 +151,19 @@ Decisión del usuario (2026-11-13): gestor de archivos propio del portal con car
 | Papelera, borrado verificado, versiones y retención (S03.3) | Integrado (PR #17) |
 | Descargas ZIP: selección, carpeta y exportar todo (S03.4) | Rama `feat/s03-zip-exports` |
 | GUI de almacenamiento y cuota por defecto (S02.3) | Rama `feat/s02-storage-admin-gui`, pendiente de CI y QA visual |
-| Copia de seguridad externa con restic, retención, comprobación y ensayo de restauración (S05.1) | Rama `feat/s05-nas-backup`; probado con Docker simulado, pendiente de una copia real en el servidor |
+| Visor de imágenes, vídeo en el navegador, JPEG sin pérdida y subida por fragmentos (S03.5) | Rama `feat/s03-media-viewer`; CI, pendiente de prueba en navegador |
+| Copia de seguridad externa con restic, retención, comprobación y ensayo de restauración (S05.1) | Integrado (PR #25); probado con Docker simulado, pendiente de una copia real en el servidor |
 | Mover entre carpetas, reconciliación, bibliotecas por usuario, publicación y movimientos | Pendiente (ROADMAP S03–S05) |
+
+## Fotos y vídeo en Mis archivos (S03.5)
+
+- **Subida de muchos archivos**: botón o arrastrar sobre la página. El progreso aparece en una bandeja flotante con un solo resumen (archivos terminados, MB enviados y barra total); la lista se despliega a demanda y pone los errores arriba. Al terminar sin errores se pliega y se puede cerrar. Los archivos aparecen en la lista según terminan, marcados como «Nuevo». Salir de la página con subidas en curso pide confirmación.
+
+- **Visor de imágenes**: acercar y alejar con los botones, la rueda, doble clic o pellizco; arrastrar para moverse; «Tamaño real» (un píxel de la foto por píxel de pantalla); pantalla completa; teclado (`+`, `-`, `0`, flechas). Solo muestra: no edita ni guarda nada.
+- **Vídeo**: se admiten MP4, WebM y MOV y los reproduce el propio navegador con sus controles (avance, velocidad, pantalla completa, imagen en imagen). El servidor entrega el archivo tal cual, por tramos (`Range`), sin convertirlo. Si el navegador no entiende el formato, se indica y se ofrece descargarlo.
+- **Optimización sin pérdida al subir** (`NAS_OPTIMIZE_IMAGES`, activada): un JPEG se reempaqueta con `jpegtran` antes de confirmarlo. Los píxeles y los metadatos (fecha, ubicación, perfil de color) son idénticos; cambian los bytes, así que el archivo descargado no es igual bit a bit al que se subió y ocupa algo menos. A la persona se le descuenta el tamaño final. Si la herramienta falta, tarda más de 20 s o el resultado no es la misma imagen más pequeña, se guarda el original.
+- PNG, WebP, GIF y vídeo se guardan sin cambios: no existe una reducción sin pérdida que merezca la pena para vídeo, y nunca se recodifica.
+- Tamaño: sin límite práctico por archivo (tope de seguridad de 100 GiB, ver Límites); cuenta el espacio de la persona.
 
 ## Copia de seguridad (S05.1)
 

@@ -94,170 +94,151 @@ new #[Title('Almacenamiento')] class extends Component {
     @php
         $o = $this->overview;
         $fmt = fn (?int $bytes): string => \App\Support\Bytes::format($bytes);
+        $backup = $o['backup'];
+        $backupAt = $backup['at'] ?? null;
+        $backupText = match ($backup['state'] ?? null) {
+            'ok' => 'Correcta · '.$backupAt->format('d/m H:i'),
+            'running' => 'En curso',
+            'stale' => 'Antigua · '.$backupAt->format('d/m H:i'),
+            'failed' => 'Falló',
+            default => 'Sin copia externa',
+        };
     @endphp
-    <x-ui::page-header eyebrow="Administración" title="Almacenamiento" description="Decide cuánto espacio puede ocupar cada persona. No hace falta tocar discos ni particiones: el servidor ya los tiene preparados y aquí solo repartes el espacio." />
+    <x-ui::page-header eyebrow="Administración" title="Almacenamiento" description="Discos del servidor y espacio de cada persona." />
 
     <x-ui::stack gap="lg">
-        <x-ui::panel aria-labelledby="how-it-works">
-            <x-ui::stack gap="sm">
-                <x-ui::heading id="how-it-works">Cómo funciona</x-ui::heading>
-                <x-ui::list>
-                    <li><strong>Discos:</strong> el límite de cada disco es lo máximo que el portal guardará en él. Nunca se escribe más allá del espacio libre real menos un margen de seguridad.</li>
-                    <li><strong>Personas:</strong> cada una tiene un máximo personal. Es un techo, no un espacio apartado: lo que no usa sigue libre para los demás.</li>
-                    <li><strong>Seguridad:</strong> si un disco se llena, se desconecta o hay dudas sobre su espacio, el portal deja de aceptar contenido nuevo en él. Nunca borra archivos para hacer sitio.</li>
-                </x-ui::list>
-            </x-ui::stack>
+        @if ($o['inventoryError'])
+            <x-ui::notice tone="bad">Error en la configuración de discos: {{ $o['inventoryError'] }} Revisa <code>NAS_STORAGE_VOLUMES</code> (docs/STORAGE.md).</x-ui::notice>
+        @endif
+        @if ($o['virtualHost'] && $o['disks'] !== [])
+            <x-ui::notice tone="warn">Docker Desktop: la capacidad mostrada es la del disco virtual, no la de tu disco físico. Fija límites por debajo de su espacio libre.</x-ui::notice>
+        @endif
+        @if (in_array($backup['state'] ?? null, ['failed', 'stale'], true))
+            <x-ui::notice tone="{{ $backup['state'] === 'failed' ? 'bad' : 'warn' }}">{{ $backup['state'] === 'failed' ? 'La última copia falló'.($backupAt ? ' el '.$backupAt->format('d/m/Y H:i') : '').'.' : 'La última copia es del '.$backupAt->format('d/m/Y H:i').'.' }} Revisa <code>make nas-backup</code> en el servidor.</x-ui::notice>
+        @endif
+
+        <x-ui::panel aria-label="Resumen">
+            <x-ui::stats :items="[
+                'Límite de los discos' => $fmt($o['poolLimitTotal']),
+                'Ocupado' => $fmt($o['usedTotal']),
+                'Prometido a '.$o['userCount'].' '.($o['userCount'] === 1 ? 'persona' : 'personas') => $fmt($o['assigned']).($o['overcommitted'] ? ' (más de lo que hay)' : ''),
+                'Copia de seguridad' => $backupText,
+            ]" />
         </x-ui::panel>
 
-        <x-ui::stack gap="md" aria-labelledby="disks">
-            <x-ui::heading id="disks">Discos</x-ui::heading>
-            @if ($o['inventoryError'])
-                <x-ui::notice tone="bad">La configuración de discos del servidor tiene un error: {{ $o['inventoryError'] }} Pide al responsable técnico que revise <code>NAS_STORAGE_VOLUMES</code> (ver docs/STORAGE.md).</x-ui::notice>
-            @elseif (! $o['configured'] && $o['disks'] === [])
-                <x-ui::empty-state icon="database" title="Todavía no hay discos preparados">Por seguridad, el portal no puede elegir carpetas ni discos por sí mismo. El responsable técnico debe conectarlos una vez en el servidor siguiendo docs/STORAGE.md. Después aparecerán aquí.</x-ui::empty-state>
-            @endif
-            @if ($o['virtualHost'] && $o['disks'] !== [])
-                <x-ui::notice tone="warn"><strong>Capacidad del disco virtual de Docker Desktop.</strong> La capacidad que ves es la del disco virtual de Docker (suele llegar a 1 TB), no la de tu disco físico. Los archivos sí ocupan espacio real en el ordenador: fija un límite menor que el espacio libre de ese disco. En un servidor Linux con los discos montados directamente, estas cifras son exactas.</x-ui::notice>
-            @endif
-
+        <x-ui::stack gap="sm" aria-labelledby="disks">
+            <x-ui::heading id="disks">Discos del portal</x-ui::heading>
+            <x-ui::table label="Discos del portal">
+                <x-slot:head><tr><th>Disco</th><th>Ocupación</th><th>Límite del portal</th>@if ($o['canManagePools'])<th><x-ui::sr>Cambiar límite</x-ui::sr></th>@endif</tr></x-slot:head>
+                @forelse ($o['disks'] as $disk)
+                    <tr wire:key="disk-{{ $disk['id'] }}">
+                        <x-ui::td primary :sub="$disk['status'] !== 'observed' ? $disk['statusLabel'] : (array_diff($disk['locations'], [$disk['id']]) === [] ? null : implode(', ', $disk['locations']))">{{ $disk['id'] }}</x-ui::td>
+                        <x-ui::td label="Ocupación">
+                            @if ($disk['segments'] !== [])
+                                <x-ui::segment-bar
+                                    :label="'Disco de '.$fmt($disk['total']).': '.collect($disk['segments'])->map(fn ($segment) => $segment['label'].' '.$fmt($segment['bytes']))->implode(', ')"
+                                    :segments="array_map(fn ($segment) => $segment + ['text' => $fmt($segment['bytes'])], $disk['segments'])" />
+                            @else
+                                —
+                            @endif
+                        </x-ui::td>
+                        <x-ui::td label="Límite" nowrap :sub="'Usado '.$fmt($disk['used']).($disk['reserved'] > 0 ? ' + '.$fmt($disk['reserved']).' subiendo' : '').' · Máximo recomendado '.($disk['suggested'] === null ? 'desconocido' : $fmt($disk['suggested']))">
+                            {{ $disk['limit'] === null ? 'Sin configurar' : $fmt($disk['limit']) }}
+                        </x-ui::td>
+                        @if ($o['canManagePools'])
+                            <x-ui::td label="Cambiar">
+                                @if ($disk['editable'])
+                                    <x-ui::size-picker compact id="pool-{{ $disk['id'] }}" :presets="$o['presets']" :units="$o['units']" :selected="$disk['limit']" label="Límite del portal en este disco"
+                                        :extra="$disk['suggested'] !== null && $disk['suggested'] > 0 ? [$disk['suggested'] => 'Todo lo recomendado ('.$fmt($disk['suggested']).')', 0 => 'No usar este disco'] : [0 => 'No usar este disco']"
+                                        :submit-label="'Guardar límite del disco '.$disk['id']" :error="$errors->first('pool_'.$disk['id'])"
+                                        x-on:size-chosen="$wire.savePool('{{ $disk['id'] }}', $event.detail)" />
+                                @endif
+                            </x-ui::td>
+                        @endif
+                    </tr>
+                @empty
+                    <x-ui::table-empty colspan="4">Aún no hay discos preparados. Se conectan una vez en el servidor (docs/STORAGE.md).</x-ui::table-empty>
+                @endforelse
+            </x-ui::table>
             @foreach ($o['disks'] as $disk)
-                <x-ui::panel wire:key="disk-{{ $disk['id'] }}" aria-labelledby="disk-{{ $disk['id'] }}">
-                    <x-ui::stack gap="md">
-                        <x-ui::row>
-                            <x-ui::heading :level="3" id="disk-{{ $disk['id'] }}">{{ $disk['id'] }}</x-ui::heading>
-                            <x-ui::tag :tone="$disk['status'] === 'observed' ? null : 'red'">{{ $disk['statusLabel'] }}</x-ui::tag>
-                        </x-ui::row>
-                        @if ($disk['locations'] !== [])
-                            <x-ui::text tone="muted">Carpetas en este disco: {{ implode(', ', $disk['locations']) }}.</x-ui::text>
-                        @endif
-                        @if ($disk['segments'] !== [])
-                            <x-ui::segment-bar
-                                :label="'Disco de '.$fmt($disk['total']).': '.collect($disk['segments'])->map(fn ($segment) => $segment['label'].' '.$fmt($segment['bytes']))->implode(', ')"
-                                :segments="array_map(fn ($segment) => $segment + ['text' => $fmt($segment['bytes'])], $disk['segments'])" />
-                        @endif
-                        <x-ui::stats :items="[
-                            'Límite del portal' => $disk['limit'] === null ? 'Sin configurar (no admite contenido)' : $fmt($disk['limit']),
-                            'Usado por personas' => $fmt($disk['used']).($disk['reserved'] > 0 ? ' + '.$fmt($disk['reserved']).' en curso' : ''),
-                            'Máximo recomendado' => $disk['suggested'] === null ? 'Desconocido' : $fmt($disk['suggested']),
-                        ]" />
-
-                        @if ($disk['staleCount'] > 0)
-                            <x-ui::notice tone="info">
-                                {{ $disk['staleCount'] }} {{ $disk['staleCount'] === 1 ? 'subida interrumpida sigue' : 'subidas interrumpidas siguen' }} ocupando {{ $fmt($disk['staleAutomatic'] + $disk['staleManual']) }} del espacio de sus propietarios.
-                                @if ($disk['staleAutomatic'] > 0) {{ $fmt($disk['staleAutomatic']) }} se liberarán solos: la limpieza automática comprueba cada 10 minutos que no quedan restos en el disco. @endif
-                                @if ($disk['staleManual'] > 0) {{ $fmt($disk['staleManual']) }} no tienen limpieza automática: pide al responsable técnico que los revise (docs/STORAGE.md, «Reconciliación»). @endif
-                            </x-ui::notice>
-                        @endif
-                        @if ($disk['limitAboveCapacity'])
-                            <x-ui::notice tone="warn">El límite es mayor que el espacio realmente disponible. No es peligroso (el portal comprueba el espacio real antes de aceptar contenido), pero las personas podrían quedarse sin sitio antes de llegar a su máximo.</x-ui::notice>
-                        @endif
-
-                        @if ($o['canManagePools'] && $disk['editable'])
-                            <x-ui::size-picker id="pool-{{ $disk['id'] }}" :presets="$o['presets']" :units="$o['units']" :selected="$disk['limit']" label="Límite del portal en este disco"
-                                :extra="$disk['suggested'] !== null && $disk['suggested'] > 0 ? [$disk['suggested'] => 'Todo lo recomendado ('.$fmt($disk['suggested']).')', 0 => 'No usar este disco'] : [0 => 'No usar este disco']"
-                                :submit-label="'Guardar límite del disco '.$disk['id']" :error="$errors->first('pool_'.$disk['id'])"
-                                x-on:size-chosen="$wire.savePool('{{ $disk['id'] }}', $event.detail)" />
-                        @elseif (! $o['canManagePools'])
-                            <x-ui::text tone="muted">Solo el propietario puede cambiar el límite de los discos.</x-ui::text>
-                        @endif
-                    </x-ui::stack>
-                </x-ui::panel>
+                @if ($disk['staleCount'] > 0)
+                    <x-ui::notice tone="info" wire:key="stale-{{ $disk['id'] }}">
+                        {{ $disk['id'] }}: {{ $disk['staleCount'] }} {{ $disk['staleCount'] === 1 ? 'subida interrumpida sigue' : 'subidas interrumpidas siguen' }} ocupando {{ $fmt($disk['staleAutomatic'] + $disk['staleManual']) }}.
+                        @if ($disk['staleAutomatic'] > 0) {{ $fmt($disk['staleAutomatic']) }} se liberarán solos en unos minutos. @endif
+                        @if ($disk['staleManual'] > 0) {{ $fmt($disk['staleManual']) }} no tienen limpieza automática (docs/STORAGE.md, «Reconciliación»). @endif
+                    </x-ui::notice>
+                @endif
+                @if ($disk['limitAboveCapacity'])
+                    <x-ui::notice tone="warn" wire:key="above-{{ $disk['id'] }}">{{ $disk['id'] }}: el límite supera el espacio disponible; las personas podrían quedarse sin sitio antes de llegar a su máximo.</x-ui::notice>
+                @endif
             @endforeach
         </x-ui::stack>
 
-        <x-ui::stack gap="md" aria-labelledby="hardware">
-            <x-ui::heading id="hardware">Discos del servidor</x-ui::heading>
-            @if ($o['hardware'] === null)
-                <x-ui::text>Para ver aquí todos los discos y particiones del servidor, ejecuta <code>make nas-discover</code> en él. Para usarlos con el portal: <code>make nas-apply TARGETS="/punto/de/montaje"</code> y después <code>make up</code>. Nunca se formatea ni se particiona nada.</x-ui::text>
-            @else
-                <x-ui::text>Última detección{{ $o['hardware']['host'] !== '' ? ' en '.$o['hardware']['host'] : '' }}: {{ $o['hardware']['generated_at'] }}. Solo lectura; para cambiarlos usa <code>make nas-apply</code> en el servidor.</x-ui::text>
-                @forelse ($o['hardware']['disks'] as $device)
-                    <x-ui::table :label="'Particiones de '.$device['name']" wire:key="device-{{ $device['name'] }}">
-                        <x-slot:head>
-                            <tr><th>{{ $device['model'] !== '' ? $device['model'] : 'Disco' }} · {{ $device['name'] }} · {{ $fmt($device['size']) }}{{ $device['removable'] ? ' · extraíble' : '' }}</th><th>Formato</th><th>Tamaño</th><th>Montaje</th><th>Portal</th></tr>
-                        </x-slot:head>
-                        @forelse ($device['partitions'] as $part)
-                            <tr>
-                                <x-ui::td primary>{{ $part['name'] }}</x-ui::td>
-                                <x-ui::td label="Formato">{{ $part['fstype'] !== '' ? $part['fstype'] : 'sin formato' }}</x-ui::td>
-                                <x-ui::td label="Tamaño">{{ $fmt($part['size']) }}</x-ui::td>
-                                <x-ui::td label="Montaje">{{ $part['mountpoint'] === '' ? 'No montada' : $part['mountpoint'].($part['fs_available'] !== null ? ' · libre '.$fmt($part['fs_available']) : '') }}</x-ui::td>
-                                <x-ui::td label="Portal">@if ($part['in_use'])<x-ui::status>En uso por el portal</x-ui::status>@else — @endif</x-ui::td>
-                            </tr>
-                        @empty
-                            <x-ui::table-empty colspan="5">Sin particiones con sistema de archivos (disco sin usar).</x-ui::table-empty>
-                        @endforelse
-                    </x-ui::table>
-                @empty
-                    <x-ui::text>La última detección no encontró discos.</x-ui::text>
-                @endforelse
-            @endif
-        </x-ui::stack>
-
-        <x-ui::stack gap="sm" aria-labelledby="backup">
-            <x-ui::heading id="backup">Copia de seguridad</x-ui::heading>
-            @php($backupAt = $o['backup']['at'] ?? null)
-            @switch($o['backup']['state'] ?? null)
-                @case('ok') <x-ui::notice>Última copia terminada y comprobada el {{ $backupAt->format('d/m/Y H:i') }}.</x-ui::notice> @break
-                @case('running') <x-ui::notice tone="info">Hay una copia en curso{{ $backupAt ? ' desde el '.$backupAt->format('d/m/Y H:i') : '' }}.</x-ui::notice> @break
-                @case('stale') <x-ui::notice tone="warn">La última copia es del {{ $backupAt->format('d/m/Y H:i') }}. Revisa en el servidor que la copia programada sigue funcionando.</x-ui::notice> @break
-                @case('failed') <x-ui::notice tone="bad">La última copia falló{{ $backupAt ? ' el '.$backupAt->format('d/m/Y H:i') : '' }}. Los archivos nuevos no están protegidos hasta que se repita en el servidor con <code>make nas-backup</code>.</x-ui::notice> @break
-                @default <x-ui::text>Todavía no se ha hecho ninguna copia a un disco externo o a otro lugar. Se configura en el servidor (<code>backup.env</code> y <code>make nas-backup</code>); el portal solo muestra el resultado.</x-ui::text>
-            @endswitch
-        </x-ui::stack>
-
-        <x-ui::panel aria-labelledby="sharing">
-            <x-ui::stack gap="md">
-                <x-ui::heading id="sharing">Reparto</x-ui::heading>
-                <x-ui::stats :items="[
-                    'Límite total de discos' => $fmt($o['poolLimitTotal']),
-                    'Prometido a '.$o['userCount'].' '.($o['userCount'] === 1 ? 'persona' : 'personas') => $fmt($o['assigned']),
-                    'Ocupado en total' => $fmt($o['usedTotal']),
-                ]" />
-                @if ($o['equalShare'] !== null)
-                    <x-ui::text>Si repartes por igual, a cada persona le corresponden unos {{ $fmt($o['equalShare']) }}.</x-ui::text>
-                @endif
-                @if ($o['overcommitted'])
-                    <x-ui::notice tone="warn">Has prometido más espacio del que existe. Es habitual (no todo el mundo llena su espacio) y no pone datos en riesgo: cuando el disco se llene, nadie podrá añadir más hasta liberar espacio o ampliar el disco.</x-ui::notice>
-                @endif
-                <x-ui::heading :level="3">Espacio por defecto para personas nuevas: {{ $fmt($o['default']) }}</x-ui::heading>
-                <x-ui::text tone="muted">Se aplica a quien todavía no tiene un espacio propio, la primera vez que añade contenido. No cambia a quien ya tiene uno.</x-ui::text>
-                @if ($o['canManagePools'])
-                    <x-ui::size-picker id="default" :presets="$o['presets']" :units="$o['units']" :selected="$o['default']" label="Espacio por defecto"
-                        submit-label="Guardar espacio por defecto" :error="$errors->first('default')" x-on:size-chosen="$wire.saveDefault($event.detail)" />
-                @endif
-            </x-ui::stack>
-        </x-ui::panel>
-
-        <x-ui::stack gap="md" aria-labelledby="people">
+        <x-ui::stack gap="sm" aria-labelledby="people">
             <x-ui::heading id="people">Personas</x-ui::heading>
             <x-ui::toolbar>
                 <x-ui::field name="q" type="search" label="Buscar por nombre, usuario o correo" maxlength="100" wire:model.live.debounce.300ms="search" />
+                @if ($o['canManagePools'])
+                    <x-slot:end>
+                        <x-ui::size-picker compact id="default" :presets="$o['presets']" :units="$o['units']" :selected="$o['default']" :label="'Por defecto para personas nuevas ('.$fmt($o['default']).')'" visible-label
+                            submit-label="Guardar espacio por defecto" :error="$errors->first('default')" x-on:size-chosen="$wire.saveDefault($event.detail)" />
+                    </x-slot:end>
+                @endif
             </x-ui::toolbar>
-            <x-ui::rows aria-label="Espacio por persona">
+            <x-ui::table label="Espacio por persona" :paginator="$o['users']">
+                <x-slot:head><tr><th>Persona</th><th>Uso</th><th>Espacio máximo</th></tr></x-slot:head>
                 @forelse ($o['rows'] as $row)
-                    <x-ui::stack gap="sm" wire:key="quota-{{ $row['user']->id }}" id="user-{{ $row['user']->id }}">
-                        <x-ui::row>
-                            <strong>{{ $row['user']->name }}</strong>
-                            <x-ui::tag :tone="$row['user']->role === 'member' ? 'grey' : null">{{ $row['user']->roleLabel() }}</x-ui::tag>
-                        </x-ui::row>
-                        <x-ui::meter :value="$row['percent']" :label="'Espacio usado por '.$row['user']->name">
-                            {{ $fmt($row['used']) }} usados de {{ $fmt($row['limit']) }}@if ($row['reserved'] > 0) ({{ $fmt($row['reserved']) }} subiendo)@endif
-                            @if ($row['followsDefault']) · usa el espacio por defecto @endif
-                            @if ($row['limit'] === 0) · no puede añadir contenido @endif
-                        </x-ui::meter>
-                        @if ($row['canManage'])
-                            <x-ui::size-picker id="quota-{{ $row['user']->id }}" :presets="$o['presets']" :units="$o['units']" :selected="$row['followsDefault'] ? null : $row['limit']"
-                                :submit-label="'Guardar espacio de '.$row['user']->name" :error="$errors->first('quota_'.$row['user']->id)"
-                                x-on:size-chosen="$wire.saveUser({{ $row['user']->id }}, $event.detail)" />
-                        @endif
-                    </x-ui::stack>
+                    <tr wire:key="quota-{{ $row['user']->id }}" id="user-{{ $row['user']->id }}">
+                        <x-ui::td primary :sub="$row['user']->roleLabel().($row['followsDefault'] ? ' · espacio por defecto' : '')">{{ $row['user']->name }}</x-ui::td>
+                        <x-ui::td label="Uso">
+                            <x-ui::meter :value="$row['percent']" :label="'Espacio usado por '.$row['user']->name">
+                                {{ $fmt($row['used']) }} de {{ $fmt($row['limit']) }}@if ($row['reserved'] > 0) · {{ $fmt($row['reserved']) }} subiendo @endif @if ($row['limit'] === 0) · bloqueado @endif
+                            </x-ui::meter>
+                        </x-ui::td>
+                        <x-ui::td label="Máximo">
+                            @if ($row['canManage'])
+                                <x-ui::size-picker compact id="quota-{{ $row['user']->id }}" :presets="$o['presets']" :units="$o['units']" :selected="$row['followsDefault'] ? null : $row['limit']"
+                                    :label="'Espacio máximo de '.$row['user']->name" :submit-label="'Guardar espacio de '.$row['user']->name" :error="$errors->first('quota_'.$row['user']->id)"
+                                    x-on:size-chosen="$wire.saveUser({{ $row['user']->id }}, $event.detail)" />
+                            @else
+                                {{ $fmt($row['limit']) }}
+                            @endif
+                        </x-ui::td>
+                    </tr>
                 @empty
-                    <x-ui::text>No hay personas que coincidan con la búsqueda.</x-ui::text>
+                    <x-ui::table-empty colspan="3">No hay personas que coincidan con la búsqueda.</x-ui::table-empty>
                 @endforelse
-            </x-ui::rows>
-            @if ($o['users']->hasPages())
-                <x-ui::pagination :paginator="$o['users']" />
+            </x-ui::table>
+        </x-ui::stack>
+
+        <x-ui::stack gap="sm" aria-labelledby="hardware">
+            <x-ui::heading id="hardware">Discos del servidor</x-ui::heading>
+            @if ($o['hardware'] === null)
+                <x-ui::text tone="muted">Ejecuta <code>make nas-discover</code> en el servidor para ver aquí sus discos y particiones.</x-ui::text>
+            @else
+                <x-ui::text tone="muted">Detectados el {{ $o['hardware']['generated_at'] }}{{ $o['hardware']['host'] !== '' ? ' en '.$o['hardware']['host'] : '' }}. Solo lectura.</x-ui::text>
+                <x-ui::table label="Discos y particiones del servidor">
+                    <x-slot:head><tr><th>Partición</th><th>Formato</th><th>Tamaño</th><th>Montaje</th><th>Portal</th></tr></x-slot:head>
+                    @forelse ($o['hardware']['disks'] as $device)
+                        @php($deviceLabel = ($device['model'] !== '' ? $device['model'] : 'Disco').' · '.$device['name'].' · '.$fmt($device['size']).($device['removable'] ? ' · extraíble' : ''))
+                        @forelse ($device['partitions'] as $part)
+                            <tr wire:key="part-{{ $device['name'] }}-{{ $part['name'] }}">
+                                <x-ui::td primary :sub="$deviceLabel">{{ $part['name'] }}</x-ui::td>
+                                <x-ui::td label="Formato">{{ $part['fstype'] !== '' ? $part['fstype'] : 'sin formato' }}</x-ui::td>
+                                <x-ui::td label="Tamaño" nowrap>{{ $fmt($part['size']) }}</x-ui::td>
+                                <x-ui::td label="Montaje" :sub="$part['fs_available'] !== null ? 'libre '.$fmt($part['fs_available']) : null">{{ $part['mountpoint'] === '' ? 'No montada' : $part['mountpoint'] }}</x-ui::td>
+                                <x-ui::td label="Portal">@if ($part['in_use'])<x-ui::status>En uso por el portal</x-ui::status>@else — @endif</x-ui::td>
+                            </tr>
+                        @empty
+                            <tr wire:key="part-{{ $device['name'] }}">
+                                <x-ui::td primary :sub="$deviceLabel">{{ $device['name'] }}</x-ui::td>
+                                <x-ui::td colspan="4">Sin particiones con sistema de archivos (disco sin usar).</x-ui::td>
+                            </tr>
+                        @endforelse
+                    @empty
+                        <x-ui::table-empty colspan="5">La última detección no encontró discos.</x-ui::table-empty>
+                    @endforelse
+                </x-ui::table>
             @endif
         </x-ui::stack>
     </x-ui::stack>

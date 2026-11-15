@@ -171,7 +171,7 @@ new #[Title('Archivo')] class extends Component {
 
         @if ($p['error'] !== null)
             <x-ui::notice tone="bad">{{ $p['error'] }} Avisa al responsable técnico si el problema continúa.</x-ui::notice>
-        @elseif (in_array($p['kind'], ['image', 'pdf'], true))
+        @elseif (in_array($p['kind'], ['image', 'video', 'pdf'], true))
             <x-ui::preview :kind="$p['kind']" :src="$content" :title="$file->name" />
         @elseif ($p['html'] !== null)
             <x-ui::preview kind="rich"><x-ui::prose>{!! $p['html'] !!}</x-ui::prose></x-ui::preview>
@@ -190,12 +190,12 @@ new #[Title('Archivo')] class extends Component {
                     @foreach ($this->versions as $version)
                         <tr wire:key="version-{{ $version->id }}">
                             <x-ui::td><x-ui::entry :href="route('files.show', $version)" icon="clock">{{ $version->superseded_at?->format('d/m/Y H:i') }}</x-ui::entry></x-ui::td>
-                            <x-ui::td label="Tamaño">{{ $fmt((int) $version->size) }}</x-ui::td>
+                            <x-ui::td label="Tamaño" nowrap>{{ $fmt((int) $version->size) }}</x-ui::td>
                             <x-ui::td align="end">
-                                <x-ui::button variant="ghost" size="sm" :href="route('files.content', ['fileId' => $version->id, 'download' => 1])">Descargar</x-ui::button>
-                                <x-ui::button variant="ghost" size="sm" wire:click="promote({{ $version->id }})">Restaurar</x-ui::button>
+                                <x-ui::button variant="ghost" size="sm" icon="download" label="Descargar esta versión" :href="route('files.content', ['fileId' => $version->id, 'download' => 1])" />
+                                <x-ui::button variant="ghost" size="sm" icon="restore" label="Restaurar esta versión" wire:click="promote({{ $version->id }})" />
                                 <x-ui::confirm title="¿Borrar esta versión?">
-                                    <x-slot:trigger><x-ui::button variant="ghost" size="sm">Borrar</x-ui::button></x-slot:trigger>
+                                    <x-slot:trigger><x-ui::button variant="ghost" size="sm" icon="trash" label="Borrar esta versión" /></x-slot:trigger>
                                     Se borrará definitivamente la versión del {{ $version->superseded_at?->format('d/m/Y H:i') }}. No se puede deshacer.
                                     <x-slot:action><x-ui::button variant="danger" wire:click="purge({{ $version->id }})">Borrar versión</x-ui::button></x-slot:action>
                                 </x-ui::confirm>
@@ -210,10 +210,12 @@ new #[Title('Archivo')] class extends Component {
             <x-ui::panel aria-labelledby="file-options">
                 <x-ui::stack gap="md">
                     <x-ui::heading id="file-options">Opciones del archivo</x-ui::heading>
-                    <x-ui::form wire:submit="rename">
+                    <x-ui::form wire:submit="rename" inline>
                         <x-ui::field name="name" label="Nombre" wire:model="name" maxlength="200" required />
                         <x-ui::button type="submit" variant="secondary">Guardar nombre</x-ui::button>
                     </x-ui::form>
+                    <x-ui::separator />
+                    <x-ui::text tone="muted">Irá a la papelera; puedes restaurarlo durante {{ (int) config('nas.trash_days') }} días.</x-ui::text>
                     <x-ui::button variant="danger" icon="trash" wire:click="trash">Mover a la papelera</x-ui::button>
                 </x-ui::stack>
             </x-ui::panel>
