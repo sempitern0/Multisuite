@@ -1,5 +1,5 @@
 @props(['href', 'icon', 'active' => false, 'spa' => true])
-<a href="{{ $href }}" @if ($spa) wire:navigate @endif @if ($active) aria-current="page" @endif {{ $attributes->merge(['class' => 'ui-nav-item']) }}>
+<a href="{{ $href }}" @if ($spa) wire:navigate @endif @if ($active) aria-current="page" @endif {{ $attributes->merge(['class' => 'ui-nav-item', 'title' => trim(strip_tags((string) $slot))]) }}>
     <x-ui::icon :name="$icon" />
     <span class="ui-hide-compact">{{ $slot }}</span>
 </a>

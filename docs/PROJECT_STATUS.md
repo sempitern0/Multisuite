@@ -1,11 +1,12 @@
 # Estado de Multisuite
 
-Instantánea a 2026-11-14. Historial detallado: git log y PRs #1–#25. Este archivo se **reescribe** (no se acumula) al cerrar cada incremento.
+Instantánea a 2026-11-15. Historial detallado: git log y PRs #1–#27. Este archivo se **reescribe** (no se acumula) al cerrar cada incremento.
 
-## Integrado en `main` (PRs #1–#25)
+## Integrado en `main` (PRs #1–#27)
 | Área | Qué hay | Validación |
 | --- | --- | --- |
 | Portal | Portada «Servicios» (`DashboardController` + `ServiceTiles`), `/services/{id}` con destinos administrados | CI; QA visual del usuario pendiente |
+| Fotos, vídeo y explorador (S03.5–S03.6) | Visor con zoom, vídeo en el navegador, JPEG sin pérdida, subida por fragmentos con bandeja y arrastrar y soltar, explorador con búsqueda, filtros, orden y vistas Detalles/Lista/Galería; Almacenamiento en tablas | CI + usuario (probado en main) |
 | Copia de seguridad (S05.1) | `make nas-backup` con restic a destino externo, ensayo de restauración y estado en Almacenamiento | CI con Docker simulado; ninguna copia real aún |
 | Modelo de datos | Índices de claves foráneas, consultas agregadas y `QueryPlanTest` en PostgreSQL; `/` redirige a entrar o a la página de inicio | CI |
 | Perfil y Seguridad (D02b.2b) | Perfil, contraseña, 2FA y llaves de acceso en el tema; fin de la migración de diseño | CI; QA con dispositivos reales pendiente |
@@ -25,12 +26,16 @@ Instantánea a 2026-11-14. Historial detallado: git log y PRs #1–#25. Este arc
 
 Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md); entorno local desechable mientras no haya producción; el diseño va por delante para que lo nuevo nazca con el tema; sin librerías de tablas por ahora (D010 en DEPENDENCIES.md).
 
-## En revisión
-- **S03.5 Fotos y vídeo — PR #26** (`feat/s03-media-viewer`): visor con zoom que ajusta la imagen a la pantalla, vídeo en el navegador, JPEG sin pérdida, subida por fragmentos sin límite práctico (tope de 100 GiB), bandeja flotante de subidas visible durante el proceso con arrastrar y soltar, tablas con acciones de icono y Almacenamiento simplificado en tablas. Validado en CI; no validado en navegador real ni `jpegtran` en el contenedor.
-- **S03.6 Explorador de Mis archivos — PR apilada sobre #26** (`feat/s03-file-explorer`): búsqueda en todas las carpetas, filtro por tipo, orden y vistas Detalles, Lista y Galería recordadas por persona. Sin migraciones ni dependencias nuevas.
+## En revisión: D03 Ajustes de interfaz — rama `feat/d03-ui-polish`
+- Tarjetas de servicios con fondo vectorial según su contenido (`x-ui::tile-art`).
+- Mayús + clic para marcar rangos de casillas en Mis archivos.
+- Visor: Ctrl/⌘ + rueda o pellizco para el zoom; la rueda sola ya no secuestra el scroll de la página y en móvil un dedo desplaza la página salvo con la imagen ampliada.
+- Iconos de navegación revisados (engranaje real, almacenamiento, actividad, invitaciones) y botón para contraer el menú lateral, recordado por persona (`PUT settings/sidebar`); la opción sale de Preferencias.
+- Audio en Mis archivos con el reproductor del navegador.
+- Validado: CI y prueba en Chrome de la selección por rango y del comportamiento de la rueda. No validado en el portal real.
 
 ## Siguiente acción ejecutable
-1. Usuario: `git pull`, quitar o cambiar `NAS_UPLOAD_MAX_BYTES` en `app/.env` si conserva 104857600, `make rebuild`, `make npm CMD="run build"` y probar la lista S03.5 del ROADMAP.
+1. Usuario: revisar D03 (`make npm CMD="run build"`): tarjetas, Mayús + clic, zoom del visor, menú contraíble y audio.
 2. Usuario: ensayo de copia de seguridad desde WSL (`make nas-backup`, `make nas-backup-verify`) y QA pendiente de D02.
 3. Siguiente hito: S04 necesita tres decisiones del usuario (ROADMAP); si no, P03.
 

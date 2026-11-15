@@ -2,6 +2,7 @@
 
 namespace App\Services\Files;
 
+use App\Enums\FileKind;
 use App\Models\User;
 use App\Models\UserFile;
 use Illuminate\Database\RecordsNotFoundException;
@@ -9,8 +10,8 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Read-only previews: images (zoomable viewer), video played by the browser as
- * stored, PDF (browser viewer), sanitised Markdown and plain text. Everything else
+ * Read-only previews: images (zoomable viewer), video and audio played by the
+ * browser as stored, PDF (browser viewer), sanitised Markdown and plain text. Everything else
  * is download-only (AGENTS.md: no editors or transcoding).
  */
 class FilePreview
@@ -23,7 +24,7 @@ class FilePreview
 
     public function __construct(private readonly PersonalFiles $files) {}
 
-    /** @return 'image'|'video'|'pdf'|'markdown'|'text'|'none' */
+    /** @return 'image'|'video'|'audio'|'pdf'|'markdown'|'text'|'none' */
     public static function kind(string $mime, string $name): string
     {
         $extension = Str::lower(pathinfo($name, PATHINFO_EXTENSION));
@@ -31,6 +32,7 @@ class FilePreview
         return match (true) {
             in_array($mime, self::IMAGE_MIMES, true) => 'image',
             in_array($mime, self::VIDEO_MIMES, true) => 'video',
+            FileKind::fromMime($mime) === FileKind::Audio => 'audio',
             $mime === 'application/pdf' => 'pdf',
             $mime === 'text/markdown', $mime === 'text/plain' && in_array($extension, ['md', 'markdown'], true) => 'markdown',
             in_array($mime, self::TEXT_MIMES, true) => 'text',

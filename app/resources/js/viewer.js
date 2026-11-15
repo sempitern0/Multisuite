@@ -33,6 +33,8 @@ const render = (viewer) => {
     state.x = Math.min(limitX, Math.max(-limitX, state.x));
     state.y = Math.min(limitY, Math.max(-limitY, state.y));
     image.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+    // Fitted: a finger scrolls the page. Zoomed: a finger moves the picture.
+    stage.toggleAttribute('data-zoomed', state.scale > 1);
     if (level) {
         const percent = `${Math.round((state.scale / actualScale(image)) * 100)} %`;
         level.textContent = state.scale === 1 ? `Ajustada · ${percent}` : percent;
@@ -90,14 +92,26 @@ document.addEventListener('dblclick', (event) => {
     }
 });
 
+// The wheel never fights the page: Ctrl/⌘ + wheel (and trackpad pinch, which arrives
+// as Ctrl + wheel) zooms; a plain wheel pans a zoomed picture and otherwise scrolls the
+// page as usual. In full screen there is no page, so a plain wheel zooms.
 document.addEventListener('wheel', (event) => {
     const viewer = onStage(event);
-    // At the fitted size, scrolling down keeps scrolling the page instead of trapping it.
-    if (!viewer || (stateOf(viewer).scale === 1 && event.deltaY > 0)) {
+    if (!viewer) {
         return;
     }
-    event.preventDefault();
-    zoomTo(viewer, stateOf(viewer).scale * (event.deltaY < 0 ? 1.2 : 1 / 1.2), event.clientX, event.clientY);
+    const state = stateOf(viewer);
+    if (event.ctrlKey || event.metaKey || document.fullscreenElement === viewer) {
+        event.preventDefault();
+        // Pinch deltas are small and continuous; mouse wheels jump in notches.
+        const factor = Math.exp(-Math.max(-60, Math.min(60, event.deltaY)) * (event.ctrlKey && Math.abs(event.deltaY) < 10 ? 0.02 : 0.004));
+        zoomTo(viewer, state.scale * factor, event.clientX, event.clientY);
+    } else if (state.scale > 1) {
+        event.preventDefault();
+        state.x -= event.shiftKey && event.deltaX === 0 ? event.deltaY : event.deltaX;
+        state.y -= event.shiftKey && event.deltaX === 0 ? 0 : event.deltaY;
+        render(viewer);
+    }
 }, { passive: false });
 
 document.addEventListener('keydown', (event) => {
@@ -136,6 +150,11 @@ document.addEventListener('pointerdown', (event) => {
     }
     const state = stateOf(viewer);
     const { stage } = parts(viewer);
+    if (event.pointerType === 'touch' && state.scale === 1 && state.pointers.size === 0) {
+        // Remember the finger for a possible pinch, without capturing the page scroll.
+        state.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        return;
+    }
     stage.setPointerCapture?.(event.pointerId);
     state.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     state.pinch = state.pointers.size === 2 ? spread(state.pointers) : 0;
@@ -190,9 +209,9 @@ document.addEventListener('livewire:navigated', () => document.querySelectorAll(
 window.addEventListener('resize', () => document.querySelectorAll('[data-viewer]').forEach(render));
 document.addEventListener('fullscreenchange', () => document.querySelectorAll('[data-viewer]').forEach(render));
 
-// Video: the browser's own player; only explain a format it cannot decode.
+// Video and audio: the browser's own player; only explain a format it cannot decode.
 document.addEventListener('error', (event) => {
-    const player = event.target instanceof HTMLVideoElement ? event.target.closest('[data-player]') : null;
+    const player = event.target instanceof HTMLMediaElement ? event.target.closest('[data-player]') : null;
     if (player) {
         event.target.hidden = true;
         player.querySelector('[data-player-error]')?.removeAttribute('hidden');

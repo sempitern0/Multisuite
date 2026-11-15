@@ -2,3 +2,7 @@
 import './files';
 // Image viewer and video fallback for the preview component.
 import './viewer';
+// Side menu collapse button.
+import './sidebar';
+// Shift + click selects a range of checkboxes.
+import './range-select';

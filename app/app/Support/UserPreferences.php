@@ -15,6 +15,7 @@ final class UserPreferences
         // system follows prefers-reduced-motion; on/off override it for Multisuite only.
         'motion' => ['system', 'on', 'off'],
         'density' => ['comfortable', 'compact'],
+        // Set with the collapse button of the side menu, not from the Preferences form.
         'sidebar' => ['full', 'compact'],
         'start' => ['services', 'files'],
         'per_page' => [25, 10, 50],
@@ -23,7 +24,7 @@ final class UserPreferences
     ];
 
     /** Keys chosen elsewhere than the Preferences form. */
-    private const OUTSIDE_FORM = ['files_view'];
+    private const OUTSIDE_FORM = ['sidebar', 'files_view'];
 
     /** @param array{motion: string, density: string, sidebar: string, start: string, per_page: int, files_view: string} $values */
     private function __construct(private readonly array $values) {}

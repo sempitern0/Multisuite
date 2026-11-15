@@ -25,9 +25,9 @@ class Navigation
         ]],
         ['group' => 'Administración', 'items' => [
             ['route' => 'users.index', 'label' => 'Personas', 'icon' => 'users', 'gate' => 'manage-invitations', 'active' => ['users.*']],
-            ['route' => 'invitations.index', 'label' => 'Invitaciones', 'icon' => 'mail', 'gate' => 'manage-invitations', 'active' => ['invitations.*']],
-            ['route' => 'storage.index', 'label' => 'Almacenamiento', 'icon' => 'database', 'gate' => 'view-storage', 'active' => ['storage.*']],
-            ['route' => 'audit.index', 'label' => 'Actividad', 'icon' => 'clock', 'gate' => 'view-admin-audit', 'active' => ['audit.*']],
+            ['route' => 'invitations.index', 'label' => 'Invitaciones', 'icon' => 'invite', 'gate' => 'manage-invitations', 'active' => ['invitations.*']],
+            ['route' => 'storage.index', 'label' => 'Almacenamiento', 'icon' => 'storage', 'gate' => 'view-storage', 'active' => ['storage.*']],
+            ['route' => 'audit.index', 'label' => 'Actividad', 'icon' => 'activity', 'gate' => 'view-admin-audit', 'active' => ['audit.*']],
         ]],
     ];
 
@@ -38,7 +38,8 @@ class Navigation
      * @return array{
      *     home: string,
      *     groups: list<array{label: ?string, items: list<array{label: string, icon: string, href: string, active: bool, spa: bool}>}>,
-     *     account: array{name: string, initials: string, role: string, settings: array{label: string, icon: string, href: string, active: bool, spa: bool}, logout: string}
+     *     account: array{name: string, initials: string, role: string, settings: array{label: string, icon: string, href: string, active: bool, spa: bool}, logout: string},
+     *     sidebar: array{compact: bool, save: string}
      * }
      */
     public static function for(User $user): array
@@ -67,6 +68,7 @@ class Navigation
                 'settings' => self::link(self::SETTINGS),
                 'logout' => route('logout'),
             ],
+            'sidebar' => ['compact' => $user->preferences()->sidebar() === 'compact', 'save' => route('preferences.sidebar')],
         ];
     }
 
