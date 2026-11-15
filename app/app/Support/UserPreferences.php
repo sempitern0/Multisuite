@@ -18,9 +18,14 @@ final class UserPreferences
         'sidebar' => ['full', 'compact'],
         'start' => ['services', 'files'],
         'per_page' => [25, 10, 50],
+        // How Mis archivos shows a folder; changed from that page, not from the Preferences form.
+        'files_view' => ['details', 'list', 'gallery'],
     ];
 
-    /** @param array{motion: string, density: string, sidebar: string, start: string, per_page: int} $values */
+    /** Keys chosen elsewhere than the Preferences form. */
+    private const OUTSIDE_FORM = ['files_view'];
+
+    /** @param array{motion: string, density: string, sidebar: string, start: string, per_page: int, files_view: string} $values */
     private function __construct(private readonly array $values) {}
 
     /** @param array<string, mixed>|null $stored */
@@ -44,7 +49,7 @@ final class UserPreferences
     public static function rules(): array
     {
         $rules = [];
-        foreach (self::OPTIONS as $key => $allowed) {
+        foreach (array_diff_key(self::OPTIONS, array_flip(self::OUTSIDE_FORM)) as $key => $allowed) {
             $rules[$key] = ['required', Rule::in($allowed)];
         }
 
@@ -76,7 +81,18 @@ final class UserPreferences
         return $this->values['per_page'];
     }
 
-    /** @return array{motion: string, density: string, sidebar: string, start: string, per_page: int} */
+    public function filesView(): string
+    {
+        return $this->values['files_view'];
+    }
+
+    /** Same preferences with one value changed (invalid values fall back to the default). */
+    public function with(string $key, mixed $value): self
+    {
+        return self::from([$key => $value] + $this->values);
+    }
+
+    /** @return array{motion: string, density: string, sidebar: string, start: string, per_page: int, files_view: string} */
     public function toArray(): array
     {
         return $this->values;

@@ -268,6 +268,47 @@ class PersonalFilesTest extends TestCase
         $this->assertSame("img-src 'self' data:", $page->headers->get('Content-Security-Policy'));
     }
 
+    public function test_explorer_searches_every_folder_filters_by_kind_sorts_and_remembers_the_view(): void
+    {
+        $this->actingAs($this->owner);
+        $this->createFolder('Viaje 2026');
+        $year = Folder::where('user_id', $this->owner->id)->where('name', 'Viaje 2026')->firstOrFail();
+        $this->upload($this->owner, 'playa.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='), $year->id)->assertOk();
+        $this->upload($this->owner, 'notas playa.txt', 'arena y sol')->assertOk();
+        $this->upload($this->owner, 'lista.txt', 'pan')->assertOk();
+        $other = User::factory()->create();
+        app(StorageReservations::class)->setUserQuota($other, 500000);
+        $this->upload($other, 'playa secreta.txt', 'ajeno')->assertOk();
+        $this->actingAs($this->owner);
+
+        $names = fn ($page) => $page->get('listing')['entries']->pluck('name')->all();
+        $page = Livewire::test('pages::files.index');
+        $this->assertSame(['lista.txt', 'notas playa.txt'], $names($page));
+
+        // A search looks in every folder of the person, never in someone else's files.
+        $page->set('search', 'PLAYA');
+        $this->assertSame(['notas playa.txt', 'playa.png'], $names($page));
+        $page->assertSee('Viaje 2026')->assertDontSee('playa secreta.txt');
+        $page->set('search', '100%_')->assertSee('Nada coincide');
+
+        $page->set('search', '')->set('kind', 'image');
+        $this->assertSame([], $names($page));
+        $page->set('search', 'a')->set('kind', 'document');
+        $this->assertSame(['lista.txt', 'notas playa.txt'], $names($page));
+        $page->set('sort', 'size')->call('toggleDirection');
+        $this->assertSame(['notas playa.txt', 'lista.txt'], $names($page));
+        $page->call('clearFilters');
+        $this->assertSame(['lista.txt', 'notas playa.txt'], $names($page));
+
+        $page->call('setView', 'gallery')->assertSee('ui-files', false)->assertSee('data-view="gallery"', false);
+        $this->assertSame('gallery', $this->owner->fresh()->preferences()->filesView());
+        Livewire::test('pages::files.index')->assertSee('data-view="gallery"', false);
+        Livewire::test('pages::files.index')->call('setView', 'cinema')->assertStatus(422);
+        // The Preferences form keeps the chosen view.
+        Livewire::test('pages::settings.preferences')->set('density', 'compact');
+        $this->assertSame('gallery', $this->owner->fresh()->preferences()->filesView());
+    }
+
     public function test_just_uploaded_files_are_marked_as_new_in_the_listing(): void
     {
         $this->upload($this->owner, 'nota.txt', 'hola')->assertOk();

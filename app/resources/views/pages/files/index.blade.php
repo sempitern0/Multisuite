@@ -8,6 +8,7 @@ use App\Models\UserStorageQuota;
 use App\Services\Files\FileExports;
 use App\Services\Files\PersonalFiles;
 use App\Support\DomainErrors;
+use App\Support\UserPreferences;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -15,6 +16,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new #[Title('Mis archivos')] class extends Component {
@@ -26,6 +28,19 @@ new #[Title('Mis archivos')] class extends Component {
     public string $newFolder = '';
 
     public string $folderName = '';
+
+    /** Search in the whole tree (empty: this folder only). */
+    #[Url(as: 'q', except: '')]
+    public string $search = '';
+
+    #[Url(as: 'tipo', except: '')]
+    public string $kind = '';
+
+    #[Url(as: 'orden', except: 'name')]
+    public string $sort = 'name';
+
+    #[Url(as: 'dir', except: 'asc')]
+    public string $direction = 'asc';
 
     /** @var list<int|string> */
     public array $selectedFiles = [];
@@ -61,8 +76,10 @@ new #[Title('Mis archivos')] class extends Component {
 
         return [
             'breadcrumbs' => $files->breadcrumbs($this->folder),
-            'folders' => $files->folders($user, $this->folder),
-            'entries' => $files->files($user, $this->folder),
+            ...$this->browse($files),
+            'searching' => trim($this->search) !== '',
+            'paths' => trim($this->search) !== '' ? $files->folderPaths($user) : [],
+            'view' => $user->preferences()->filesView(),
             'pending' => $files->pendingCount($user),
             'summaries' => $files->summaries($user),
             'enabled' => (bool) config('nas.uploads_enabled'),
@@ -70,6 +87,46 @@ new #[Title('Mis archivos')] class extends Component {
             'used' => $storage['used'],
             'limit' => $storage['limit'],
         ];
+    }
+
+    /** @return array{folders: \Illuminate\Support\Collection<int, Folder>, entries: \Illuminate\Support\Collection<int, \App\Models\UserFile>} */
+    private function browse(PersonalFiles $files): array
+    {
+        $kind = array_key_exists($this->kind, PersonalFiles::KINDS) ? $this->kind : '';
+        $sort = array_key_exists($this->sort, PersonalFiles::SORTS) ? $this->sort : 'name';
+        $found = $files->browse(Auth::user(), $this->folder, mb_substr($this->search, 0, 100), $kind, $sort, $this->direction);
+
+        return ['folders' => $found['folders'], 'entries' => $found['files']];
+    }
+
+    public function updated(string $property): void
+    {
+        if (in_array($property, ['search', 'kind', 'sort', 'direction'], true)) {
+            unset($this->listing);
+        }
+    }
+
+    public function toggleDirection(): void
+    {
+        $this->direction = $this->direction === 'asc' ? 'desc' : 'asc';
+        unset($this->listing);
+    }
+
+    public function clearFilters(): void
+    {
+        $this->reset('search', 'kind', 'sort', 'direction');
+        unset($this->listing);
+    }
+
+    /** Lista, Detalles or Galería: remembered for the person, like a desktop explorer. */
+    public function setView(string $view): void
+    {
+        $this->throttle('files');
+        abort_unless(in_array($view, UserPreferences::OPTIONS['files_view'], true), 422);
+        $user = Auth::user();
+        $user->preferences = $user->preferences()->with('files_view', $view)->toArray();
+        $user->save();
+        unset($this->listing);
     }
 
     /** Files just uploaded on this page, highlighted in the listing (display only). */
@@ -166,6 +223,9 @@ new #[Title('Mis archivos')] class extends Component {
             $crumbs[] = ['label' => $crumb->name, 'href' => route('files.folder', $crumb)];
         }
         $empty = $l['folders']->isEmpty() && $l['entries']->isEmpty();
+        $kindLabel = fn (?string $mime): string => [
+            'image' => 'Imagen', 'video' => 'Vídeo', 'audio' => 'Audio', 'document' => 'Documento', 'other' => 'Archivo',
+        ][\App\Services\Files\PersonalFiles::kindOf($mime)];
     @endphp
 
     <x-ui::breadcrumbs :items="$crumbs" />
@@ -208,39 +268,100 @@ new #[Title('Mis archivos')] class extends Component {
         @endforeach
 
         <x-ui::stack gap="sm">
+            <x-ui::toolbar>
+                <x-ui::field name="q" type="search" :label="$folder === null ? 'Buscar en Mis archivos' : 'Buscar en Mis archivos (todas las carpetas)'" maxlength="100" placeholder="Nombre del archivo o carpeta" wire:model.live.debounce.300ms="search" />
+                <x-ui::select name="tipo" label="Tipo" :options="['' => 'Todos'] + \App\Services\Files\PersonalFiles::KINDS" wire:model.live="kind" />
+                <x-ui::select name="orden" label="Ordenar por" :options="\App\Services\Files\PersonalFiles::SORTS" wire:model.live="sort" />
+                <x-ui::button variant="ghost" :icon="$direction === 'asc' ? 'sort-asc' : 'sort-desc'" :label="$direction === 'asc' ? 'Orden ascendente (pulsa para invertir)' : 'Orden descendente (pulsa para invertir)'" wire:click="toggleDirection" />
+                <x-slot:end>
+                    <x-ui::segmented label="Vista">
+                        <x-ui::button variant="ghost" size="sm" icon="view-details" label="Detalles" :aria-pressed="$l['view'] === 'details' ? 'true' : 'false'" wire:click="setView('details')" />
+                        <x-ui::button variant="ghost" size="sm" icon="view-list" label="Lista" :aria-pressed="$l['view'] === 'list' ? 'true' : 'false'" wire:click="setView('list')" />
+                        <x-ui::button variant="ghost" size="sm" icon="grid" label="Galería" :aria-pressed="$l['view'] === 'gallery' ? 'true' : 'false'" wire:click="setView('gallery')" />
+                    </x-ui::segmented>
+                </x-slot:end>
+            </x-ui::toolbar>
+
+            @if ($l['searching'] || $kind !== '')
+                <x-ui::row>
+                    <x-ui::text tone="muted">{{ $l['folders']->count() + $l['entries']->count() }} {{ $l['folders']->count() + $l['entries']->count() === 1 ? 'resultado' : 'resultados' }}{{ $l['searching'] ? ' en todas tus carpetas' : '' }}</x-ui::text>
+                    <x-ui::button variant="ghost" size="sm" icon="close" wire:click="clearFilters">Quitar filtros</x-ui::button>
+                </x-ui::row>
+            @endif
+
             @if (! $empty)
                 <x-ui::toolbar>
                     <x-ui::button variant="secondary" size="sm" icon="archive" wire:click="export('selection')">Descargar selección en ZIP</x-ui::button>
-                    <x-ui::button variant="ghost" size="sm" wire:click="export('{{ $folder === null ? 'all' : 'folder' }}')">{{ $folder === null ? 'Exportar todo en ZIP' : 'Descargar esta carpeta en ZIP' }}</x-ui::button>
+                    @if (! $l['searching'])
+                        <x-ui::button variant="ghost" size="sm" wire:click="export('{{ $folder === null ? 'all' : 'folder' }}')">{{ $folder === null ? 'Exportar todo en ZIP' : 'Descargar esta carpeta en ZIP' }}</x-ui::button>
+                    @endif
                 </x-ui::toolbar>
             @endif
-            <x-ui::table label="Contenido de la carpeta">
-                <x-slot:head>
-                    <tr><th><x-ui::sr>Seleccionar</x-ui::sr></th><th>Nombre</th><th>Contenido</th><th data-align="end"><x-ui::sr>Acciones</x-ui::sr></th></tr>
-                </x-slot:head>
-                @foreach ($l['folders'] as $child)
-                    <tr wire:key="folder-{{ $child->id }}">
-                        <x-ui::td check><input type="checkbox" value="{{ $child->id }}" wire:model="selectedFolders" aria-label="Seleccionar carpeta {{ $child->name }}"></x-ui::td>
-                        <x-ui::td><x-ui::entry :href="route('files.folder', $child)" icon="folder" spa>{{ $child->name }}</x-ui::entry></x-ui::td>
-                        <x-ui::td label="Contenido" nowrap>{{ $describe($l['summaries'][$child->id] ?? ['items' => 0, 'bytes' => 0]) }}</x-ui::td>
-                        <x-ui::td align="end"></x-ui::td>
-                    </tr>
-                @endforeach
-                @foreach ($l['entries'] as $entry)
-                    <tr wire:key="file-{{ $entry->id }}" @if (in_array($entry->id, $this->fresh, true)) data-fresh @endif>
-                        <x-ui::td check><input type="checkbox" value="{{ $entry->id }}" wire:model="selectedFiles" aria-label="Seleccionar {{ $entry->name }}"></x-ui::td>
-                        <x-ui::td><x-ui::entry :href="route('files.show', $entry)" :icon="$icon($entry->mime)">{{ $entry->name }}</x-ui::entry></x-ui::td>
-                        <x-ui::td label="Contenido" nowrap>{{ $fmt((int) $entry->size) }}</x-ui::td>
-                        <x-ui::td align="end">
-                            <x-ui::button variant="ghost" size="sm" icon="download" label="Descargar" :href="route('files.content', ['fileId' => $entry->id, 'download' => 1])" :aria-label="'Descargar '.$entry->name" />
-                            <x-ui::button variant="ghost" size="sm" icon="trash" label="Mover a la papelera" wire:click="trash({{ $entry->id }})" :aria-label="'Mover a la papelera '.$entry->name" />
-                        </x-ui::td>
-                    </tr>
-                @endforeach
-                @if ($empty)
-                    <x-ui::table-empty colspan="4">Esta carpeta está vacía.</x-ui::table-empty>
-                @endif
-            </x-ui::table>
+
+            @php
+                $where = fn (?int $folderId): string => $folderId === null ? 'Mis archivos' : ($l['paths'][$folderId] ?? '');
+                $emptyText = $l['searching'] || $kind !== '' ? 'Nada coincide con la búsqueda o el filtro.' : 'Esta carpeta está vacía. Sube archivos o arrástralos aquí.';
+            @endphp
+
+            @if ($l['view'] === 'details')
+                <x-ui::table label="Contenido de la carpeta">
+                    <x-slot:head>
+                        <tr><th><x-ui::sr>Seleccionar</x-ui::sr></th><th>Nombre</th>@if ($l['searching'])<th>Ubicación</th>@endif<th>Tipo</th><th>Subido</th><th>Tamaño</th><th data-align="end"><x-ui::sr>Acciones</x-ui::sr></th></tr>
+                    </x-slot:head>
+                    @foreach ($l['folders'] as $child)
+                        <tr wire:key="folder-{{ $child->id }}">
+                            <x-ui::td check><input type="checkbox" value="{{ $child->id }}" wire:model="selectedFolders" aria-label="Seleccionar carpeta {{ $child->name }}"></x-ui::td>
+                            <x-ui::td><x-ui::entry :href="route('files.folder', $child)" icon="folder" spa>{{ $child->name }}</x-ui::entry></x-ui::td>
+                            @if ($l['searching'])<x-ui::td label="Ubicación">{{ $where($child->parent_id) }}</x-ui::td>@endif
+                            <x-ui::td label="Tipo" nowrap>Carpeta</x-ui::td>
+                            <x-ui::td label="Subido" nowrap>{{ $child->created_at?->format('d/m/Y') }}</x-ui::td>
+                            <x-ui::td label="Tamaño" nowrap>{{ $describe($l['summaries'][$child->id] ?? ['items' => 0, 'bytes' => 0]) }}</x-ui::td>
+                            <x-ui::td align="end"></x-ui::td>
+                        </tr>
+                    @endforeach
+                    @foreach ($l['entries'] as $entry)
+                        <tr wire:key="file-{{ $entry->id }}" @if (in_array($entry->id, $this->fresh, true)) data-fresh @endif>
+                            <x-ui::td check><input type="checkbox" value="{{ $entry->id }}" wire:model="selectedFiles" aria-label="Seleccionar {{ $entry->name }}"></x-ui::td>
+                            <x-ui::td><x-ui::entry :href="route('files.show', $entry)" :icon="$icon($entry->mime)">{{ $entry->name }}</x-ui::entry></x-ui::td>
+                            @if ($l['searching'])<x-ui::td label="Ubicación">{{ $where($entry->folder_id) }}</x-ui::td>@endif
+                            <x-ui::td label="Tipo" nowrap>{{ $kindLabel($entry->mime) }}</x-ui::td>
+                            <x-ui::td label="Subido" nowrap>{{ $entry->created_at?->format('d/m/Y H:i') }}</x-ui::td>
+                            <x-ui::td label="Tamaño" nowrap>{{ $fmt((int) $entry->size) }}</x-ui::td>
+                            <x-ui::td align="end">
+                                <x-ui::button variant="ghost" size="sm" icon="download" label="Descargar" :href="route('files.content', ['fileId' => $entry->id, 'download' => 1])" :aria-label="'Descargar '.$entry->name" />
+                                <x-ui::button variant="ghost" size="sm" icon="trash" label="Mover a la papelera" wire:click="trash({{ $entry->id }})" :aria-label="'Mover a la papelera '.$entry->name" />
+                            </x-ui::td>
+                        </tr>
+                    @endforeach
+                    @if ($empty)
+                        <x-ui::table-empty :colspan="$l['searching'] ? 7 : 6">{{ $emptyText }}</x-ui::table-empty>
+                    @endif
+                </x-ui::table>
+            @elseif ($empty)
+                <x-ui::empty-state icon="folder" title="Sin elementos">{{ $emptyText }}</x-ui::empty-state>
+            @else
+                <x-ui::file-grid :view="$l['view']" label="Contenido de la carpeta">
+                    @foreach ($l['folders'] as $child)
+                        <x-ui::file-card wire:key="folder-{{ $child->id }}" :href="route('files.folder', $child)" spa icon="folder" :name="$child->name"
+                            :meta="($l['searching'] ? $where($child->parent_id).' · ' : '').$describe($l['summaries'][$child->id] ?? ['items' => 0, 'bytes' => 0])">
+                            <x-slot:select><input type="checkbox" value="{{ $child->id }}" wire:model="selectedFolders" aria-label="Seleccionar carpeta {{ $child->name }}"></x-slot:select>
+                        </x-ui::file-card>
+                    @endforeach
+                    @foreach ($l['entries'] as $entry)
+                        @php($kindOf = \App\Services\Files\PersonalFiles::kindOf($entry->mime))
+                        <x-ui::file-card wire:key="file-{{ $entry->id }}" :href="route('files.show', $entry)" :icon="$icon($entry->mime)" :name="$entry->name"
+                            :meta="($l['searching'] ? $where($entry->folder_id).' · ' : '').$fmt((int) $entry->size)"
+                            :thumb="in_array($kindOf, ['image', 'video'], true) ? $kindOf : null" :src="route('files.content', ['fileId' => $entry->id])"
+                            :fresh="in_array($entry->id, $this->fresh, true)">
+                            <x-slot:select><input type="checkbox" value="{{ $entry->id }}" wire:model="selectedFiles" aria-label="Seleccionar {{ $entry->name }}"></x-slot:select>
+                            <x-slot:actions>
+                                <x-ui::button variant="ghost" size="sm" icon="download" label="Descargar" :href="route('files.content', ['fileId' => $entry->id, 'download' => 1])" :aria-label="'Descargar '.$entry->name" />
+                                <x-ui::button variant="ghost" size="sm" icon="trash" label="Mover a la papelera" wire:click="trash({{ $entry->id }})" :aria-label="'Mover a la papelera '.$entry->name" />
+                            </x-slot:actions>
+                        </x-ui::file-card>
+                    @endforeach
+                </x-ui::file-grid>
+            @endif
         </x-ui::stack>
 
         @if ($folder !== null)

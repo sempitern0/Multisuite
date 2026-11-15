@@ -157,6 +157,8 @@ Decisión del usuario (2026-11-13): gestor de archivos propio del portal con car
 
 ## Fotos y vídeo en Mis archivos (S03.5)
 
+- **Explorador**: búsqueda por nombre en todas las carpetas de la persona (con columna de ubicación), filtro por tipo (imágenes, vídeos, audio, documentos, otros) según el MIME verificado, orden por nombre, fecha de subida, tamaño o tipo en ambos sentidos, y vistas **Detalles** (tabla), **Lista** (compacta en columnas) y **Galería** (miniaturas). La vista se recuerda por persona (`files_view` en preferencias); búsqueda, filtro y orden van en la URL. Todas las consultas filtran por propietario; como máximo 2000 archivos y 500 carpetas por vista. Las miniaturas cargan la imagen original de forma diferida (no se generan miniaturas en el servidor).
+
 - **Subida de muchos archivos**: botón o arrastrar sobre la página. El progreso aparece en una bandeja flotante con un solo resumen (archivos terminados, MB enviados y barra total); la lista se despliega a demanda y pone los errores arriba. Al terminar sin errores se pliega y se puede cerrar. Los archivos aparecen en la lista según terminan, marcados como «Nuevo». Salir de la página con subidas en curso pide confirmación.
 
 - **Visor de imágenes**: acercar y alejar con los botones, la rueda, doble clic o pellizco; arrastrar para moverse; «Tamaño real» (un píxel de la foto por píxel de pantalla); pantalla completa; teclado (`+`, `-`, `0`, flechas). Solo muestra: no edita ni guarda nada.

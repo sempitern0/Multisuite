@@ -76,6 +76,112 @@ class PersonalFiles
             ->get(['user_files.*', 'private_uploads.mime as mime', 'storage_reservations.actual_bytes as size']);
     }
 
+    /** Kinds offered by the file filter, matched on the verified MIME type. */
+    public const KINDS = ['image' => 'Imágenes', 'video' => 'Vídeos', 'audio' => 'Música y audio', 'document' => 'Documentos', 'other' => 'Otros'];
+
+    public const SORTS = ['name' => 'Nombre', 'date' => 'Fecha de subida', 'size' => 'Tamaño', 'type' => 'Tipo'];
+
+    public static function kindOf(?string $mime): string
+    {
+        $mime = (string) $mime;
+
+        return match (true) {
+            str_starts_with($mime, 'image/') => 'image',
+            str_starts_with($mime, 'video/') => 'video',
+            str_starts_with($mime, 'audio/') || $mime === 'application/ogg' => 'audio',
+            str_starts_with($mime, 'text/') || in_array($mime, self::documentMimes(), true) => 'document',
+            default => 'other',
+        };
+    }
+
+    /** @return list<string> */
+    private static function documentMimes(): array
+    {
+        return array_values(array_filter((array) config('nas.allowed_mimes', []), fn ($mime) => is_string($mime)
+            && (str_starts_with($mime, 'application/pdf') || str_starts_with($mime, 'application/json') || str_starts_with($mime, 'application/epub')
+                || str_contains($mime, 'officedocument') || str_contains($mime, 'opendocument') || str_starts_with($mime, 'application/vnd.ms-') || $mime === 'application/msword')));
+    }
+
+    /**
+     * What Mis archivos shows: a folder's contents, or — with a search — matching files
+     * and folders anywhere in the person's tree (like a desktop file explorer).
+     * Always owner-scoped; folders are listed first and only when no kind filter is set.
+     *
+     * @return array{folders: Collection<int, Folder>, files: Collection<int, UserFile>}
+     */
+    public function browse(User $user, ?Folder $folder, string $search = '', string $kind = '', string $sort = 'name', string $direction = 'asc'): array
+    {
+        $search = trim($search);
+        $direction = $direction === 'desc' ? 'desc' : 'asc';
+        $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], mb_strtolower($search)).'%';
+
+        $files = $this->visible($user);
+        if ($search === '') {
+            $files->where('user_files.folder_id', $folder?->id);
+        } else {
+            $files->whereRaw("lower(user_files.name) like ? escape '\\'", [$like]);
+        }
+        if (array_key_exists($kind, self::KINDS)) {
+            $documents = self::documentMimes();
+            $match = [
+                'image' => fn ($q) => $q->where('private_uploads.mime', 'like', 'image/%'),
+                'video' => fn ($q) => $q->where('private_uploads.mime', 'like', 'video/%'),
+                'audio' => fn ($q) => $q->where('private_uploads.mime', 'like', 'audio/%')->orWhere('private_uploads.mime', 'application/ogg'),
+                'document' => fn ($q) => $q->where('private_uploads.mime', 'like', 'text/%')->orWhereIn('private_uploads.mime', $documents),
+            ];
+            if ($kind === 'other') {
+                foreach ($match as $condition) {
+                    $files->whereNot($condition);
+                }
+            } else {
+                $files->where($match[$kind]);
+            }
+        }
+        match ($sort) {
+            'date' => $files->orderBy('user_files.created_at', $direction),
+            'size' => $files->orderBy('storage_reservations.actual_bytes', $direction),
+            'type' => $files->orderBy('private_uploads.mime', $direction),
+            default => null,
+        };
+        $files->orderBy('user_files.name', $sort === 'name' ? $direction : 'asc')->orderBy('user_files.id');
+
+        $folders = new Collection;
+        if ($kind === '') {
+            $folderQuery = Folder::where('user_id', $user->id);
+            if ($search === '') {
+                $folderQuery->where('parent_id', $folder?->id);
+            } else {
+                $folderQuery->whereRaw("lower(name) like ? escape '\\'", [$like]);
+            }
+            $folders = $folderQuery->orderBy('name', $sort === 'name' ? $direction : 'asc')->limit(500)->get();
+        }
+
+        return [
+            'folders' => $folders,
+            'files' => $files->limit(2000)->get(['user_files.*', 'private_uploads.mime as mime', 'storage_reservations.actual_bytes as size']),
+        ];
+    }
+
+    /**
+     * "Carpeta / Subcarpeta" for every folder of a person (search results show where each item is).
+     *
+     * @return array<int, string>
+     */
+    public function folderPaths(User $user): array
+    {
+        $folders = Folder::where('user_id', $user->id)->get(['id', 'parent_id', 'name'])->keyBy('id');
+        $paths = [];
+        foreach ($folders as $id => $folder) {
+            $names = [];
+            for ($current = $folder, $depth = 0; $current !== null && $depth < 16; $current = $folders->get((int) $current->parent_id), $depth++) {
+                array_unshift($names, $current->name);
+            }
+            $paths[(int) $id] = implode(' / ', $names);
+        }
+
+        return $paths;
+    }
+
     /**
      * Confirmed entries of one person joined with their verified MIME and size.
      * $scope: 'current' (listed in folders), 'trash' (trashed current files) or 'versions'.
