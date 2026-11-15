@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use RuntimeException;
 use Tests\Concerns\UsesFilePages;
 use Tests\Concerns\UsesPrivateStorage;
@@ -273,7 +274,7 @@ class PersonalFilesTest extends TestCase
         $this->upload($this->owner, 'otra.txt', 'adios')->assertOk();
         $new = $this->entry('nota.txt');
 
-        \Livewire\Livewire::actingAs($this->owner)->test('pages::files.index')
+        Livewire::actingAs($this->owner)->test('pages::files.index')
             ->assertDontSee('data-fresh', false)
             ->dispatch('files-uploaded', ids: [$new->id, 'x'])
             ->assertSet('fresh', [$new->id])
