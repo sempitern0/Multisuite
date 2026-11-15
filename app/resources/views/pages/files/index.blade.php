@@ -234,7 +234,8 @@ new #[Title('Mis archivos')] class extends Component {
     @endphp
 
     @php
-        $parent = $folder === null ? null : (($l['breadcrumbs']->count() > 1) ? $l['breadcrumbs'][$l['breadcrumbs']->count() - 2] : null);
+        $trail = array_values($l['breadcrumbs']);
+        $parent = count($trail) > 1 ? $trail[count($trail) - 2] : null;
         $summary = $describe($l['summaries'][$folder->id ?? 0] ?? ['items' => 0, 'bytes' => 0]);
         $usage = $l['limit'] > 0 ? ' · Usas '.$fmt($l['used']).' de '.$fmt($l['limit']) : '';
         $selected = '$wire.selectedFiles.length + $wire.selectedFolders.length';
