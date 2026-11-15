@@ -109,16 +109,19 @@ class FileExports
             // files): no plaintext copy of the archive or its files ever lands on disk.
             $cipher = $this->uploads->cipher();
             $writer = $cipher?->writer($part, 'export:'.$export->id);
-            $plain = $writer === null ? @fopen($part, 'xb') : null;
-            if ($writer === null && ($plain === false || ! chmod($part, 0600))) {
-                throw new RuntimeException('No se pudo crear el ZIP.');
+            $plain = null;
+            if ($writer === null) {
+                $plain = @fopen($part, 'xb');
+                if ($plain === false || ! chmod($part, 0600)) {
+                    throw new RuntimeException('No se pudo crear el ZIP.');
+                }
             }
             $zipBytes = 0;
             $zip = new ZipStreamWriter(function (string $bytes) use ($writer, $plain, &$zipBytes): void {
                 $zipBytes += strlen($bytes);
                 if ($writer !== null) {
                     $writer->write($bytes);
-                } elseif (fwrite($plain, $bytes) !== strlen($bytes)) {
+                } elseif ($plain === null || fwrite($plain, $bytes) !== strlen($bytes)) {
                     throw new RuntimeException('No se pudo escribir el ZIP (¿disco lleno?).');
                 }
             });
@@ -130,7 +133,7 @@ class FileExports
                 $zip->finish();
                 if ($writer !== null) {
                     $writer->finish();
-                } elseif (! fflush($plain) || ! fsync($plain) || ! fclose($plain)) {
+                } elseif ($plain === null || ! fflush($plain) || ! fsync($plain) || ! fclose($plain)) {
                     throw new RuntimeException('No se pudo terminar el ZIP (¿disco lleno?).');
                 }
             } catch (Throwable $exception) {

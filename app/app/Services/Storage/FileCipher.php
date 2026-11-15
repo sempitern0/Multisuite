@@ -124,7 +124,8 @@ final class FileCipher
         }
         try {
             $header = (string) fread($handle, self::HEADER);
-            if (strlen($header) !== self::HEADER || ! str_starts_with($header, self::MAGIC) || unpack('N', substr($header, 4, 4))[1] !== self::CHUNK) {
+            $chunk = strlen($header) === self::HEADER ? unpack('N', substr($header, 4, 4)) : false;
+            if ($chunk === false || ! str_starts_with($header, self::MAGIC) || ($chunk[1] ?? null) !== self::CHUNK) {
                 throw new RuntimeException('El archivo no tiene el formato cifrado esperado.');
             }
             $key = $this->key($context);

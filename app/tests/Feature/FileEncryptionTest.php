@@ -6,10 +6,12 @@ use App\Models\FileExport;
 use App\Models\PrivateUpload;
 use App\Services\Storage\FileCipher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\Concerns\ReadsEncryptedFiles;
 use Tests\Concerns\UsesPrivateStorage;
 use Tests\TestCase;
+use ZipArchive;
 
 class FileEncryptionTest extends TestCase
 {
@@ -34,7 +36,7 @@ class FileEncryptionTest extends TestCase
 
     public function test_files_are_encrypted_at_rest_and_served_in_plain_with_ranges(): void
     {
-        $body = str_repeat("Factura de la luz: 125 kWh\n", 4000); // > one 64 KiB chunk
+        $body = str_repeat("Factura de la luz: 125 kWh\n", 3000); // > one 64 KiB chunk
         $this->upload($this->owner, 'luz.txt', $body)->assertOk();
         $file = $this->entry('luz.txt');
         $raw = (string) file_get_contents($this->path($file->upload_id));
@@ -68,8 +70,8 @@ class FileEncryptionTest extends TestCase
 
         $zip = tempnam(sys_get_temp_dir(), 'zip');
         file_put_contents($zip, $this->get('/files/exports/'.$export->id.'/download')->assertOk()->streamedContent());
-        $archive = new \ZipArchive;
-        $this->assertTrue($archive->open($zip, \ZipArchive::CHECKCONS) === true);
+        $archive = new ZipArchive;
+        $this->assertTrue($archive->open($zip, ZipArchive::CHECKCONS) === true);
         $this->assertSame('kWh 300', $archive->getFromName('gas.txt'));
         $this->assertSame('m3 14', $archive->getFromName('agua.txt'));
         $archive->close();
@@ -82,7 +84,7 @@ class FileEncryptionTest extends TestCase
         $file = $this->entry('nota.txt');
 
         config(['nas.files_key' => '']);
-        $this->actingAs($this->owner)->postJson('/files', ['key' => (string) \Illuminate\Support\Str::uuid(), 'bytes' => 3, 'name' => 'otra.txt'])
+        $this->actingAs($this->owner)->postJson('/files', ['key' => (string) Str::uuid(), 'bytes' => 3, 'name' => 'otra.txt'])
             ->assertStatus(422);
         $this->get('/files/'.$file->id.'/content')->assertNotFound();
 

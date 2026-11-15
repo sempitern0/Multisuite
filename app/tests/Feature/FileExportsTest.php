@@ -113,7 +113,7 @@ class FileExportsTest extends TestCase
 
         $selection = $exports->request($this->owner, 'selection', null, [$this->entry('notas.md')->id], [$bills->id]);
         $this->assertSame(['notas.md', 'Facturas/luz.txt', 'Facturas/2026/agua.txt'], array_column($selection->items, 'path'));
-        $path = $exports->downloadPath($this->owner, $selection->id);
+        $path = $this->saved($exports->download($this->owner, $selection->id)->prefix(PHP_INT_MAX));
         $this->assertSame(['Facturas/2026/agua.txt', 'Facturas/luz.txt', 'notas.md'], array_keys($this->zipContents($path)));
     }
 
