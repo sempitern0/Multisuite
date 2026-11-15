@@ -219,9 +219,11 @@ class UserAdministrationTest extends TestCase
         $member = $this->person('member');
         $this->actingAs($member);
 
-        Livewire::test('pages::settings.profile')
+        $page = Livewire::test('pages::settings.profile')
             ->set('avatar', $this->picture('foto.png', 900, 600, 200))
             ->call('saveAvatar')->assertHasNoErrors()->assertDispatched('avatar-changed');
+        // The same render already shows the new photo (no reload needed).
+        $page->assertSee((string) $member->fresh()->avatarUrl(), false)->assertSee('Quitar foto');
 
         $first = $member->fresh()->avatar_hash;
         $this->assertNotNull($first);
@@ -239,6 +241,10 @@ class UserAdministrationTest extends TestCase
         $this->assertNotSame($first, $member->fresh()->avatar_hash);
         Storage::disk('local')->assertMissing($path);
         $this->get(route('avatars.show', ['user' => $member->id, 'hash' => $first]))->assertNotFound();
+
+        $url = (string) $member->fresh()->avatarUrl();
+        Livewire::test('pages::settings.profile')->call('removeAvatar')
+            ->assertDispatched('avatar-changed')->assertDontSee($url, false)->assertDontSee('Quitar foto');
     }
 
     public function test_photos_that_are_not_images_are_rejected(): void

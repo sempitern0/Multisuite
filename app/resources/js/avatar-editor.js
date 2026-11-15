@@ -10,22 +10,27 @@ const TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 // Fixed selection (not movable or resizable): the person frames the picture, not the box.
 const TEMPLATE = `
 <cropper-canvas background>
-  <cropper-image translatable scalable></cropper-image>
+  <cropper-image initial-fit="cover" translatable scalable></cropper-image>
   <cropper-shade hidden></cropper-shade>
   <cropper-handle action="move" plain></cropper-handle>
   <cropper-selection aspect-ratio="1" initial-coverage="0.9"></cropper-selection>
 </cropper-canvas>`;
 
-// Rejects a move or zoom that would uncover part of the circle (Cropper.js documented recipe).
-const keepCovered = (canvas, image, selection) => (event) => {
-    const probe = image.cloneNode();
-    probe.style.transform = `matrix(${event.detail.matrix.join(', ')})`;
-    probe.style.opacity = '0';
-    canvas.appendChild(probe);
-    const picture = probe.getBoundingClientRect();
-    canvas.removeChild(probe);
-    const circle = selection.getBoundingClientRect();
-    if (circle.top < picture.top || circle.right > picture.right || circle.bottom > picture.bottom || circle.left < picture.left) {
+// Rejects a move or zoom that would uncover part of the circle. Computed from the new matrix
+// (no rotation or skew is enabled): the element keeps its natural size, laid out at the canvas
+// origin and transformed around its centre. The clone-based recipe in the 2.0 docs misjudges
+// moves in 2.3, verified in the browser.
+const keepCovered = (image, selection) => (event) => {
+    const [a, , , d, e, f] = event.detail.matrix;
+    const width = image.offsetWidth;
+    const height = image.offsetHeight;
+    const centreX = width / 2 + e;
+    const centreY = height / 2 + f;
+    const halfWidth = (Math.abs(a) * width) / 2;
+    const halfHeight = (Math.abs(d) * height) / 2;
+    const tolerance = 0.5;
+    if (centreX - halfWidth > selection.x + tolerance || centreX + halfWidth < selection.x + selection.width - tolerance
+        || centreY - halfHeight > selection.y + tolerance || centreY + halfHeight < selection.y + selection.height - tolerance) {
         event.preventDefault();
     }
 };
@@ -68,16 +73,23 @@ const avatarEditor = ({ model, save }) => ({
         source.src = this.url;
     },
 
-    mount(source) {
+    // Cropper.js measures its canvas when it starts: wait until the stage is shown and laid out,
+    // otherwise the selection is 0 × 0 and the picture is neither fitted nor croppable.
+    async mount(source) {
         const stage = this.$refs.stage;
+        for (let frame = 0; stage.clientWidth === 0 && frame < 60; frame++) {
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+        if (!this.editing || stage.clientWidth === 0) {
+            return;
+        }
         stage.replaceChildren();
         this.cropper = new Cropper(source, { container: stage, template: TEMPLATE });
-        const canvas = this.cropper.getCropperCanvas();
         const image = this.cropper.getCropperImage();
         const selection = this.cropper.getCropperSelection();
         image.$ready().then(() => {
             image.$center('cover');
-            image.addEventListener('transform', keepCovered(canvas, image, selection));
+            image.addEventListener('transform', keepCovered(image, selection));
             stage.focus();
         });
     },
