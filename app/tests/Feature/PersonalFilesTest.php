@@ -332,7 +332,7 @@ class PersonalFilesTest extends TestCase
         // Someone else's file in the selection: nothing moves (all or nothing).
         $page->set('selectedFiles', [$a->id, $foreign->id])->call('trashSelected')->assertNotFound();
         $this->assertNull($a->fresh()->trashed_at);
-        $page->set('selectedFiles', [$a->id, (string) $b->id])->call('trashSelected')->assertSet('selectedFiles', []);
+        Livewire::test('pages::files.index')->set('selectedFiles', [$a->id, (string) $b->id])->call('trashSelected')->assertSet('selectedFiles', []);
         $this->assertNotNull($a->fresh()->trashed_at);
         $this->assertNotNull($b->fresh()->trashed_at);
         $this->assertNull($this->entry('c.txt')->trashed_at);
