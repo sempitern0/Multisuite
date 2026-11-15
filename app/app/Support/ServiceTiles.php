@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\ServiceAccount;
 use App\Models\User;
+use App\Services\ServiceAccounts;
 
 /**
  * Presentation-neutral state of the services home page. Decides which services a
@@ -35,7 +36,7 @@ class ServiceTiles
 
             if ($access !== null && $managed && $account?->status !== 'ready') {
                 $tiles[] = $tile + ['status' => 'pending', 'label' => 'Cuenta pendiente de preparación', 'hint' => match ($account?->status) {
-                    'expired' => 'Vuelve a guardar tu contraseña en Ajustes para reintentarlo.',
+                    'expired', ServiceAccounts::AWAITING_PASSWORD => 'Sal y vuelve a entrar con tu contraseña para activarla.',
                     'pending', null => 'Se está preparando. Vuelve en unos minutos.',
                     default => 'Avisa al administrador para activar el acceso.',
                 }];

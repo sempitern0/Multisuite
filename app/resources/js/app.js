@@ -6,3 +6,5 @@ import './viewer';
 import './sidebar';
 // Shift + click selects a range of checkboxes.
 import './range-select';
+// Profile photo editor (crop and upload).
+import './avatar-editor';

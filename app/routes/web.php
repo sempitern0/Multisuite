@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\FileExportController;
@@ -52,6 +53,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('{key}', [PrivateUploadController::class, 'destroy'])->whereUuid('key')->middleware('throttle:uploads');
     });
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+    // Profile photos from the private disk; never under /storage/ (Nginx public disk).
+    Route::get('avatars/{user}/{hash}', AvatarController::class)->whereNumber('user')->where('hash', '[a-f0-9]{20}')->name('avatars.show');
     Route::get('services/{service}', ServiceController::class)->where('service', '[a-z0-9-]+')->name('services.open');
 
     Route::middleware(['can:manage-invitations', 'password.confirm', 'throttle:admin'])->group(function () {
