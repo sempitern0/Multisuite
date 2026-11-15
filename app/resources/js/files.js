@@ -108,32 +108,6 @@ const putBody = async (url, file, csrf, onProgress) => {
     }
 };
 
-// Rows carry only state (data-state); the active theme decides how they look.
-const row = (list, name) => {
-    const item = document.createElement('li');
-    const label = document.createElement('p');
-    label.textContent = name;
-    const bar = document.createElement('progress');
-    bar.max = 100;
-    bar.value = 0;
-    bar.setAttribute('aria-label', `Progreso de ${name}`);
-    item.append(label, bar);
-    list.append(item);
-    return {
-        progress: (ratio) => {
-            bar.value = Math.round(ratio * 100);
-        },
-        done: (text, ok) => {
-            bar.remove();
-            label.textContent = `${name}: ${text}`;
-            item.dataset.state = ok ? 'ok' : 'bad';
-            if (!ok) {
-                label.setAttribute('role', 'alert');
-            }
-        },
-    };
-};
-
 const uploadOne = async (root, file, ui) => {
     const { storeUrl, uploadUrl, folder, maxBytes, csrf } = root.dataset;
     if (file.size === 0) {
@@ -153,6 +127,7 @@ const uploadOne = async (root, file, ui) => {
     if (!response.ok) {
         throw new Error(await firstError(response));
     }
+    const entry = await response.json();
     try {
         await putBody(`${uploadUrl}/${key}`, file, csrf, ui.progress);
     } catch (error) {
@@ -160,33 +135,225 @@ const uploadOne = async (root, file, ui) => {
         await fetch(`${uploadUrl}/${key}`, { method: 'DELETE', headers, credentials: 'same-origin' }).catch(() => {});
         throw error;
     }
+    return entry.id;
 };
 
-// Delegated: uploaders can appear later (SPA navigation, Livewire updates).
-document.addEventListener('change', async (event) => {
-    const input = event.target instanceof HTMLInputElement && event.target.matches('[data-uploader-input]') ? event.target : null;
-    const root = input?.closest('[data-uploader]');
-    const list = root?.querySelector('[data-uploader-list]');
-    if (!input || !root || !list) {
-        return;
+// Upload tray: a single floating summary (total progress, counts) with an expandable
+// list that puts errors first. The theme owns the markup (<template data-tray-row>);
+// this script only sets data-state, texts and widths.
+const PARALLEL = 3;
+
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+class Tray {
+    constructor(root) {
+        this.root = root;
+        this.el = root.querySelector('[data-tray]');
+        this.list = root.querySelector('[data-tray-list]');
+        this.template = root.querySelector('template[data-tray-row]');
+        this.items = [];
+        this.fresh = [];
+        this.refreshTimer = null;
+        this.userOpened = false;
+        this.el.querySelector('[data-tray-toggle]').addEventListener('click', () => {
+            this.userOpened = this.list.hidden;
+            this.expand(this.userOpened);
+        });
+        this.el.querySelector('[data-tray-close]').addEventListener('click', () => this.close());
     }
-    const files = [...input.files];
-    input.disabled = true;
-    let succeeded = 0;
-    for (const file of files) {
-        const ui = row(list, file.name);
-        try {
-            await uploadOne(root, file, ui);
-            ui.done('subido', true);
-            succeeded++;
-        } catch (error) {
-            ui.done(error.message, false);
+
+    get running() {
+        return this.items.some((item) => item.state === 'queued' || item.state === 'uploading');
+    }
+
+    add(file) {
+        if (!this.running) {
+            // A new batch after a finished one starts from a clean summary.
+            this.items = [];
+            this.list.replaceChildren();
+            this.userOpened = false;
+            this.expand(false);
+        }
+        const node = this.template.content.firstElementChild.cloneNode(true);
+        node.querySelector('[data-row-name]').textContent = file.name;
+        node.querySelector('[data-row-name]').title = file.name;
+        node.querySelector('[data-row-meta]').textContent = formatBytes(file.size);
+        this.list.append(node);
+        const item = { file, node, state: 'queued', loaded: 0 };
+        this.items.push(item);
+        this.el.hidden = false;
+        this.el.querySelector('[data-tray-close]').hidden = true;
+        this.render();
+        return item;
+    }
+
+    set(item, state, error = '') {
+        item.state = state;
+        item.node.dataset.state = state;
+        item.node.querySelector('[data-row-error]').textContent = error;
+        if (state === 'ok') {
+            item.loaded = item.file.size;
+        }
+        if (state === 'bad') {
+            // Errors rise to the top of the list, where they cannot be missed.
+            this.list.prepend(item.node);
+        }
+        this.render();
+    }
+
+    progress(item, ratio) {
+        item.loaded = Math.round(item.file.size * Math.min(1, ratio));
+        item.node.querySelector('[data-row-bar]').style.width = `${Math.round(ratio * 100)}%`;
+        item.node.querySelector('[data-row-meta]').textContent = `${Math.round(ratio * 100)} %`;
+        this.render();
+    }
+
+    uploaded(item, id) {
+        this.set(item, 'ok');
+        item.node.querySelector('[data-row-meta]').textContent = formatBytes(item.file.size);
+        this.fresh.push(id);
+        // Files appear in the listing as they finish, a few at a time.
+        clearTimeout(this.refreshTimer);
+        this.refreshTimer = setTimeout(() => this.refresh(), this.running ? 700 : 0);
+    }
+
+    refresh() {
+        if (this.fresh.length > 0) {
+            window.Livewire?.dispatch('files-uploaded', { ids: this.fresh });
+            this.fresh = [];
         }
     }
+
+    render() {
+        const total = this.items.reduce((sum, item) => sum + item.file.size, 0);
+        const loaded = this.items.reduce((sum, item) => sum + item.loaded, 0);
+        const ok = this.items.filter((item) => item.state === 'ok').length;
+        const bad = this.items.filter((item) => item.state === 'bad').length;
+        const count = this.items.length;
+        const finished = !this.running;
+        const title = this.el.querySelector('[data-tray-title]');
+        const detail = this.el.querySelector('[data-tray-detail]');
+        this.el.dataset.state = finished ? (bad > 0 ? 'errors' : 'done') : 'running';
+        this.el.querySelector('[data-tray-bar]').style.width = `${total > 0 ? Math.round((loaded / total) * 100) : 0}%`;
+        if (!finished) {
+            title.textContent = `Subiendo ${plural(count, 'archivo', 'archivos')}`;
+            detail.textContent = `${ok + bad} de ${count} · ${formatBytes(loaded)} de ${formatBytes(total)}${bad > 0 ? ` · ${plural(bad, 'error', 'errores')}` : ''}`;
+            return;
+        }
+        title.textContent = bad === 0
+            ? (ok === 1 ? '1 archivo subido' : `${ok} archivos subidos`)
+            : `${plural(ok, 'subido', 'subidos')}, ${plural(bad, 'con error', 'con error')}`;
+        detail.textContent = bad === 0 ? `${formatBytes(total)} en total. Ya están en la lista.` : 'Revisa los errores abajo y vuelve a intentarlo.';
+        this.el.querySelector('[data-tray-close]').hidden = false;
+        // Errors need reading; a clean batch folds itself away.
+        this.expand(bad > 0 || this.userOpened);
+    }
+
+    expand(open) {
+        this.list.hidden = !open;
+        this.el.querySelector('[data-tray-toggle]').setAttribute('aria-expanded', String(open));
+    }
+
+    close() {
+        if (!this.running) {
+            this.el.hidden = true;
+            this.items = [];
+            this.list.replaceChildren();
+        }
+    }
+}
+
+const trays = new WeakMap();
+const trayOf = (root) => {
+    if (!trays.has(root)) {
+        trays.set(root, new Tray(root));
+    }
+    return trays.get(root);
+};
+
+// Up to PARALLEL files at a time; each one is still sent in ordered chunks.
+const enqueue = (root, files) => {
+    const tray = trayOf(root);
+    const queue = files.map((file) => tray.add(file));
+    const worker = async () => {
+        while (queue.length > 0) {
+            const item = queue.shift();
+            tray.set(item, 'uploading');
+            try {
+                const id = await uploadOne(root, item.file, { progress: (ratio) => tray.progress(item, ratio) });
+                tray.uploaded(item, id);
+            } catch (error) {
+                tray.set(item, 'bad', error.message);
+            }
+        }
+    };
+    return Promise.all(Array.from({ length: Math.min(PARALLEL, queue.length) }, worker)).then(() => tray.refresh());
+};
+
+const uploading = () => [...document.querySelectorAll('[data-uploader]')].some((root) => trays.get(root)?.running);
+
+// Delegated: uploaders can appear later (SPA navigation, Livewire updates).
+document.addEventListener('change', (event) => {
+    const input = event.target instanceof HTMLInputElement && event.target.matches('[data-uploader-input]') ? event.target : null;
+    const root = input?.closest('[data-uploader]');
+    if (!input || !root || input.files.length === 0) {
+        return;
+    }
+    enqueue(root, [...input.files]);
     input.value = '';
-    input.disabled = false;
-    if (succeeded > 0) {
-        // The page refreshes its listing in place; failed rows stay visible.
-        window.Livewire?.dispatch('files-uploaded');
+});
+
+// Drag and drop anywhere on a page that has an uploader.
+let dragDepth = 0;
+const dropRoot = () => document.querySelector('[data-uploader]');
+const carriesFiles = (event) => [...(event.dataTransfer?.types ?? [])].includes('Files');
+const showDrop = (visible) => {
+    const zone = dropRoot()?.querySelector('[data-uploader-drop]');
+    if (zone) {
+        zone.hidden = !visible;
+    }
+};
+document.addEventListener('dragenter', (event) => {
+    if (dropRoot() && carriesFiles(event)) {
+        dragDepth++;
+        showDrop(true);
+    }
+});
+document.addEventListener('dragleave', (event) => {
+    if (dropRoot() && carriesFiles(event) && --dragDepth <= 0) {
+        dragDepth = 0;
+        showDrop(false);
+    }
+});
+document.addEventListener('dragover', (event) => {
+    if (dropRoot() && carriesFiles(event)) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+    }
+});
+document.addEventListener('drop', (event) => {
+    const root = dropRoot();
+    if (!root || !carriesFiles(event)) {
+        return;
+    }
+    event.preventDefault();
+    dragDepth = 0;
+    showDrop(false);
+    // Folders dropped from the desktop arrive as zero-byte entries; they are skipped with a message.
+    const files = [...event.dataTransfer.files];
+    if (files.length > 0) {
+        enqueue(root, files);
+    }
+});
+
+// Leaving the page would stop the uploads that are still running.
+window.addEventListener('beforeunload', (event) => {
+    if (uploading()) {
+        event.preventDefault();
+    }
+});
+document.addEventListener('livewire:navigate', (event) => {
+    if (uploading() && !window.confirm('Hay archivos subiéndose. Si sales de la página se cancelarán. ¿Salir igualmente?')) {
+        event.preventDefault();
     }
 });

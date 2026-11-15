@@ -72,10 +72,19 @@ new #[Title('Mis archivos')] class extends Component {
         ];
     }
 
-    /** files.js finished uploading: show the new files without reloading. */
+    /** Files just uploaded on this page, highlighted in the listing (display only). */
+    #[Locked]
+    public array $fresh = [];
+
+    /**
+     * files.js finished some uploads: show them without reloading and mark them as new.
+     *
+     * @param  array<mixed>  $ids
+     */
     #[On('files-uploaded')]
-    public function refreshListing(): void
+    public function refreshListing(array $ids = []): void
     {
+        $this->fresh = array_slice(array_values(array_filter($ids, 'is_int')), 0, 200);
         unset($this->listing);
     }
 
@@ -218,7 +227,7 @@ new #[Title('Mis archivos')] class extends Component {
                     </tr>
                 @endforeach
                 @foreach ($l['entries'] as $entry)
-                    <tr wire:key="file-{{ $entry->id }}">
+                    <tr wire:key="file-{{ $entry->id }}" @if (in_array($entry->id, $this->fresh, true)) data-fresh @endif>
                         <x-ui::td check><input type="checkbox" value="{{ $entry->id }}" wire:model="selectedFiles" aria-label="Seleccionar {{ $entry->name }}"></x-ui::td>
                         <x-ui::td><x-ui::entry :href="route('files.show', $entry)" :icon="$icon($entry->mime)">{{ $entry->name }}</x-ui::entry></x-ui::td>
                         <x-ui::td label="Contenido" nowrap>{{ $fmt((int) $entry->size) }}</x-ui::td>

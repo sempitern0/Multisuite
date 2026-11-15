@@ -267,6 +267,19 @@ class PersonalFilesTest extends TestCase
         $this->assertSame("img-src 'self' data:", $page->headers->get('Content-Security-Policy'));
     }
 
+    public function test_just_uploaded_files_are_marked_as_new_in_the_listing(): void
+    {
+        $this->upload($this->owner, 'nota.txt', 'hola')->assertOk();
+        $this->upload($this->owner, 'otra.txt', 'adios')->assertOk();
+        $new = $this->entry('nota.txt');
+
+        \Livewire\Livewire::actingAs($this->owner)->test('pages::files.index')
+            ->assertDontSee('data-fresh', false)
+            ->dispatch('files-uploaded', ids: [$new->id, 'x'])
+            ->assertSet('fresh', [$new->id])
+            ->assertSeeHtml('data-fresh');
+    }
+
     public function test_video_plays_inline_with_seeking_and_images_open_in_the_viewer(): void
     {
         $video = "\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom\x00\x00\x00\x08free";
