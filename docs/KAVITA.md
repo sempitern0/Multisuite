@@ -32,7 +32,7 @@ Contrato revisado en el código de v0.9.1.4 (`Kavita.Server/Controllers/AccountC
 
 ## Seguridad y límites
 - Escucha solo en `127.0.0.1:5000`. La autenticación del portal no protege el acceso directo: Kavita conserva su propio inicio de sesión. Exponerlo solo tras VPN/TLS (P03).
-- Bibliotecas montadas en solo lectura; configuración, base de datos y portadas en el volumen Docker `kavita-config`. La imagen de Kavita se ejecuta como root: se quitan todas las capacidades (`cap_drop: ALL`) y `no-new-privileges`. Por eso necesita que los libros sean legibles por todos (permisos 644/755 habituales).
+- Bibliotecas montadas en solo lectura; configuración, base de datos y portadas en el volumen Docker `kavita-config`. La imagen de Kavita se ejecuta como root y su carpeta de configuración pertenece a otro usuario: conserva solo `CHOWN`, `DAC_OVERRIDE` y `FOWNER` (el resto de capacidades se quitan) y `no-new-privileges`. Las bibliotecas siguen siendo de solo lectura.
 - Las sesiones ya abiertas en Kavita siguen hasta que caducan aunque se desactive la cuenta (igual que Música; ROADMAP P03).
 - Metadatos externos, scrobbling y recomendaciones requieren la suscripción Kavita+: no se usan. La coincidencia de metadatos queda desactivada en las bibliotecas creadas.
 - Copia de seguridad del volumen `kavita-config`: pendiente de añadir a `make nas-backup` (ROADMAP). Los libros son archivos normales del host y entran en la copia del operador.

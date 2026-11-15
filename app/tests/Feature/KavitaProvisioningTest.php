@@ -59,7 +59,7 @@ class KavitaProvisioningTest extends TestCase
             $path === '/api/Account/confirm-email' => $this->confirm($data),
             $path === '/api/Account/update' => $this->update($data),
             $path === '/api/Account/reset-password' => $this->resetPassword($data),
-            $path === '/api/Users/delete-user' => $this->delete((string) $query['username']),
+            $path === '/api/Users/delete-user' => $this->deleteMember((string) $query['username']),
             default => Http::response([], 404),
         };
     }
@@ -141,7 +141,7 @@ class KavitaProvisioningTest extends TestCase
         return Http::response();
     }
 
-    private function delete(string $username)
+    private function deleteMember(string $username)
     {
         $this->users = array_filter($this->users, fn (array $user): bool => $user['username'] !== $username);
 

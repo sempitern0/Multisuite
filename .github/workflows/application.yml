@@ -105,7 +105,7 @@ jobs:
           trap 'docker rm -f kavita-ci >/dev/null 2>&1; docker volume rm kavita-ci-config >/dev/null 2>&1' EXIT
           mkdir -p /tmp/kavita-ci/books /tmp/kavita-ci/comics /tmp/kavita-ci/manga /tmp/kavita-ci/docs
           # Same hardening as compose.reading.yaml.
-          docker run -d --name kavita-ci -p 127.0.0.1:5000:5000 --cap-drop ALL --security-opt no-new-privileges:true \
+          docker run -d --name kavita-ci -p 127.0.0.1:5000:5000 --cap-drop ALL --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER --security-opt no-new-privileges:true \
             -v kavita-ci-config:/kavita/config \
             -v /tmp/kavita-ci/books:/books:ro -v /tmp/kavita-ci/comics:/comics:ro \
             -v /tmp/kavita-ci/manga:/manga:ro -v /tmp/kavita-ci/docs:/docs:ro \

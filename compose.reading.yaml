@@ -19,8 +19,14 @@ services:
       - { type: bind, source: "${KAVITA_DOCS_PATH:-./local/kavita/docs}", target: /docs, read_only: true, bind: { create_host_path: true } }
     security_opt:
       - no-new-privileges:true
+    # The image runs as root and its config folder belongs to another user: it needs these
+    # three to write there; every other capability stays dropped.
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:5000/api/health"]
       interval: 30s
