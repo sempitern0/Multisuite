@@ -121,7 +121,7 @@ final class FileCipher
         try {
             $header = $this->header($handle);
             $index = intdiv($this->appendedBytes($path), self::CHUNK);
-            $length = self::HEADER + $index * (self::CHUNK + self::TAG);
+            $length = max(0, self::HEADER + $index * (self::CHUNK + self::TAG));
             if (! ftruncate($handle, $length) || fseek($handle, $length) !== 0) {
                 throw new RuntimeException('No se puede preparar el archivo cifrado.');
             }

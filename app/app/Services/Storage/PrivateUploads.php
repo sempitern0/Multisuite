@@ -227,7 +227,9 @@ class PrivateUploads
             [$context, $covered] = [hash_init('sha256'), 0];
         }
         if ($covered < $stored) {
-            $update = fn (string $piece) => hash_update($context, $piece);
+            $update = function (string $piece) use ($context): void {
+                hash_update($context, $piece);
+            };
             if ($upload->cipher !== null) {
                 $this->cipherOrFail()->read($sealed, 'file:'.$upload->id, $covered, $stored - $covered, $update);
             } else {
