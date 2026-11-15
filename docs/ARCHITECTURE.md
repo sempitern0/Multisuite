@@ -57,7 +57,7 @@ Motor: PostgreSQL 17 en desarrollo y producción; SQLite en los tests (CI ejecut
 | Contenido | `private_uploads`, `file_exports` (subtipos 1:1 de la reserva, misma UUID), `folders` (árbol por `parent_id`), `user_files` (`folder_id`, `original_folder_id`, `version_of_id`) | tamaño y MIME se leen de la reserva/subida, no se duplican en `user_files` |
 
 **Desnormalizaciones deliberadas** (no "corregir"):
-- Contadores `reserved_bytes`/`used_bytes` en pools y cuotas: permiten reservar con un bloqueo de fila en vez de sumar reservas; la reconciliación está en ROADMAP (S02).
+- Contadores `reserved_bytes`/`used_bytes` en pools y cuotas: permiten reservar con un bloqueo de fila en vez de sumar reservas; la reconciliación está en ROADMAP (Mis archivos y almacenamiento).
 - `actor_name`/`subject_name` en auditoría: instantánea para que el historial no dependa de usuarios borrados.
 - `file_exports.items`: instantánea del contenido en el momento de pedir el ZIP.
 - `users.service_access` e `invitations.services` en JSON: conjunto pequeño de IDs validados contra `config/portal.php`, solo se lee por persona (nunca se busca "quién tiene X"). `null` significa cuenta anterior a las invitaciones con servicios (sin restricción gestionada). Pasar a tabla si algún día hay que consultar entre personas.
@@ -65,7 +65,7 @@ Motor: PostgreSQL 17 en desarrollo y producción; SQLite en los tests (CI ejecut
 
 **Índices**: PostgreSQL no indexa las claves foráneas; todas las columnas FK o de búsqueda tienen índice propio (migración `2026_11_18_000000_index_foreign_keys`) y `tests/Integration/QueryPlanTest.php` comprueba en CI que cada consulta usa el suyo.
 
-**Pendiente** (ver ROADMAP): enums PHP + `CHECK` para roles y estados escritos como texto; mover `location_id`/`root_hash` (hoy repetidos en `private_uploads` y `file_exports`) a la reserva común si aparece un tercer subtipo.
+**Pendiente** (ROADMAP, deuda técnica): enums PHP + `CHECK` para roles y estados escritos como texto. Si aparece un tercer subtipo de reserva, mover `location_id`/`root_hash` (hoy repetidos en `private_uploads` y `file_exports`) a la reserva común.
 
 ## Invariantes que no se deben romper
 - Una contraseña escrita en una página Livewire nunca vuelve al navegador: las acciones que la reciben se envuelven en `ForgetsSecrets::forgetting()`.

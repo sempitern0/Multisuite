@@ -1,7 +1,6 @@
 # Diseño de la interfaz (capa de tema)
 
-Estado: **D01, D02a y D02b.1 implementados** (fundación, shell, acceso, portada y toda la administración: listas, crear/editar personas y Almacenamiento; ajustes con preferencias). Todas las pantallas están migradas (D02b.2b); de Flux solo queda el campo de código de un solo uso (`flux:otp`).
-Referencia visual: [design/nocturne-v2/GUIA.md](design/nocturne-v2/GUIA.md) y el prototipo estático `design/nocturne-v2/prototipo-28-pantallas.html` (abrir en el navegador; no forma parte de la app).
+Todas las pantallas usan el tema Nocturne; de Flux solo queda el campo de código de un solo uso (`flux:otp`). El prototipo visual original quedó en el historial de git (`docs/design/nocturne-v2`, retirado tras la migración).
 
 ## Objetivo
 El diseño está separado de la lógica para poder sustituirlo sin tocar controladores, rutas, policies ni la estructura de las vistas de dominio.
@@ -103,12 +102,3 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 - Contraste AA comprobado (texto ≥ 4,5:1, contornos de controles ≥ 3:1). Desviaciones mínimas respecto a la guía para cumplirlo: texto atenuado `#818e81` (guía `#778477`), placeholder `#758575` y borde de campos `#5a675b`.
 - Accesibilidad: foco visible amarillo, `aria-current` en navegación, errores con `role="alert"` y `aria-describedby`, `prefers-reduced-motion`, responsive (≤1050 px barra de iconos, ≤700 px menú desplegable, rejilla de 2 columnas).
 
-## Estado por pantalla
-| Pantalla | Estado |
-|---|---|
-| Acceso, recuperar/guardar contraseña, confirmar, 2FA, verificar correo, invitación, contraseña inicial | Migradas (D01). Sin página de bienvenida: `/` lleva a entrar o a la página de inicio elegida |
-| Shell y portada de servicios | Migradas (D01) |
-| Personas (lista, crear, editar), Invitaciones, Actividad, Almacenamiento, Preferencias | Migradas (D02a, D02b.1) |
-| Mis archivos, vista previa, papelera, descargas ZIP | Migradas (D02b.2a) |
-| Perfil (nombre, correo, nombre de usuario, eliminar cuenta) y Seguridad (contraseña, verificación en dos pasos, llaves de acceso) | Migradas (D02b.2b) |
-| Resumen de administración con métricas reales | Pendiente (D02, solo admin) |

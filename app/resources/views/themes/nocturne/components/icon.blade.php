@@ -36,7 +36,6 @@
         'storage' => '<rect x="3.5" y="4" width="17" height="7" rx="2"/><rect x="3.5" y="13" width="17" height="7" rx="2"/><path d="M7.5 7.5h.01M7.5 16.5h.01M11.5 7.5h5M11.5 16.5h5"/>',
         'activity' => '<path d="M3 12h4l2.5-6.5 5 13 2.5-6.5h4"/>',
         'invite' => '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/><path d="M17.5 2.5v4M15.5 4.5h4" />',
-        'sidebar' => '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16M15.5 9.5 13 12l2.5 2.5"/>',
         'arrow-left' => '<path d="M19 12H5M11 6l-6 6 6 6"/>',
         'download' => '<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/>',
         'upload' => '<path d="M12 20V9M7 13.5l5-5 5 5M5 4h14"/>',

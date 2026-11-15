@@ -42,6 +42,8 @@ const avatarEditor = ({ model, save }) => ({
     problem: '',
     url: null,
     cropper: null,
+    // Increases with every chosen file: a slower earlier load must not open or close the editor.
+    selection: 0,
 
     choose(event) {
         const file = event.target.files?.[0];
@@ -59,14 +61,21 @@ const avatarEditor = ({ model, save }) => ({
         }
         this.problem = '';
         this.close();
+        const ticket = ++this.selection;
         this.url = URL.createObjectURL(file);
         const source = new Image();
         source.alt = '';
         source.onload = () => {
+            if (ticket !== this.selection) {
+                return;
+            }
             this.editing = true;
-            this.$nextTick(() => this.mount(source));
+            this.$nextTick(() => this.mount(source, ticket));
         };
         source.onerror = () => {
+            if (ticket !== this.selection) {
+                return;
+            }
             this.problem = 'No se ha podido abrir la foto. Prueba con otra.';
             this.close();
         };
@@ -75,12 +84,12 @@ const avatarEditor = ({ model, save }) => ({
 
     // Cropper.js measures its canvas when it starts: wait until the stage is shown and laid out,
     // otherwise the selection is 0 × 0 and the picture is neither fitted nor croppable.
-    async mount(source) {
+    async mount(source, ticket) {
         const stage = this.$refs.stage;
         for (let frame = 0; stage.clientWidth === 0 && frame < 60; frame++) {
             await new Promise((resolve) => requestAnimationFrame(resolve));
         }
-        if (!this.editing || stage.clientWidth === 0) {
+        if (ticket !== this.selection || !this.editing || stage.clientWidth === 0) {
             return;
         }
         stage.replaceChildren();

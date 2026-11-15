@@ -1,104 +1,60 @@
 # Roadmap de Multisuite
 
-Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJECT_STATUS.md) y en el historial de git/PRs. Revisión 2026-11-13.
+Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_STATUS.md) y en git. Revisión 2026-11-15.
 
 ## Contrato del producto (no cambia sin decisión explícita del usuario)
 - Portal Laravel/Livewire privado para propietario, familia y amistades: portada de servicios, invitaciones, cuentas, almacenamiento y auditoría.
-- Cada servicio de terceros (Navidrome hoy; Komga/Jellyfin/… mañana) conserva su interfaz, catálogo y datos. **No** construir reproductor, lector, catálogo, notas ni descargador propios.
+- Cada servicio de terceros conserva su interfaz, catálogo y datos. **No** construir reproductor, lector, catálogo, notas ni descargador propios.
 - El portal no recibe el socket Docker, no monta/formatea discos y nunca acepta rutas de usuarios.
 - Contenido privado por defecto; solo el administrador publica para todos.
-- Un incremento = una rama desde `main` + una PR (apilada si depende de otra). Se fusiona solo con indicación del usuario.
+- Un incremento = una rama desde `main` + una PR. Se fusiona solo con indicación del usuario.
 
 ## Orden vigente
-1. **S05.1** — Backup del NAS (DB, servicios y archivos) a destino externo con restauración ensayada.
-2. **S04** — Publicación/retirada administrativa y movimientos entre discos.
-3. **P03** — Cuentas existentes, baja integral, VPN/TLS y segundo dispositivo.
-4. **P04/P05** — Nuevos servicios (uno por PR), despliegue reproducible y piloto familiar.
+1. **P04.1 Lectura** — servicio de libros y cómics (propuesta pendiente de aprobación).
+2. **S04** — Publicación administrativa y bibliotecas por persona (necesita tres decisiones del usuario).
+3. **P03** — Red privada (VPN/TLS), segundo dispositivo y vinculación de cuentas existentes.
+4. **P05** — Despliegue reproducible y piloto familiar.
 
-## D — Diseño Nocturne (docs/DESIGN.md)
-- [ ] D01/D02a QA del usuario: acceso, portada, Personas, Invitaciones, Actividad y Preferencias en 360/768/1440 px, teclado, zoom 200 % y animaciones activadas/desactivadas.
-- [ ] D02b.1 QA del usuario: crear/editar/eliminar persona, Almacenamiento (guardar límites sin recargar, selector «otra cantidad») y diálogo de revocar invitación.
-- [ ] D02b.2a QA del usuario: Mis archivos (subir, crear/renombrar/eliminar carpeta, papelera sin recargar, selección y ZIP), vista previa, versiones, papelera y Descargas ZIP.
-- [ ] D02b.2b QA del usuario: Perfil (guardar, elegir nombre de usuario, eliminar cuenta) y Seguridad (cambiar contraseña, activar y desactivar la verificación en dos pasos con una aplicación real, códigos de recuperación, añadir y eliminar una llave de acceso).
-- [ ] Resumen de administración con métricas reales (solo gates de admin).
-- [ ] Sustituir `flux:otp` por un campo propio del tema y retirar entonces Flux y la reasignación de paleta `zinc`/`teal`.
+## P04 — Servicios (uno por PR)
+Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúmenes, copia y restauración, cuotas y aislamiento; adaptador `ServiceProvisioner` con prueba en CI contra la versión fijada.
+- [ ] P04.1 Lectura de novelas y cómics (EPUB, PDF, CBZ/CBR).
+- [ ] P04.2 Vídeo: Jellyfin (medir transcodificación antes de dimensionar).
+- [ ] P04.3 Descargas: interfaz mantenida para yt-dlp con cuotas y aislamiento.
+- [ ] P04.4 Notas/documentos con interfaz web, adjuntos y exportación.
+- [ ] Ideas sin decidir: automatizaciones, invitados temporales con caducidad.
 
-## U03 — Gestión de personas
-- [ ] QA del usuario tras `make rebuild`: subir y encuadrar una foto (también en móvil), cambiar el usuario de alguien con Música, desactivar y volver a activar Música, suspender y reactivar una cuenta de prueba.
+## S04 — Publicación y bibliotecas
+- [ ] Decidir con el usuario: imputación de contenido global a cuotas, borrado por el aportante de contenido publicado, baja del aportante.
+- [ ] Estados personal → pendiente → global; solo admin publica/retira; permisos aplicados en el servicio antes de confirmar; auditoría e idempotencia sin duplicar bytes.
+- [ ] Bibliotecas por persona en los servicios (Navidrome y lectura) con escaneo bajo demanda.
 
-## DB — Modelo de datos (ARCHITECTURE.md § Modelo de datos)
-- [ ] Enums PHP respaldados (`Role`, `ReservationState`, `UploadState`, `ExportState`, `ServiceAccountStatus`) con casts y `CHECK` en PostgreSQL añadidos en la misma migración que los cubra con tests en PostgreSQL. Hoy son cadenas validadas solo en código.
-- [ ] Si aparece un tercer subtipo de reserva, mover `location_id`/`root_hash` de `private_uploads`/`file_exports` a `storage_reservations`.
-- [ ] Índices parciales (`user_files` actuales, `WHERE trashed_at IS NULL AND version_of_id IS NULL`) solo si las listas de archivos crecen a decenas de miles por persona.
-
-## S02 — Almacenamiento y cuotas
-- [ ] S02.3 QA ampliado (opcional antes del piloto): móvil 360 px, teclado, zoom 200 %, disco desconectado, conflicto de grupos, sobreasignación, admin frente a owner.
-- [ ] S02.4 Validar `make nas-discover`/`nas-apply` en el servidor Linux real (implementado y probado con herramientas simuladas).
-- [ ] Probar con topología real: un disco con dos carpetas, dos discos, disco retirado, disco lleno (ENOSPC).
-- [ ] Reconciliación: comparar contabilidad con bytes reales y detectar reservas caducadas sin limpiar.
-- [x] Mostrar en la GUI reservas caducadas que siguen contando (limpieza automática frente a revisión manual) — en la rama S02.3.
-- [ ] Comando de reconciliación para reservas sin subida asociada (solo tras verificación física).
-- [ ] Opcional operador: guía de XFS project quota como defensa adicional.
-
-## S03 — Mis archivos (decisión 2026-11-13: dentro del portal, carpetas propias)
-- [ ] Mover archivos y carpetas entre carpetas.
-- [ ] S03.3 QA del usuario: papelera, restaurar, vaciar, versiones.
-- [ ] S03.4 QA del usuario (fusionado): ZIP de selección, carpeta y exportar todo; descarga grande en segundo plano (requiere el contenedor `scheduler`).
-- [ ] Revisar límites Nginx/PHP para archivos grandes; valorar subida por trozos/reanudable.
-- [ ] Reconciliar archivos `ready` ausentes, corruptos o restaurados desde backup.
-- [ ] Conectar contenido con bibliotecas por usuario de Navidrome/servicios (escaneo bajo demanda).
-
-## S03.5 — Fotos y vídeo
-- [ ] QA del usuario tras `make rebuild`: zoom con ratón y en móvil, pantalla completa, un vídeo MP4 y uno de iPhone (MOV), y comprobar que una foto subida ocupa menos y se ve igual.
-- [ ] QA del usuario: subir un vídeo de varios GB y una canción de más de 8 MB; cortar la red a mitad y comprobar que continúa.
-- [ ] Opcional: pasar a la foto anterior/siguiente de la carpeta desde el visor.
-- [ ] QA del usuario del explorador (búsqueda, filtros, orden y las tres vistas, también en móvil).
-- [ ] Miniaturas generadas en el servidor si la galería se vuelve lenta con fotos grandes.
-
-## S03.8 — Metadatos de fotos y vídeos
-- [ ] QA del usuario tras `make rebuild`: subir una foto del móvil con ubicación y comprobar (p. ej. `exiftool foto.jpg` tras descargarla) que ya no tiene GPS ni cámara y que se ve con la orientación correcta.
-- [ ] Quitar también la ubicación y los datos del dispositivo de los vídeos (MP4/MOV) con ExifTool, sin recodificar; exige guardar el vídeo entero sin cifrar mientras llega o limpiarlo después.
-
-## S04 — Publicación administrativa
-- [ ] Cerrar con el usuario: imputación de contenido global a cuotas, borrado por el aportante de contenido publicado, baja del aportante.
-- [ ] Estados personal → pendiente → global (rechazo vuelve a personal); solo admin publica/retira; permisos aplicados en el servicio antes de confirmar.
-- [ ] Auditoría de transiciones e idempotencia ante reintentos. Sin duplicar bytes.
-
-## S05 — Copias de seguridad y movimientos
-- [ ] S05.1 Validar en el servidor real `make nas-backup` y `make nas-backup-verify` con un destino externo, y dejarla programada (implementado con restic y probado con Docker simulado; STORAGE.md).
-- [ ] Copia entre discos con reserva en destino, verificación de integridad, cambio de referencias y borrado del origen solo tras confirmación.
-
-## S01 — Restos de validación de Navidrome
-- [ ] Cliente móvil/Subsonic y navegador con bibliotecas por usuario; streams ya abiertos tras retirar acceso.
-- [ ] Publicación de un archivo individual sin moverlo (o alternativa documentada).
-- [ ] Permisos por defecto de usuarios nuevos (`defaultNewUsers`) y ventana de aprovisionamiento.
-
-## P01/P02 — Validación pendiente
-- [ ] P01-03/04/05: `compose config`, digest de imagen, dos cuentas, escaneo, reproducción/seek, favoritos/playlists, recrear contenedor, permisos y backup/restore (checklist en NAVIDROME.md).
-- [ ] P01-06: confirmar `make up`/`stop`/`start` en Docker Desktop con la biblioteca del usuario.
-- [ ] P02-03/06: QA visual de la portada 360/768/1440 px, foco, contraste, zoom y reduced-motion.
-
-## P03 — Identidad, acceso y red privada
-- [ ] P03-06c Vincular cuentas remotas preexistentes (prueba de titularidad; nunca por coincidencia de email). Añadir servicios a personas existentes ya está hecho (U03).
-- [ ] P03-06d Permisos por biblioteca y cierre de sesiones ya abiertas en el servicio al desactivarlo; auditar invitaciones y consola. Activar/desactivar por servicio y suspensión ya están hechos (U03).
-- [ ] P03-06e Entrada web sin segundo login (proxy/identidad central) sin romper clientes móviles. QA pendiente del puente actual en MUSIC_SESSION_BRIDGE.md.
-- [ ] P03-02 Subruta `/music/` solo si se valida BaseUrl, assets, Range y clientes.
-- [ ] P03-03 VPN (Tailscale u otra), TLS, permisos mínimos y revocación.
-- [ ] P03-05 Prueba desde un segundo dispositivo real.
-
-## P04 — Servicios adicionales (uno por PR)
-Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúmenes, backup/restore, cuotas y aislamiento.
-- [ ] Lectura: Komga (EPUB/CBZ/PDF).
-- [ ] Vídeo: Jellyfin (medir transcodificación antes de dimensionar).
-- [ ] Descargas: frontend mantenido para yt-dlp con cuotas y aislamiento.
-- [ ] Notas/documentos con UI web, adjuntos y exportación.
-- [ ] Offline: clientes nativos de cada servicio; sin caché offline del portal.
-- [ ] Ideas sin decidir (requieren aprobación de alcance): automatizaciones (p. ej. tareas programadas o un orquestador self-hosted), invitados temporales con caducidad de acceso.
+## P03 — Identidad y red privada
+- [ ] VPN (Tailscale u otra), TLS, permisos mínimos y revocación; prueba desde un segundo dispositivo real.
+- [ ] Vincular cuentas remotas preexistentes con prueba de titularidad (nunca por coincidencia de correo).
+- [ ] Cerrar sesiones ya abiertas en el servicio al desactivarlo o suspender; permisos por biblioteca.
+- [ ] Entrada web sin segundo inicio de sesión (proxy/identidad central) sin romper clientes móviles.
 
 ## P05 — Producción y operación familiar
-- [ ] Release Foundry adaptada: variables completas, imágenes fijadas, datos separados por entorno.
-- [ ] Servicios tras entrada privada; sin herramientas dev ni debug expuestas.
-- [ ] Backups fuera del host y restauración ensayada.
-- [ ] Piloto con dos usuarios/dispositivos; alta/baja y fallo de un servicio sin tumbar el portal.
-- [ ] Medir disco/CPU/RAM/tráfico y costes.
-- [ ] CI proporcional sin reruns innecesarios.
+- [ ] Release adaptada: variables completas, imágenes fijadas, datos separados por entorno; servicios tras entrada privada sin herramientas de desarrollo.
+- [ ] Copia programada fuera del host con restauración ensayada (S05.1 ya implementado).
+- [ ] Piloto con dos personas y dispositivos; medir disco/CPU/RAM/tráfico.
+
+## Mis archivos y almacenamiento
+- [ ] Mover archivos y carpetas entre carpetas.
+- [ ] Quitar ubicación y datos del dispositivo de los vídeos (MP4/MOV) con ExifTool, sin recodificar.
+- [ ] Reconciliar archivos ausentes o corruptos y reservas sin subida asociada (tras verificación física).
+- [ ] Copia entre discos con reserva en destino, verificación y borrado del origen tras confirmar.
+- [ ] Opcional: foto anterior/siguiente en el visor; miniaturas en el servidor si la galería se vuelve lenta.
+
+## Deuda técnica
+- [ ] Enums PHP respaldados (`Role`, `ReservationState`, `UploadState`, `ExportState`, `ServiceAccountStatus`) con casts y `CHECK` en PostgreSQL.
+- [ ] Sustituir `flux:otp` por un campo propio del tema y retirar Flux.
+- [ ] Resumen de administración con métricas reales.
+- [ ] Retirar el andamiaje SaaS heredado de Foundry (`wizard`, `tenancy-check`, `Caddyfile.saas`, docs/foundry/SAAS.md y sus pasos de CI): Multisuite no es multi-inquilino.
+
+## QA pendiente del usuario (lo que CI no puede comprobar)
+- [ ] Tras `make rebuild`: foto de perfil (encuadrar, guardar, quitar; también en móvil); cambiar el usuario de alguien con Música; desactivar/activar Música; suspender/reactivar una cuenta de prueba (USER_MANAGEMENT.md § QA).
+- [ ] Foto del móvil con ubicación: tras subirla y descargarla, `exiftool` no muestra GPS ni cámara y la orientación es correcta.
+- [ ] Mis archivos en el navegador real: subida grande con corte de red, vídeo MP4 y MOV, explorador en móvil.
+- [ ] Puente de sesión de Música con dos personas (MUSIC_SESSION_BRIDGE.md § QA) y checklist de Navidrome con Docker real (NAVIDROME.md).
+- [ ] Discos reales: `make nas-discover`/`nas-apply`, disco lleno o retirado, y una copia real con `make nas-backup`.
