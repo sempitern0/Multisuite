@@ -277,7 +277,9 @@ new #[Title('Mis archivos')] class extends Component {
         </x-slot:actions>
     </x-ui::page-header>
     @if ($this->connection)
-        @php($serviceName = config('portal.services.'.$this->connection['service'].'.name'))
+        @php
+            $serviceName = config('portal.services.'.$this->connection['service'].'.name');
+        @endphp
         <x-ui::notice>
             Lo que subas aquí aparece en {{ $serviceName }}, en «{{ $this->connection['library'] }}», y solo lo ves tú. Para que {{ $serviceName }} pueda leerlos, los archivos de esta carpeta no se cifran.
         </x-ui::notice>

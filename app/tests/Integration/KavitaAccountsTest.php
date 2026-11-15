@@ -4,12 +4,12 @@ namespace Tests\Integration;
 
 use App\Models\ServiceAccount;
 use App\Models\User;
+use App\Services\Files\MediaLibrary;
 use App\Services\KavitaAccounts;
 use App\Services\ServiceAccounts;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
-use App\Services\Files\MediaLibrary;
 use Tests\Concerns\PreparesMediaRoot;
 use Tests\TestCase;
 
