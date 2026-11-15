@@ -34,6 +34,7 @@ NAS doméstico con portal privado Laravel + Livewire para el propietario, famili
 
 ## Librerías PHP y JavaScript: autorización explícita
 Se pueden instalar librerías de terceros de PHP, JavaScript y CSS cuando agilicen el desarrollo, mejoren la interfaz, accesibilidad o fiabilidad. No pedir autorización repetida para una dependencia normal dentro del alcance autorizado.
+Librería antes que código propio (decisión del usuario 2026-11-15): si existe una librería o herramienta segura, mantenida y usada por la comunidad que resuelva la tarea, se usa; solo se escribe la función propia cuando no la hay. Que el entorno del agente no alcance el registro no justifica reimplementar: pedir acceso o generar el lockfile donde haya red.
 Antes de adoptarla:
 - Comprobar versión estable compatible con las versiones realmente instaladas.
 - Comprobar adopción comunitaria, documentación, mantenimiento y actualizaciones relativamente frecuentes. Revisar releases y actividad de los últimos 12 meses como indicador, sin rechazar automáticamente bibliotecas maduras con menos cambios.

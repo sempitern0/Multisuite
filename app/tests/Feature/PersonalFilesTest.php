@@ -374,7 +374,8 @@ class PersonalFilesTest extends TestCase
         $this->upload($this->owner, 'cancion.mp3', $song)->assertOk();
         $this->get('/files/'.$this->entry('cancion.mp3')->id)->assertOk()->assertSee('<audio', false)->assertSee('Reproducir cancion.mp3');
 
-        Process::fake(fn () => Process::result(exitCode: 127));
+        // Metadata removed; jpegtran missing: the picture is kept as cleaned.
+        Process::fake(fn (PendingProcess $process) => Process::result(exitCode: $process->command[0] === 'exiftool' ? 0 : 127));
         $this->upload($this->owner, 'foto.jpg', base64_decode(self::JPEG))->assertOk();
         $this->get('/files/'.$this->entry('foto.jpg')->id)->assertOk()->assertSee('data-viewer', false)->assertSee('Tamaño real');
     }
@@ -384,6 +385,9 @@ class PersonalFilesTest extends TestCase
         $jpeg = base64_decode(self::JPEG);
         $received = $jpeg.str_repeat("\0", 4000);
         $tool = fn (string $output) => Process::fake(function (PendingProcess $process) use ($output) {
+            if ($process->command[0] === 'exiftool') {
+                return Process::result();
+            }
             file_put_contents($process->command[6], $output);
 
             return Process::result();
@@ -396,14 +400,51 @@ class PersonalFilesTest extends TestCase
         $this->assertSame(0, UserStorageQuota::findOrFail($this->owner->id)->reserved_bytes);
         $this->assertSame(0600, fileperms($this->blob($this->entry('playa.jpg'))) & 0777);
 
-        // A result that is not the same picture, or no tool at all, keeps the upload untouched.
+        // A repack that is not the same picture keeps the upload as received.
         $tool('not an image');
         $this->upload($this->owner, 'monte.jpg', $received)->assertOk();
         $this->assertSame($received, $this->plain($this->entry('monte.jpg')));
-        Process::fake(fn () => Process::result(exitCode: 127));
-        $this->upload($this->owner, 'rio.jpg', $received)->assertOk();
-        $this->assertSame($received, $this->plain($this->entry('rio.jpg')));
         $this->assertSame([], glob($this->root.'/.multisuite-private/*.opt'));
+    }
+
+    public function test_picture_is_refused_when_its_metadata_cannot_be_removed(): void
+    {
+        Process::fake(fn () => Process::result(exitCode: 127));
+        $this->upload($this->owner, 'rio.jpg', base64_decode(self::JPEG))
+            ->assertUnprocessable()->assertJsonValidationErrors('upload');
+        $this->assertDatabaseMissing('private_uploads', ['id' => $this->entry('rio.jpg')->upload_id, 'state' => 'ready']);
+        $this->assertFileDoesNotExist($this->blob($this->entry('rio.jpg')));
+        $this->assertSame([], glob($this->root.'/.multisuite-private/*.meta.*'));
+
+        // Switched off by the operator: stored as received.
+        config(['nas.strip_image_metadata' => false]);
+        $this->upload($this->owner, 'lago.jpg', base64_decode(self::JPEG))->assertOk();
+    }
+
+    public function test_real_exiftool_removes_location_and_camera_but_keeps_orientation(): void
+    {
+        if (! Process::run(['exiftool', '-ver'])->successful()) {
+            $this->markTestSkipped('ExifTool is not installed here (CI installs it).');
+        }
+        $picture = tempnam(sys_get_temp_dir(), 'exif').'.jpg';
+        $image = imagecreatetruecolor(64, 48);
+        imagejpeg($image, $picture, 90);
+        Process::run(['exiftool', '-q', '-overwrite_original', '-GPSLatitude=28.1', '-GPSLatitudeRef=N', '-GPSLongitude=15.4', '-GPSLongitudeRef=W',
+            '-Make=Multisuite', '-Model=Prueba', '-SerialNumber=12345', '-Artist=Daniel', '-Orientation#=6', $picture])->throw();
+        $tags = fn (string $path): array => (array) (json_decode(Process::run(['exiftool', '-j', '-n', $path])->throw()->output(), true)[0] ?? []);
+        $this->assertArrayHasKey('GPSLatitude', $tags($picture));
+
+        $this->upload($this->owner, 'gps.jpg', (string) file_get_contents($picture))->assertOk();
+        $stored = tempnam(sys_get_temp_dir(), 'exif').'.jpg';
+        file_put_contents($stored, $this->plain($this->entry('gps.jpg')));
+        $after = $tags($stored);
+        foreach (['GPSLatitude', 'GPSLongitude', 'Make', 'Model', 'SerialNumber', 'Artist'] as $private) {
+            $this->assertArrayNotHasKey($private, $after);
+        }
+        $this->assertSame(6, $after['Orientation'] ?? null);
+        $this->assertSame([64, 48], array_slice((array) getimagesize($stored), 0, 2));
+        @unlink($picture);
+        @unlink($stored);
     }
 
     public function test_pdf_is_previewed_inline_without_sandbox_and_html_is_refused(): void

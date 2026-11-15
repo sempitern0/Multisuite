@@ -38,7 +38,12 @@ return [
         'application/vnd.oasis.opendocument.presentation',
     ],
 
-    // Lossless only: JPEG is repacked by jpegtran (same pixels and metadata). Nothing is re-encoded.
+    // Pictures (JPEG, PNG, GIF, WebP) lose their private metadata on upload with ExifTool: GPS,
+    // camera, dates, XMP, IPTC, thumbnails. Only orientation and colour profile stay. If it cannot
+    // be removed the upload is refused. Disable only where ExifTool is not available.
+    'strip_image_metadata' => (bool) env('NAS_STRIP_IMAGE_METADATA', true),
+
+    // Lossless only: JPEG is repacked by jpegtran (same pixels, remaining metadata kept). Nothing is re-encoded.
     'optimize_images' => (bool) env('NAS_OPTIMIZE_IMAGES', true),
     // Larger JPEGs are stored as received: optimising needs the whole file at the end of the upload.
     'optimize_max_bytes' => (int) env('NAS_OPTIMIZE_MAX_BYTES', 67108864),

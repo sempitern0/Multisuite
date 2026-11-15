@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PrivateUpload;
 use App\Models\StorageReservation;
 use App\Services\Storage\PrivateUploads;
+use App\Services\Storage\UnsafeImageMetadata;
 use App\Services\Storage\UploadOffsetMismatch;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -50,6 +51,8 @@ class PrivateUploadController extends Controller
             $upload = $uploads->receive($request->user(), $key, $input, (int) $offset);
         } catch (UploadOffsetMismatch $mismatch) {
             return response()->json(['state' => 'pending', 'received' => $mismatch->received], 409);
+        } catch (UnsafeImageMetadata) {
+            throw ValidationException::withMessages(['upload' => 'No se ha podido quitar la información privada de esta foto (ubicación, cámara…), así que no se ha guardado. Prueba con otra copia o cancela la subida.']);
         } catch (RuntimeException) {
             // Retain the reservation on error; explicit cancellation or expiry cleanup
             // owns deletion. Never release from an uncertain database commit outcome.
