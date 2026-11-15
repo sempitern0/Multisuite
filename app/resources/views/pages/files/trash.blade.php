@@ -76,12 +76,12 @@ new #[Title('Papelera')] class extends Component {
             @forelse ($this->entries as $entry)
                 <tr wire:key="trashed-{{ $entry->id }}">
                     <x-ui::td><x-ui::entry :href="route('files.show', $entry)">{{ $entry->name }}</x-ui::entry></x-ui::td>
-                    <x-ui::td label="Tamaño">{{ \App\Support\Bytes::format((int) $entry->size) }}</x-ui::td>
-                    <x-ui::td label="Desde">{{ $entry->trashed_at?->format('d/m/Y') }}</x-ui::td>
+                    <x-ui::td label="Tamaño" nowrap>{{ \App\Support\Bytes::format((int) $entry->size) }}</x-ui::td>
+                    <x-ui::td label="Desde" nowrap>{{ $entry->trashed_at?->format('d/m/Y') }}</x-ui::td>
                     <x-ui::td align="end">
-                        <x-ui::button variant="secondary" size="sm" wire:click="restore({{ $entry->id }})" :aria-label="'Restaurar '.$entry->name">Restaurar</x-ui::button>
+                        <x-ui::button variant="ghost" size="sm" icon="restore" label="Restaurar" wire:click="restore({{ $entry->id }})" :aria-label="'Restaurar '.$entry->name" />
                         <x-ui::confirm title="¿Borrar definitivamente?">
-                            <x-slot:trigger><x-ui::button variant="ghost" size="sm" :aria-label="'Borrar definitivamente '.$entry->name">Borrar</x-ui::button></x-slot:trigger>
+                            <x-slot:trigger><x-ui::button variant="ghost" size="sm" icon="trash" label="Borrar definitivamente" :aria-label="'Borrar definitivamente '.$entry->name" /></x-slot:trigger>
                             Se borrará «{{ $entry->name }}» con todas sus versiones. No se puede deshacer.
                             <x-slot:action><x-ui::button variant="danger" wire:click="purge({{ $entry->id }})">Borrar definitivamente</x-ui::button></x-slot:action>
                         </x-ui::confirm>

@@ -213,7 +213,7 @@ new #[Title('Mis archivos')] class extends Component {
                     <tr wire:key="folder-{{ $child->id }}">
                         <x-ui::td check><input type="checkbox" value="{{ $child->id }}" wire:model="selectedFolders" aria-label="Seleccionar carpeta {{ $child->name }}"></x-ui::td>
                         <x-ui::td><x-ui::entry :href="route('files.folder', $child)" icon="folder" spa>{{ $child->name }}</x-ui::entry></x-ui::td>
-                        <x-ui::td label="Contenido">{{ $describe($l['summaries'][$child->id] ?? ['items' => 0, 'bytes' => 0]) }}</x-ui::td>
+                        <x-ui::td label="Contenido" nowrap>{{ $describe($l['summaries'][$child->id] ?? ['items' => 0, 'bytes' => 0]) }}</x-ui::td>
                         <x-ui::td align="end"></x-ui::td>
                     </tr>
                 @endforeach
@@ -221,10 +221,10 @@ new #[Title('Mis archivos')] class extends Component {
                     <tr wire:key="file-{{ $entry->id }}">
                         <x-ui::td check><input type="checkbox" value="{{ $entry->id }}" wire:model="selectedFiles" aria-label="Seleccionar {{ $entry->name }}"></x-ui::td>
                         <x-ui::td><x-ui::entry :href="route('files.show', $entry)" :icon="$icon($entry->mime)">{{ $entry->name }}</x-ui::entry></x-ui::td>
-                        <x-ui::td label="Contenido">{{ $fmt((int) $entry->size) }}</x-ui::td>
+                        <x-ui::td label="Contenido" nowrap>{{ $fmt((int) $entry->size) }}</x-ui::td>
                         <x-ui::td align="end">
-                            <x-ui::button variant="ghost" size="sm" icon="download" :href="route('files.content', ['fileId' => $entry->id, 'download' => 1])" :aria-label="'Descargar '.$entry->name">Descargar</x-ui::button>
-                            <x-ui::button variant="ghost" size="sm" icon="trash" wire:click="trash({{ $entry->id }})" :aria-label="'Mover a la papelera '.$entry->name">Papelera</x-ui::button>
+                            <x-ui::button variant="ghost" size="sm" icon="download" label="Descargar" :href="route('files.content', ['fileId' => $entry->id, 'download' => 1])" :aria-label="'Descargar '.$entry->name" />
+                            <x-ui::button variant="ghost" size="sm" icon="trash" label="Mover a la papelera" wire:click="trash({{ $entry->id }})" :aria-label="'Mover a la papelera '.$entry->name" />
                         </x-ui::td>
                     </tr>
                 @endforeach
@@ -238,7 +238,7 @@ new #[Title('Mis archivos')] class extends Component {
             <x-ui::panel aria-labelledby="folder-settings">
                 <x-ui::stack gap="md">
                     <x-ui::heading id="folder-settings">Opciones de la carpeta</x-ui::heading>
-                    <x-ui::form wire:submit="renameFolder">
+                    <x-ui::form wire:submit="renameFolder" inline>
                         <x-ui::field name="folderName" label="Nombre de la carpeta" wire:model="folderName" maxlength="120" required />
                         <x-ui::button type="submit" variant="secondary">Guardar nombre</x-ui::button>
                     </x-ui::form>

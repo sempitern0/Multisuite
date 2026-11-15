@@ -34,7 +34,8 @@ const render = (viewer) => {
     state.y = Math.min(limitY, Math.max(-limitY, state.y));
     image.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
     if (level) {
-        level.textContent = state.scale === 1 ? 'Ajustada' : `${Math.round((state.scale / actualScale(image)) * 100)} %`;
+        const percent = `${Math.round((state.scale / actualScale(image)) * 100)} %`;
+        level.textContent = state.scale === 1 ? `Ajustada · ${percent}` : percent;
     }
 };
 
@@ -175,6 +176,16 @@ const release = (event) => {
 };
 document.addEventListener('pointerup', release);
 document.addEventListener('pointercancel', release);
+
+// The level shows the real percentage as soon as the picture has its size.
+document.addEventListener('load', (event) => {
+    const viewer = event.target instanceof HTMLImageElement ? viewerOf(event.target) : null;
+    if (viewer) {
+        render(viewer);
+    }
+}, true);
+document.querySelectorAll('[data-viewer]').forEach(render);
+document.addEventListener('livewire:navigated', () => document.querySelectorAll('[data-viewer]').forEach(render));
 
 window.addEventListener('resize', () => document.querySelectorAll('[data-viewer]').forEach(render));
 document.addEventListener('fullscreenchange', () => document.querySelectorAll('[data-viewer]').forEach(render));

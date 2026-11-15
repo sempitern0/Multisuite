@@ -26,7 +26,8 @@ Instantánea a 2026-11-14. Historial detallado: git log y PRs #1–#25. Este arc
 Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md); entorno local desechable mientras no haya producción; el diseño va por delante para que lo nuevo nazca con el tema; sin librerías de tablas por ahora (D010 en DEPENDENCIES.md).
 
 ## En revisión: S03.5 Fotos y vídeo en Mis archivos — rama `feat/s03-media-viewer`
-- Visor de imágenes con zoom (botones, rueda, doble clic, pellizco, teclado), arrastre, tamaño real y pantalla completa.
+- Visor de imágenes con zoom (botones, rueda, doble clic, pellizco, teclado), arrastre, tamaño real y pantalla completa; al abrir, la imagen se ajusta al espacio disponible y muestra su porcentaje real.
+- Tablas de Mis archivos (archivos, papelera, versiones, descargas ZIP) con acciones de solo icono en una fila alineada, nombres largos recortados a dos líneas y tamaños sin partir; formularios de nombre en línea. La celda de acciones y el botón de los formularios en línea se corrigen en el tema, así que también mejoran Personas, Invitaciones y Seguridad.
 - Vídeo MP4/WebM/MOV reproducido por el navegador, con avance por tramos; sin conversión en el servidor.
 - Subida por fragmentos de 8 MiB con reanudación: el tamaño ya no lo limitan Nginx ni PHP (antes fallaba a partir de ~8 MB); tope de seguridad de 100 GiB por archivo, el límite real es el espacio de cada persona.
 - Al subir, los JPEG se reempaquetan sin pérdida con `jpegtran` y se descuenta el tamaño final; el resto se guarda tal cual (`Services/Storage/LosslessOptimizer`).

@@ -131,6 +131,10 @@
     .ui-btn-danger { background: #4e2626; color: #ffc6bd; }
     .ui-btn-sm { min-height: 32px; padding: 6px 10px; font-size: 12px; border-radius: 9px; }
     .ui-btn-block { width: 100%; }
+    .ui-btn-icon { width: 40px; padding: 0; flex: none; }
+    .ui-btn-sm.ui-btn-icon { width: 32px; }
+    .ui-btn-icon svg { width: 17px; height: 17px; }
+    .ui-btn-ghost:hover { color: var(--ui-text); border-color: #45524a; }
     .ui-link { color: var(--ui-accent); font-weight: 650; font-size: 12px; background: none; border: 0; padding: 0; cursor: pointer; }
     .ui-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
@@ -222,8 +226,10 @@
     /* Toolbar & inputs */
     .ui-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
     .ui-toolbar > .ui-field { flex: 1 1 220px; max-width: 360px; }
-    .ui-toolbar > .ui-form { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
-    .ui-toolbar > .ui-form > .ui-btn { margin-top: 0; min-height: 46px; }
+    .ui-toolbar > .ui-form, .ui-form-inline { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+    .ui-form-inline > .ui-field { flex: 1 1 260px; max-width: 520px; }
+    /* Same specificity as `.ui-form > .ui-btn:not(.ui-btn-block)` so the button sits on the input's baseline. */
+    .ui-toolbar > .ui-form > .ui-btn:not(.ui-btn-block), .ui-form.ui-form-inline > .ui-btn:not(.ui-btn-block) { margin-top: 0; min-height: 46px; align-self: flex-end; }
     .ui-stack > .ui-btn { align-self: flex-start; }
     .ui-toolbar-end { margin-left: auto; display: flex; gap: 9px; align-items: center; }
     .ui-select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--ui-sub) 50%), linear-gradient(135deg, var(--ui-sub) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 36px; }
@@ -256,7 +262,12 @@
     .ui-table tbody tr:last-child td { border-bottom: 0; }
     .ui-table tbody tr { transition: background .15s ease; }
     .ui-table tbody tr:hover { background: #1b211c; }
-    .ui-table td[data-align="end"], .ui-table th[data-align="end"] { text-align: right; }
+    .ui-table td[data-align="end"], .ui-table th[data-align="end"] { text-align: right; width: 1%; white-space: nowrap; }
+    .ui-cell-actions { display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
+    .ui-cell-actions > * { flex: none; }
+    .ui-table td[data-nowrap] { white-space: nowrap; }
+    .ui-table .ui-entry { max-width: 100%; }
+    .ui-table .ui-entry span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .ui-table .ui-cell-main { font-weight: 650; color: var(--ui-text); word-break: break-word; }
     .ui-table .ui-cell-sub { display: block; font-size: 12px; color: var(--ui-muted); word-break: break-all; margin-top: 2px; }
     .ui-table-empty { padding: 34px 16px; text-align: center; color: var(--ui-sub); }
@@ -274,6 +285,8 @@
 
     .ui-separator { display: flex; align-items: center; gap: 12px; color: var(--ui-muted); font-size: 12px; }
     .ui-separator::before, .ui-separator::after { content: ""; flex: 1; height: 1px; background: var(--ui-line); }
+    .ui-separator:has(> span:empty) { gap: 0; }
+    .ui-separator > span:empty { display: none; }
     .ui-separator span:empty { display: none; }
     .ui-codes { list-style: none; margin: 0; padding: 14px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px 18px; background: var(--ui-bg-2); border: 1px solid var(--ui-line); border-radius: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; user-select: text; }
     .ui-qr { width: min(232px, 100%); aspect-ratio: 1; margin: 0 auto; padding: 14px; background: #fff; border-radius: 14px; display: grid; place-items: center; }
@@ -325,10 +338,11 @@
     .ui-uploads li[data-state="bad"] { border-color: #604039; color: var(--ui-bad); }
     .ui-preview { overflow: hidden; }
     .ui-viewer { background: var(--ui-bg-2); }
-    .ui-viewer-stage { position: relative; height: 75vh; overflow: hidden; display: grid; place-items: center; cursor: grab; touch-action: none; user-select: none; }
+    .ui-viewer-stage { position: relative; height: clamp(320px, calc(100dvh - 260px), 80vh); overflow: hidden; cursor: grab; touch-action: none; user-select: none; }
     .ui-viewer-stage:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: -2px; }
     .ui-viewer-stage[data-dragging] { cursor: grabbing; }
-    .ui-viewer-stage img { display: block; max-width: 100%; max-height: 100%; transform-origin: center; will-change: transform; }
+    /* Absolute + inset 0 + margin auto: max-width/height resolve against the stage, so the picture always fits. */
+    .ui-viewer-stage img { position: absolute; inset: 0; margin: auto; display: block; max-width: 100%; max-height: 100%; transform-origin: center; will-change: transform; }
     .ui-viewer-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--ui-line); background: var(--ui-surface); }
     .ui-viewer-level { min-width: 7ch; text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ui-sub); }
     .ui-viewer:fullscreen { display: flex; flex-direction: column; }
@@ -427,8 +441,9 @@
         .ui-table td:first-child { display: block; text-align: left; padding-bottom: 6px; }
         .ui-table td:first-child::before { content: none; }
         .ui-table td[data-check] { float: left; width: auto; padding: 2px 12px 0 0; }
-        .ui-table td[data-check] + td { display: block; overflow: hidden; text-align: left; padding-bottom: 6px; }
-        .ui-table td[data-align="end"] { justify-content: flex-start; padding-top: 8px; }
+        .ui-table td[data-check] + td { display: block; width: auto; overflow: hidden; text-align: left; padding-bottom: 6px; }
+        .ui-table td[data-align="end"] { justify-content: flex-start; padding-top: 8px; width: 100%; }
+        .ui-cell-actions { justify-content: flex-start; flex-wrap: wrap; }
         .ui-sidebar { position: fixed; inset: 0 auto 0 0; width: 272px; z-index: 50; transform: translateX(-105%); transition: transform .2s ease; padding: 23px 14px 14px; }
         .ui-sidebar .ui-hide-compact { display: block; }
         .ui-brand { justify-content: flex-start; padding: 0 11px 20px; }
