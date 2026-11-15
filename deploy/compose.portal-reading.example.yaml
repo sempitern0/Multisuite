@@ -1,0 +1,15 @@
+# Applied automatically by Make when reading.env exists: the portal shows Lectura and manages
+# its accounts. Container environment wins over app/.env.
+services:
+  app:
+    environment:
+      PORTAL_READING_ENABLED: "true"
+      PORTAL_READING_URL: "${PORTAL_READING_URL:-http://127.0.0.1:5000}"
+      KAVITA_PROVISIONING_ENABLED: "true"
+      KAVITA_INTERNAL_URL: "http://kavita:5000"
+  scheduler:
+    environment:
+      PORTAL_READING_ENABLED: "true"
+      PORTAL_READING_URL: "${PORTAL_READING_URL:-http://127.0.0.1:5000}"
+      KAVITA_PROVISIONING_ENABLED: "true"
+      KAVITA_INTERNAL_URL: "http://kavita:5000"

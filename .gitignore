@@ -74,5 +74,6 @@ yarn-error.log*
 # Independent service runtime and operator configuration
 /local/
 /music.env
+/reading.env
 
 s01-report.json

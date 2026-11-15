@@ -1,0 +1,13 @@
+# Use alongside compose.reading.yaml, never as the only Compose file. Joins the network the
+# portal uses to manage accounts; Kavita is reached there as http://kavita:5000.
+services:
+  kavita:
+    networks:
+      default: {}
+      accounts:
+        aliases: [kavita]
+networks:
+  default: {}
+  accounts:
+    external: true
+    name: multisuite-accounts

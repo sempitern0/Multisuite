@@ -10,14 +10,14 @@ Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_ST
 - Un incremento = una rama desde `main` + una PR. Se fusiona solo con indicación del usuario.
 
 ## Orden vigente
-1. **P04.1 Lectura** — servicio de libros y cómics (propuesta pendiente de aprobación).
+1. **P04.1 Lectura (Kavita)** — en revisión; falta la QA del usuario con libros reales.
 2. **S04** — Publicación administrativa y bibliotecas por persona (necesita tres decisiones del usuario).
 3. **P03** — Red privada (VPN/TLS), segundo dispositivo y vinculación de cuentas existentes.
 4. **P05** — Despliegue reproducible y piloto familiar.
 
 ## P04 — Servicios (uno por PR)
 Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúmenes, copia y restauración, cuotas y aislamiento; adaptador `ServiceProvisioner` con prueba en CI contra la versión fijada.
-- [ ] P04.1 Lectura de novelas y cómics (EPUB, PDF, CBZ/CBR).
+- [ ] P04.1 Lectura con Kavita: QA del usuario (KAVITA.md § QA) y copia del volumen `kavita-config` en `make nas-backup`.
 - [ ] P04.2 Vídeo: Jellyfin (medir transcodificación antes de dimensionar).
 - [ ] P04.3 Descargas: interfaz mantenida para yt-dlp con cuotas y aislamiento.
 - [ ] P04.4 Notas/documentos con interfaz web, adjuntos y exportación.

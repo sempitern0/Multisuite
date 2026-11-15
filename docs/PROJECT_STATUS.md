@@ -15,6 +15,11 @@ Instantánea a 2026-11-15 (PRs #1–#34). Se **reescribe** al cerrar cada increm
 
 Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md); librería antes que código propio; entorno local desechable mientras no haya producción.
 
+## En revisión: P04.1 Lectura con Kavita — rama `feat/p04-1-kavita`
+- Stack autónomo `compose.reading.yaml` (Kavita 0.9.1, solo local, bibliotecas en solo lectura) integrado en `make up` con `reading.env`; `portal:reading-setup` crea la cuenta de servicio y las bibliotecas Libros, Cómics, Manga y Documentación técnica.
+- Tarjeta «Lectura» y cuentas gestionadas como Música (alta, contraseña, renombrado, activar/desactivar, suspensión, baja) mediante el adaptador `KavitaAccounts`.
+- Validación: CI con Kavita real y con un Kavita simulado para fallos y reintentos. Pendiente: QA del usuario con libros reales.
+
 ## Acciones pendientes del usuario
 - `make rebuild` (WebP y ExifTool) y QA de lo reciente (ROADMAP § QA).
 - Guardar `NAS_FILES_KEY` fuera del servidor.

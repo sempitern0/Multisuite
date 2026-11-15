@@ -1,0 +1,36 @@
+# Standalone stack for Lectura (Kavita): do NOT merge with Laravel's compose.yaml.
+# Libraries are mounted read-only: Kavita reads them, the portal never writes there.
+name: ${READING_PROJECT_NAME:-multisuite-reading}
+services:
+  kavita:
+    image: ${KAVITA_IMAGE:-jvmilazz0/kavita:0.9.1}
+    restart: unless-stopped
+    environment:
+      TZ: ${KAVITA_TZ:-Europe/Madrid}
+    ports:
+      - "127.0.0.1:${KAVITA_PORT:-5000}:5000"
+    volumes:
+      # Database, settings, covers and logs. A named volume: the image runs as root and
+      # keeps ownership consistent on Linux and Docker Desktop alike.
+      - kavita-config:/kavita/config
+      - { type: bind, source: "${KAVITA_BOOKS_PATH:-./local/kavita/books}", target: /books, read_only: true, bind: { create_host_path: true } }
+      - { type: bind, source: "${KAVITA_COMICS_PATH:-./local/kavita/comics}", target: /comics, read_only: true, bind: { create_host_path: true } }
+      - { type: bind, source: "${KAVITA_MANGA_PATH:-./local/kavita/manga}", target: /manga, read_only: true, bind: { create_host_path: true } }
+      - { type: bind, source: "${KAVITA_DOCS_PATH:-./local/kavita/docs}", target: /docs, read_only: true, bind: { create_host_path: true } }
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  kavita-config: {}

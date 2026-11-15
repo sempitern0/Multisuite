@@ -19,12 +19,13 @@ El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada ser
 | `app/` | Aplicación Laravel (se versiona entera con lockfiles) |
 | `compose.yaml`, `compose.production.yaml` | Stack del portal heredado de Laravel Foundry |
 | `compose.music.yaml`, `music.env.example` | Navidrome independiente |
-| `deploy/*.yaml` | Overlays que aplica Make: cuentas/red compartida con Música y NAS de desarrollo (`compose.nas-dev.yaml`). En el servidor, `compose.nas.yaml` (local, generado por `make nas-apply`) lo sustituye |
+| `compose.reading.yaml`, `reading.env.example` | Kavita (Lectura) independiente |
+| `deploy/*.yaml` | Overlays que aplica Make: cuentas/red compartida con Música y Lectura (`compose.*-accounts`, `compose.portal-reading`) y NAS de desarrollo (`compose.nas-dev.yaml`). En el servidor, `compose.nas.yaml` (local, generado por `make nas-apply`) lo sustituye |
 | `docker/` | Imágenes PHP/Nginx, Caddy, gateway musical (`docker/music-proxy`) |
 | `scripts/` | Setup/preflight/backup en Bash y PowerShell (paridad obligatoria); `nas-backup.sh` (restic, solo servidor Linux) con `backup.env` |
 | `tests/` | Pruebas de infraestructura (Python/Bash/PowerShell/Node) y laboratorio `tests/isolation/` |
 | `docs/` | Documentación del producto; `docs/foundry/` = guías heredadas de la plantilla |
-| `Makefile` | Punto de entrada: `make up`, `make test`, `make artisan CMD=…`, `make npm CMD=…`, `music-*` |
+| `Makefile` | Punto de entrada: `make up`, `make test`, `make artisan CMD=…`, `make npm CMD=…`, `music-*`, `reading-*` |
 
 ## Aplicación (`app/`)
 | Dominio | Código clave | Doc |
@@ -37,7 +38,7 @@ El portal **no** controla Docker, no monta discos ni hace de proxy PHP. Cada ser
 | Invitaciones | `InvitationController`, `Models/Invitation`, `Notifications/PortalInvitation` | INVITATIONS.md |
 | Alta manual y primer acceso | `Actions/Users/CreateUser`, `InitialPasswordController`, `Middleware/EnsureInitialPasswordChanged` | USER_MANAGEMENT.md |
 | Suspensión y fotos de perfil | `Actions/Users/{SetSuspension,UpdateAvatar,RemoveAvatar}`, `Middleware/EnsureAccountIsActive`, `Services/Users/Avatars` (recorte, WebP 256 px, disco privado), `AvatarController` (`/avatars/{user}/{hash}`), `UserPolicy::{changeAvatar,removeAvatar,viewAvatar}`, `resources/js/avatar-editor.js` | USER_MANAGEMENT.md |
-| Cuentas de servicio | `Services/ServiceAccounts` (estado local, elegibilidad, bloqueo y reactivación), puerto `Services/Provisioning/ServiceProvisioner` con registro `ServiceProvisioners` y adaptador `Services/NavidromeAccounts`, `config/provisioning.php`, `portal:sync-accounts`, `portal:accounts-status` | SERVICE_ACCOUNTS.md |
+| Cuentas de servicio | `Services/ServiceAccounts` (estado local, elegibilidad, bloqueo y reactivación), puerto `Services/Provisioning/ServiceProvisioner` con registro `ServiceProvisioners`, adaptadores `Services/NavidromeAccounts` y `Services/KavitaAccounts` (Lectura; `portal:reading-setup` prepara Kavita), `Provisioning/ServiceUrl`, `config/provisioning.php`, `portal:sync-accounts`, `portal:accounts-status` | SERVICE_ACCOUNTS.md · KAVITA.md |
 | Sesión musical | `MusicSessionController`, `Services/MusicSessionBridge`, `docker/music-proxy/` | MUSIC_SESSION_BRIDGE.md |
 | Auditoría | `Services/AdminAudit`, `Enums/ServiceAuditAction`, página Livewire `pages::admin.activity` | ADMIN_AUDIT.md |
 | Mis archivos | Páginas Livewire `resources/views/pages/files/{index,show,trash,exports}` (+ componente local `entry-actions`) (única entrada a las operaciones; búsquedas acotadas al propietario en cada petición) sobre `Services/Files/PersonalFiles` (carpetas, explorador, papelera, versiones, retención), `Services/Storage/{FileCipher,EncryptedWriter,StoredBlob}` (cifrado en reposo; se lee siempre a través de `StoredBlob`), `Http/Responses/BlobResponse` (descarga con rangos), `Services/Files/ZipStreamWriter`, `portal:files-key`, `Enums/FileKind` (único dueño de la clasificación por tipo: filtro SQL, etiquetas e iconos), `Services/Files/FileExports` y `Services/Files/FilePreview` (vista previa de solo lectura). `FileController` y `FileExportController` conservan solo lo que no es página: registro de subida (JSON para `resources/js/files.js`), contenido binario y descarga de ZIP. `Livewire/Concerns/ManagesOwnFiles` (papelera, restaurar, versiones y borrado compartidos por las páginas), `Middleware/RestrictPreviewImages` (CSP de la vista previa), `Support/DomainErrors`, `Policies/{UserFilePolicy,FolderPolicy}`, `portal:files-purge`, `portal:exports-run`. Pruebas con `tests/Concerns/UsesFilePages` | STORAGE.md |

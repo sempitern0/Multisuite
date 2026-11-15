@@ -45,6 +45,10 @@ class DevBootstrap extends Command
         if (config('nas.encrypt_files') && $this->call('portal:files-key') !== self::SUCCESS) {
             return self::FAILURE;
         }
+        // Lectura is optional: a failure is reported but never blocks the rest of the environment.
+        if (config('provisioning.reading.enabled')) {
+            $this->call('portal:reading-setup');
+        }
 
         try {
             $report = $inventory->inspect();

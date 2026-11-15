@@ -11,5 +11,13 @@ return [
             'enabled' => env('PORTAL_MUSIC_ENABLED', false),
             'url' => env('PORTAL_MUSIC_URL', ''),
         ],
+        'reading' => [
+            'name' => 'Lectura',
+            'icon' => 'book',
+            'description' => 'Novelas, cómics, manga y documentación técnica en Kavita.',
+            'category' => 'Leer',
+            'enabled' => env('PORTAL_READING_ENABLED', false),
+            'url' => env('PORTAL_READING_URL', ''),
+        ],
     ],
 ];

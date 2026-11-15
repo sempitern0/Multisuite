@@ -2,6 +2,7 @@
 
 namespace App\Services\Provisioning;
 
+use App\Services\KavitaAccounts;
 use App\Services\NavidromeAccounts;
 use RuntimeException;
 
@@ -11,6 +12,7 @@ class ServiceProvisioners
     /** @var array<string, class-string<ServiceProvisioner>> */
     private const ADAPTERS = [
         'music' => NavidromeAccounts::class,
+        'reading' => KavitaAccounts::class,
     ];
 
     public function supports(string $service): bool

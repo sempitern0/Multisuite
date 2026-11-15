@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ServiceAccount;
 use App\Models\User;
 use App\Services\Provisioning\ServiceProvisioner;
+use App\Services\Provisioning\ServiceUrl;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
@@ -137,14 +138,7 @@ class NavidromeAccounts implements ServiceProvisioner
 
     private function client(): PendingRequest
     {
-        $url = rtrim((string) config('provisioning.music.url'), '/');
-        $parts = parse_url($url);
-        if (! is_array($parts) || empty($parts['host'])
-            || isset($parts['user']) || isset($parts['pass']) || isset($parts['query']) || isset($parts['fragment'])
-            || ! in_array($parts['scheme'] ?? '', ['https', 'http'], true)
-            || (app()->isProduction() && $parts['scheme'] !== 'https')) {
-            throw new RuntimeException('configuration');
-        }
+        $url = ServiceUrl::validated((string) config('provisioning.music.url'));
 
         $client = Http::baseUrl($url)->acceptJson()->asJson()->withoutRedirecting()->connectTimeout(3)->timeout(8);
         $login = $client->post('/auth/login', [
