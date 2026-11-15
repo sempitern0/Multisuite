@@ -349,7 +349,7 @@
     .ui-segmented > .ui-btn[aria-pressed="true"] { background: #283228; color: var(--ui-text); }
     .ui-files { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; transition: opacity .18s ease; }
     .ui-files.is-loading { opacity: .55; }
-    .ui-files[data-view="gallery"] { grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); }
+    .ui-files[data-view="gallery"] { grid-template-columns: repeat(auto-fill, minmax(min(168px, calc(50% - 6px)), 1fr)); }
     .ui-files[data-view="list"] { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 4px 14px; }
     .ui-file { position: relative; border-radius: 14px; transition: background .15s ease; }
     .ui-file-link { display: grid; color: var(--ui-text); border-radius: inherit; }
@@ -366,7 +366,10 @@
     .ui-files[data-view="gallery"] .ui-file:hover, .ui-files[data-view="gallery"] .ui-file:focus-within { border-color: #45524a; }
     .ui-files[data-view="gallery"] .ui-file-link { padding: 8px 8px 10px; gap: 2px; }
     .ui-files[data-view="gallery"] .ui-file-thumb { aspect-ratio: 1; margin-bottom: 8px; border-radius: 10px; background: #111712; }
-    .ui-files[data-view="gallery"] .ui-file-thumb img, .ui-files[data-view="gallery"] .ui-file-thumb video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+    .ui-files[data-view="gallery"] .ui-file-thumb img, .ui-files[data-view="gallery"] .ui-file-thumb video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+    .ui-file-icon { display: grid; place-items: center; }
+    .ui-files[data-view="gallery"] .ui-file-thumb:has(img, video) .ui-file-icon { visibility: hidden; }
+    .ui-files[data-view="list"] .ui-file-badge { display: none; }
     .ui-files[data-view="gallery"] .ui-file-thumb svg { width: 42px; height: 42px; }
     .ui-files[data-view="gallery"] .ui-file-badge { position: absolute; left: 7px; bottom: 7px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: #000a; color: #fff; }
     .ui-files[data-view="gallery"] .ui-file-badge svg { width: 15px; height: 15px; }
