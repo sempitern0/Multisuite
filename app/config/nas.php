@@ -3,6 +3,11 @@
 return [
     // JSON is decoded only by the inventory, never while booting the application.
     'uploads_enabled' => env('NAS_UPLOADS_ENABLED', false),
+
+    // Encryption at rest of private files and ZIP exports (App\Services\Storage\FileCipher).
+    // The key lives only in this secret configuration: back it up outside the server.
+    'encrypt_files' => (bool) env('NAS_ENCRYPT_FILES', true),
+    'files_key' => env('NAS_FILES_KEY', ''),
     'upload_location' => env('NAS_UPLOAD_LOCATION', ''),
     // Safety ceiling per file (100 GiB). Files arrive in 8 MiB chunks, so web server and
     // PHP body limits do not apply; the real bound is each person's space.
@@ -35,6 +40,8 @@ return [
 
     // Lossless only: JPEG is repacked by jpegtran (same pixels and metadata). Nothing is re-encoded.
     'optimize_images' => (bool) env('NAS_OPTIMIZE_IMAGES', true),
+    // Larger JPEGs are stored as received: optimising needs the whole file at the end of the upload.
+    'optimize_max_bytes' => (int) env('NAS_OPTIMIZE_MAX_BYTES', 67108864),
 
     // Development only (portal:dev-bootstrap): default per-person space applied when
     // none has been chosen yet. Production leaves this at 0.

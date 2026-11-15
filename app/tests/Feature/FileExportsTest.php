@@ -37,6 +37,14 @@ class FileExportsTest extends TestCase
     }
 
     /** @return array<string, string> entry => content */
+    private function saved(string $bytes): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'zip');
+        file_put_contents($path, $bytes);
+
+        return $path;
+    }
+
     private function zipContents(string $path): array
     {
         $zip = new ZipArchive;
@@ -84,7 +92,7 @@ class FileExportsTest extends TestCase
         $download = $this->get('/files/exports/'.$export->id.'/download')->assertOk();
         $this->assertSame('application/zip', $download->headers->get('Content-Type'));
         $this->assertStringStartsWith('attachment', (string) $download->headers->get('Content-Disposition'));
-        $this->assertSame(['2026/agua.txt' => 'm3 14', 'luz.txt' => 'kWh 125'], $this->zipContents($download->baseResponse->getFile()->getPathname()));
+        $this->assertSame(['2026/agua.txt' => 'm3 14', 'luz.txt' => 'kWh 125'], $this->zipContents($this->saved($download->streamedContent())));
 
         // Temporary space is held in the pool, never in the person's quota.
         $this->assertSame($usedBefore, (int) UserStorageQuota::findOrFail($this->owner->id)->used_bytes);
@@ -105,7 +113,7 @@ class FileExportsTest extends TestCase
 
         $selection = $exports->request($this->owner, 'selection', null, [$this->entry('notas.md')->id], [$bills->id]);
         $this->assertSame(['notas.md', 'Facturas/luz.txt', 'Facturas/2026/agua.txt'], array_column($selection->items, 'path'));
-        $path = $exports->downloadPath($this->owner, $selection->id);
+        $path = $this->saved($exports->download($this->owner, $selection->id)->prefix(PHP_INT_MAX));
         $this->assertSame(['Facturas/2026/agua.txt', 'Facturas/luz.txt', 'notas.md'], array_keys($this->zipContents($path)));
     }
 

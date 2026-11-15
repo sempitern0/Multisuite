@@ -14,18 +14,29 @@ class LosslessOptimizer
 {
     private const TIMEOUT_SECONDS = 20;
 
-    public function optimize(string $path, string $mime): void
+    /**
+     * Whether a file of this type and size gets optimised (and so must be kept whole until
+     * the last chunk). Large files are left as received to keep the final request short.
+     */
+    public function wants(string $mime, int $bytes): bool
     {
-        if (! config('nas.optimize_images') || $mime !== 'image/jpeg') {
-            return;
+        return config('nas.optimize_images') && $mime === 'image/jpeg' && $bytes <= (int) config('nas.optimize_max_bytes');
+    }
+
+    /** @return bool true when the file was replaced by a smaller identical picture */
+    public function optimize(string $path, string $mime): bool
+    {
+        if (! $this->wants($mime, (int) filesize($path))) {
+            return false;
         }
         $candidate = $path.'.opt';
+        $replaced = false;
         try {
             $result = Process::timeout(self::TIMEOUT_SECONDS)
                 ->run(['jpegtran', '-copy', 'all', '-optimize', '-progressive', '-outfile', $candidate, $path]);
             clearstatcache();
             if ($result->successful() && $this->sameImageAndSmaller($path, $candidate) && chmod($candidate, 0600) && $this->persisted($candidate)) {
-                rename($candidate, $path);
+                $replaced = rename($candidate, $path);
             }
         } catch (Throwable) {
             // Missing tool, timeout or unreadable image: keep the original.
@@ -34,6 +45,8 @@ class LosslessOptimizer
                 @unlink($candidate);
             }
         }
+
+        return $replaced;
     }
 
     private function sameImageAndSmaller(string $original, string $candidate): bool

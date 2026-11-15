@@ -38,6 +38,9 @@
         <env name="NAS_UPLOAD_LOCATION" value="" force="true"/>
         <env name="NAS_BOOTSTRAP_DEFAULT_QUOTA_BYTES" value="0" force="true"/>
         <env name="NAS_HARDWARE_SNAPSHOT" value="" force="true"/>
+        <!-- Fixed test key: every stored file in the suite is encrypted at rest. -->
+        <env name="NAS_ENCRYPT_FILES" value="true" force="true"/>
+        <env name="NAS_FILES_KEY" value="base64:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=" force="true"/>
         <!-- Laravel reads $_SERVER before $_ENV: override both. -->
         <server name="NAS_STORAGE_VOLUMES" value="[]" force="true"/>
         <server name="NAS_UPLOADS_ENABLED" value="false" force="true"/>

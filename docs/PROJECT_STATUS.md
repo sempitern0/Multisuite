@@ -41,8 +41,14 @@ Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md
 - Barra de selección contextual (Descargar en ZIP, Mover a la papelera en bloque, quitar selección); acciones de fila al pasar el ratón; nueva carpeta y opciones de la carpeta en diálogos.
 - Validado: CI. No validado en el portal real.
 
+### S03.7 Cifrado en reposo — PR apilada sobre D04 (`feat/s03-file-encryption`)
+- Archivos y ZIP cifrados en disco con XChaCha20-Poly1305 por bloques (libsodium) y clave por archivo derivada de `NAS_FILES_KEY`, que vive solo en `app/.env`. `make up` la crea en desarrollo; sin clave no se guardan subidas nuevas.
+- Las subidas se cifran fragmento a fragmento con SHA-256 incremental: sin copia en claro (salvo JPEG ≤ 64 MiB que se optimizan), sin doble espacio y con un último fragmento rápido; el navegador espera a `ready`.
+- Descargas, vídeo y audio con rangos sobre el contenido cifrado; ZIP escritos en flujo directamente cifrados (sin `ZipArchive` ni copias intermedias).
+- Validado: CI y pruebas locales del formato (rangos, alteración, recorte, clave equivocada) y del ZIP con libzip, unzip y Python. **Pendiente del usuario**: guardar `NAS_FILES_KEY` fuera del servidor.
+
 ## Siguiente acción ejecutable
-1. Usuario: revisar D03 (`make npm CMD="run build"`): tarjetas, Mayús + clic, zoom del visor, menú contraíble y audio.
+1. Usuario: revisar D03, D04 y S03.7 (`make up` crea la clave de cifrado; `make npm CMD="run build"`). Los archivos subidos antes siguen abriéndose sin cifrar; los nuevos se guardan cifrados.
 2. Usuario: ensayo de copia de seguridad desde WSL (`make nas-backup`, `make nas-backup-verify`) y QA pendiente de D02.
 3. Siguiente hito: S04 necesita tres decisiones del usuario (ROADMAP); si no, P03.
 

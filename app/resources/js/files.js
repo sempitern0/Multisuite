@@ -60,12 +60,12 @@ const putChunk = (url, blob, csrf, onProgress) =>
                 // Non-JSON error page.
             }
             if (xhr.status >= 200 && xhr.status < 300) {
-                resolve({ received: null });
+                resolve({ received: null, state: body.state ?? null });
                 return;
             }
             // The server already has a different amount (lost response, retry): continue from there.
             if (xhr.status === 409 && Number.isInteger(body.received)) {
-                resolve({ received: body.received });
+                resolve({ received: body.received, state: body.state ?? null });
                 return;
             }
             const message = (body.errors && Object.values(body.errors).flat()[0])
@@ -80,14 +80,18 @@ const putChunk = (url, blob, csrf, onProgress) =>
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const status = (url) => fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
 const putBody = async (url, file, csrf, onProgress) => {
     let offset = 0;
     let failures = 0;
+    let state = null;
     while (offset < file.size) {
         const end = Math.min(file.size, offset + CHUNK_BYTES);
         try {
-            const { received } = await putChunk(`${url}?offset=${offset}`, file.slice(offset, end), csrf, (loaded) => onProgress((offset + loaded) / file.size));
-            offset = received ?? end;
+            const result = await putChunk(`${url}?offset=${offset}`, file.slice(offset, end), csrf, (loaded) => onProgress((offset + loaded) / file.size));
+            offset = result.received ?? end;
+            state = result.state;
             failures = 0;
         } catch (error) {
             failures++;
@@ -96,15 +100,28 @@ const putBody = async (url, file, csrf, onProgress) => {
             }
             await wait(1000 * failures);
             // Ask where the server stands before resending (the chunk may have arrived).
-            const status = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-            if (status?.state === 'ready') {
+            const current = await status(url);
+            state = current?.state ?? null;
+            if (state === 'ready') {
                 break;
             }
-            if (Number.isInteger(status?.received)) {
-                offset = status.received;
+            if (Number.isInteger(current?.received)) {
+                offset = current.received;
             }
         }
         onProgress(offset / file.size);
+    }
+    // Every byte arrived, but only the server's "ready" means the file is stored: if the
+    // last answer was lost, wait for it instead of reporting success too early.
+    for (let attempt = 0; state !== 'ready' && attempt < 20; attempt++) {
+        await wait(1500);
+        state = (await status(url))?.state ?? null;
+        if (state === 'cancelled') {
+            break;
+        }
+    }
+    if (state !== 'ready') {
+        throw new Error('El servidor no confirmó el archivo. Vuelve a subirlo.');
     }
 };
 

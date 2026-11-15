@@ -53,7 +53,7 @@ class FilePreview
             $preview['kind'] = self::kind($preview['mime'], $file->name);
             if (in_array($preview['kind'], ['text', 'markdown'], true)) {
                 $max = (int) config('nas.preview_text_max_bytes');
-                $raw = (string) file_get_contents($readable['path'], false, null, 0, max(1, $max + 1));
+                $raw = $readable['blob']->prefix(max(1, $max + 1));
                 $preview['truncated'] = strlen($raw) > $max;
                 $preview['text'] = mb_scrub(substr($raw, 0, $max), 'UTF-8');
                 if ($preview['kind'] === 'markdown' && ! $preview['truncated']) {

@@ -15,13 +15,14 @@ use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use RuntimeException;
+use Tests\Concerns\ReadsEncryptedFiles;
 use Tests\Concerns\UsesFilePages;
 use Tests\Concerns\UsesPrivateStorage;
 use Tests\TestCase;
 
 class PersonalFilesTest extends TestCase
 {
-    use RefreshDatabase;
+    use ReadsEncryptedFiles, RefreshDatabase;
     use UsesFilePages;
     use UsesPrivateStorage;
 
@@ -57,7 +58,7 @@ class PersonalFilesTest extends TestCase
         $download = $this->get('/files/'.$file->id.'/content?download=1')->assertOk();
         $this->assertSame('application/octet-stream', $download->headers->get('Content-Type'));
         $this->assertStringStartsWith('attachment', (string) $download->headers->get('Content-Disposition'));
-        $this->assertSame("Pan\nLeche\n", file_get_contents($download->baseResponse->getFile()->getPathname()));
+        $this->assertSame("Pan\nLeche\n", $download->streamedContent());
     }
 
     public function test_other_people_cannot_see_or_touch_files_or_folders(): void
@@ -127,6 +128,11 @@ class PersonalFilesTest extends TestCase
         return $this->root.'/.multisuite-private/'.$file->upload_id.'.blob';
     }
 
+    private function plain(UserFile $file): string
+    {
+        return $this->decrypted($this->blob($file), 'file:'.$file->upload_id);
+    }
+
     private function used(User $user): int
     {
         return (int) UserStorageQuota::findOrFail($user->id)->used_bytes;
@@ -145,7 +151,7 @@ class PersonalFilesTest extends TestCase
 
         $this->actingAs($this->owner)->get('/files')->assertSee('Acta.txt')->assertSee('1 elemento · 4 B');
         $this->get('/files/'.$current->id)->assertSee('Versiones anteriores');
-        $this->assertSame('uno', file_get_contents($this->get('/files/'.$old->id.'/content?download=1')->baseResponse->getFile()->getPathname()));
+        $this->assertSame('uno', $this->get('/files/'.$old->id.'/content?download=1')->streamedContent());
 
         // Restoring the old version swaps them and keeps the visible name.
         $this->promoteFile($old->id)->assertHasNoErrors();
@@ -251,7 +257,7 @@ class PersonalFilesTest extends TestCase
         $this->assertNotNull(UserFile::where('name', 'reciente.txt')->first());
         $versions = UserFile::whereNotNull('version_of_id')->orderByDesc('superseded_at')->get();
         $this->assertCount(2, $versions);                                  // v3 and v2 kept, v1 purged
-        $this->assertSame(['v3', 'v2'], $versions->map(fn ($v) => file_get_contents($this->blob($v)))->all());
+        $this->assertSame(['v3', 'v2'], $versions->map(fn ($v) => $this->plain($v))->all());
         $this->assertSame(2 + 2 + 2 + 2, $this->used($this->owner));        // v4 + v3 + v2 + reciente
     }
 
@@ -383,7 +389,7 @@ class PersonalFilesTest extends TestCase
 
         $tool($jpeg);
         $this->upload($this->owner, 'playa.jpg', $received)->assertOk();
-        $this->assertSame($jpeg, file_get_contents($this->blob($this->entry('playa.jpg'))));
+        $this->assertSame($jpeg, $this->plain($this->entry('playa.jpg')));
         $this->assertSame(strlen($jpeg), UserStorageQuota::findOrFail($this->owner->id)->used_bytes);
         $this->assertSame(0, UserStorageQuota::findOrFail($this->owner->id)->reserved_bytes);
         $this->assertSame(0600, fileperms($this->blob($this->entry('playa.jpg'))) & 0777);
@@ -391,10 +397,10 @@ class PersonalFilesTest extends TestCase
         // A result that is not the same picture, or no tool at all, keeps the upload untouched.
         $tool('not an image');
         $this->upload($this->owner, 'monte.jpg', $received)->assertOk();
-        $this->assertSame($received, file_get_contents($this->blob($this->entry('monte.jpg'))));
+        $this->assertSame($received, $this->plain($this->entry('monte.jpg')));
         Process::fake(fn () => Process::result(exitCode: 127));
         $this->upload($this->owner, 'rio.jpg', $received)->assertOk();
-        $this->assertSame($received, file_get_contents($this->blob($this->entry('rio.jpg'))));
+        $this->assertSame($received, $this->plain($this->entry('rio.jpg')));
         $this->assertSame([], glob($this->root.'/.multisuite-private/*.opt'));
     }
 
