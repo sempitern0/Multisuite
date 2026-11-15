@@ -9,6 +9,7 @@ use App\Services\ServiceAccounts;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -23,6 +24,8 @@ class KavitaProvisioningTest extends TestCase
     private array $users = [];
 
     private int $invites = 0;
+
+    private bool $passwordResetFails = false;
 
     private const TOKEN = 'to k+en/=';
 
@@ -132,6 +135,9 @@ class KavitaProvisioningTest extends TestCase
     /** @param array<string, mixed> $data */
     private function resetPassword(array $data)
     {
+        if ($this->passwordResetFails) {
+            return Http::response([], 503);
+        }
         foreach ($this->users as $id => $user) {
             if ($user['username'] === $data['userName']) {
                 $this->users[$id]['password'] = $data['password'];
@@ -261,6 +267,27 @@ class KavitaProvisioningTest extends TestCase
         $kavita->remove($account);
         $this->assertSame([], $this->users);
         $kavita->remove($account);
+    }
+
+    public function test_a_locked_account_is_not_enabled_again_if_its_new_password_cannot_be_set(): void
+    {
+        $user = $this->reader();
+        app(ServiceAccounts::class)->enroll($user, ['reading'], 'leaked-password');
+        app(ServiceAccounts::class)->syncUser($user);
+        $account = ServiceAccount::firstOrFail();
+        $kavita = app(KavitaAccounts::class);
+        $kavita->lock($account);
+
+        $this->passwordResetFails = true;
+        try {
+            $kavita->synchronize($account, 'new-password');
+            $this->fail('The failed reset must be reported.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('unavailable', $exception->getMessage());
+        }
+
+        $this->assertNotContains('Login', $this->remote($account)['roles']);
+        $this->assertSame('leaked-password', $this->remote($account)['password']);
     }
 
     public function test_reading_card_and_access_follow_the_same_rules_as_music(): void

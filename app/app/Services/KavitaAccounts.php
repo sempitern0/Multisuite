@@ -53,8 +53,10 @@ class KavitaAccounts implements ServiceProvisioner
                 $this->confirm($client, $account, $remote, $target, $password);
                 $remote = $this->find($client, $account) ?? throw new RuntimeException('unavailable');
             }
+            // Password first, sign-in last: if anything fails in between, a locked account never
+            // comes back with its previous (possibly leaked) password.
+            $this->check($client->post('/api/Account/reset-password', ['userName' => $remote['username'], 'password' => $password]));
             $this->update($client, $remote, $target, true);
-            $this->check($client->post('/api/Account/reset-password', ['userName' => $target, 'password' => $password]));
             $this->verify($client, $account, $target, true);
             // Kavita answers 200 to a password reset even for unknown users: prove the new password works.
             $login = Http::baseUrl($this->url())->acceptJson()->asJson()->withoutRedirecting()->connectTimeout(3)->timeout(8)
@@ -185,7 +187,7 @@ class KavitaAccounts implements ServiceProvisioner
         $response = $client->post('/api/Account/invite', [
             'email' => self::identity($account),
             'roles' => self::MEMBER_ROLES,
-            'libraries' => array_values(array_filter(array_map(fn (mixed $library): mixed => is_array($library) ? ($library['id'] ?? null) : null, (array) $libraries->json()), 'is_int')),
+            'libraries' => $this->libraryIds($libraries->json()),
             'ageRestriction' => ['ageRating' => -1, 'includeUnknowns' => true],
         ]);
         // 400 "already invited" means an earlier attempt got through: the account is found next.
@@ -236,11 +238,20 @@ class KavitaAccounts implements ServiceProvisioner
             'userId' => $remote['id'],
             'username' => $username,
             'roles' => $roles,
-            'libraries' => array_values(array_filter(array_map(fn (mixed $library): mixed => is_array($library) ? ($library['id'] ?? null) : null, (array) ($remote['libraries'] ?? [])), 'is_int')),
+            'libraries' => $this->libraryIds($remote['libraries'] ?? []),
             'ageRestriction' => $remote['ageRestriction'] ?? ['ageRating' => -1, 'includeUnknowns' => true],
             'email' => $remote['email'],
             'identityProvider' => 0,
         ]));
+    }
+
+    /** @return list<int> ids of a Kavita library list (LibraryDto[]) */
+    private function libraryIds(mixed $libraries): array
+    {
+        return array_values(array_filter(
+            array_map(fn (mixed $library): mixed => is_array($library) ? ($library['id'] ?? null) : null, (array) $libraries),
+            'is_int',
+        ));
     }
 
     private function verify(PendingRequest $client, ServiceAccount $account, string $username, ?bool $login): void
