@@ -2,6 +2,7 @@
 
 namespace App\Services\Files;
 
+use App\Enums\FileKind;
 use App\Models\Folder;
 use App\Models\User;
 use App\Models\UserFile;
@@ -57,23 +58,71 @@ class PersonalFiles
         return $trail;
     }
 
-    /** @return Collection<int, Folder> */
-    public function folders(User $user, ?Folder $parent): Collection
+    public const SORTS = ['name' => 'Nombre', 'date' => 'Fecha de subida', 'size' => 'Tamaño', 'type' => 'Tipo'];
+
+    /**
+     * What Mis archivos shows: a folder's contents, or — with a search — matching files
+     * and folders anywhere in the person's tree (like a desktop file explorer).
+     * Always owner-scoped; folders are listed first and only when no kind filter is set.
+     *
+     * @return array{folders: Collection<int, Folder>, files: Collection<int, UserFile>}
+     */
+    public function browse(User $user, ?Folder $folder, string $search = '', string $kind = '', string $sort = 'name', string $direction = 'asc'): array
     {
-        return Folder::where('user_id', $user->id)->where('parent_id', $parent?->id)->orderBy('name')->get();
+        $search = trim($search);
+        $direction = $direction === 'desc' ? 'desc' : 'asc';
+        $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], mb_strtolower($search)).'%';
+
+        $files = $this->visible($user);
+        if ($search === '') {
+            $files->where('user_files.folder_id', $folder?->id);
+        } else {
+            $files->whereRaw("lower(user_files.name) like ? escape '\\'", [$like]);
+        }
+        FileKind::tryFrom($kind)?->scope($files);
+        match ($sort) {
+            'date' => $files->orderBy('user_files.created_at', $direction),
+            'size' => $files->orderBy('storage_reservations.actual_bytes', $direction),
+            'type' => $files->orderBy('private_uploads.mime', $direction),
+            default => null,
+        };
+        $files->orderBy('user_files.name', $sort === 'name' ? $direction : 'asc')->orderBy('user_files.id');
+
+        $folders = new Collection;
+        if ($kind === '') {
+            $folderQuery = Folder::where('user_id', $user->id);
+            if ($search === '') {
+                $folderQuery->where('parent_id', $folder?->id);
+            } else {
+                $folderQuery->whereRaw("lower(name) like ? escape '\\'", [$like]);
+            }
+            $folders = $folderQuery->orderBy('name', $sort === 'name' ? $direction : 'asc')->limit(500)->get();
+        }
+
+        return [
+            'folders' => $folders,
+            'files' => $files->limit(2000)->get(['user_files.*', 'private_uploads.mime as mime', 'storage_reservations.actual_bytes as size']),
+        ];
     }
 
     /**
-     * Ready files with their verified size and MIME; uploads in progress are counted apart.
+     * "Carpeta / Subcarpeta" for every folder of a person (search results show where each item is).
      *
-     * @return Collection<int, UserFile>
+     * @return array<int, string>
      */
-    public function files(User $user, ?Folder $folder): Collection
+    public function folderPaths(User $user): array
     {
-        return $this->visible($user)
-            ->where('user_files.folder_id', $folder?->id)
-            ->orderBy('user_files.name')
-            ->get(['user_files.*', 'private_uploads.mime as mime', 'storage_reservations.actual_bytes as size']);
+        $folders = Folder::where('user_id', $user->id)->get(['id', 'parent_id', 'name'])->keyBy('id');
+        $paths = [];
+        foreach ($folders as $id => $folder) {
+            $names = [];
+            for ($current = $folder, $depth = 0; $current !== null && $depth < 16; $current = $folders->get((int) $current->parent_id), $depth++) {
+                array_unshift($names, $current->name);
+            }
+            $paths[(int) $id] = implode(' / ', $names);
+        }
+
+        return $paths;
     }
 
     /**

@@ -49,6 +49,8 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - [ ] QA del usuario tras `make rebuild`: zoom con ratón y en móvil, pantalla completa, un vídeo MP4 y uno de iPhone (MOV), y comprobar que una foto subida ocupa menos y se ve igual.
 - [ ] QA del usuario: subir un vídeo de varios GB y una canción de más de 8 MB; cortar la red a mitad y comprobar que continúa.
 - [ ] Opcional: pasar a la foto anterior/siguiente de la carpeta desde el visor.
+- [ ] QA del usuario del explorador (búsqueda, filtros, orden y las tres vistas, también en móvil).
+- [ ] Miniaturas generadas en el servidor si la galería se vuelve lenta con fotos grandes.
 
 ## S04 — Publicación administrativa
 - [ ] Cerrar con el usuario: imputación de contenido global a cuotas, borrado por el aportante de contenido publicado, baja del aportante.

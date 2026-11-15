@@ -228,6 +228,8 @@
     /* Toolbar & inputs */
     .ui-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
     .ui-toolbar > .ui-field { flex: 1 1 220px; max-width: 360px; }
+    .ui-toolbar > .ui-btn-icon { width: 46px; min-height: 46px; }
+    .ui-toolbar > .ui-field:has(select) { flex: 0 1 190px; }
     .ui-toolbar > .ui-form, .ui-form-inline { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
     .ui-form-inline > .ui-field { flex: 1 1 260px; max-width: 520px; }
     /* Same specificity as `.ui-form > .ui-btn:not(.ui-btn-block)` so the button sits on the input's baseline. */
@@ -341,6 +343,53 @@
     .ui-uploader { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
     .ui-uploader-pick { cursor: pointer; }
     .ui-uploader-pick:focus-within { outline: 2px solid var(--ui-accent); outline-offset: 3px; }
+    /* Explorer: filter bar, view switch and tiles. */
+    .ui-segmented { display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--ui-line); border-radius: 12px; background: #111712; }
+    .ui-segmented > .ui-btn { border-color: transparent; min-height: 34px; }
+    .ui-segmented > .ui-btn[aria-pressed="true"] { background: #283228; color: var(--ui-text); }
+    .ui-files { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; transition: opacity .18s ease; }
+    .ui-files.is-loading { opacity: .55; }
+    .ui-files[data-view="gallery"] { grid-template-columns: repeat(auto-fill, minmax(min(168px, calc(50% - 6px)), 1fr)); }
+    .ui-files[data-view="list"] { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 4px 14px; }
+    .ui-file { position: relative; border-radius: 14px; transition: background .15s ease; }
+    .ui-file-link { display: grid; color: var(--ui-text); border-radius: inherit; }
+    .ui-file-link:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+    .ui-file-name { font-weight: 650; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ui-file-meta { font-size: 12px; color: var(--ui-muted); font-variant-numeric: tabular-nums; }
+    .ui-file-thumb { position: relative; display: grid; place-items: center; overflow: hidden; color: var(--ui-accent); }
+    .ui-file-thumb svg { width: 22px; height: 22px; }
+    .ui-file-select { position: absolute; }
+    .ui-file-select input { accent-color: var(--ui-accent); width: 16px; height: 16px; display: block; }
+    .ui-file-actions { position: absolute; display: flex; gap: 4px; }
+    /* Gallery: square thumbnail, name and size underneath; selection and actions over the picture. */
+    .ui-files[data-view="gallery"] .ui-file { background: var(--ui-panel); border: 1px solid #2b342c; }
+    .ui-files[data-view="gallery"] .ui-file:hover, .ui-files[data-view="gallery"] .ui-file:focus-within { border-color: #45524a; }
+    .ui-files[data-view="gallery"] .ui-file-link { padding: 8px 8px 10px; gap: 2px; }
+    .ui-files[data-view="gallery"] .ui-file-thumb { aspect-ratio: 1; margin-bottom: 8px; border-radius: 10px; background: #111712; }
+    .ui-files[data-view="gallery"] .ui-file-thumb img, .ui-files[data-view="gallery"] .ui-file-thumb video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+    .ui-file-icon { display: grid; place-items: center; }
+    .ui-files[data-view="gallery"] .ui-file-thumb:has(img, video) .ui-file-icon { visibility: hidden; }
+    .ui-files[data-view="list"] .ui-file-badge { display: none; }
+    .ui-files[data-view="gallery"] .ui-file-thumb svg { width: 42px; height: 42px; }
+    .ui-files[data-view="gallery"] .ui-file-badge { position: absolute; left: 7px; bottom: 7px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: #000a; color: #fff; }
+    .ui-files[data-view="gallery"] .ui-file-badge svg { width: 15px; height: 15px; }
+    .ui-files[data-view="gallery"] .ui-file-select { top: 16px; left: 16px; }
+    .ui-files[data-view="gallery"] .ui-file-actions { top: 12px; right: 12px; opacity: 0; transition: opacity .15s ease; }
+    .ui-files[data-view="gallery"] .ui-file-actions .ui-btn { background: #111712e6; }
+    .ui-files[data-view="gallery"] .ui-file:hover .ui-file-actions, .ui-files[data-view="gallery"] .ui-file:focus-within .ui-file-actions { opacity: 1; }
+    @media (hover: none) { .ui-files[data-view="gallery"] .ui-file-actions { opacity: 1; } }
+    /* List: one compact line per item, in columns. */
+    .ui-files[data-view="list"] .ui-file:hover, .ui-files[data-view="list"] .ui-file:focus-within { background: #1b211c; }
+    .ui-files[data-view="list"] .ui-file-link { grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px 8px 38px; min-height: 42px; }
+    .ui-files[data-view="list"] .ui-file:has(.ui-file-actions) .ui-file-link { padding-right: 84px; }
+    .ui-files[data-view="list"] .ui-file-thumb img, .ui-files[data-view="list"] .ui-file-thumb video { display: none; }
+    .ui-files[data-view="list"] .ui-file-select { top: 50%; left: 12px; transform: translateY(-50%); }
+    .ui-files[data-view="list"] .ui-file-actions { top: 50%; right: 6px; transform: translateY(-50%); opacity: 0; }
+    .ui-files[data-view="list"] .ui-file:hover .ui-file-actions, .ui-files[data-view="list"] .ui-file:focus-within .ui-file-actions { opacity: 1; }
+    @media (hover: none) { .ui-files[data-view="list"] .ui-file-actions { opacity: 1; } }
+    .ui-file[data-fresh] { animation: ui-fresh 2.6s ease-out; }
+    .ui-file[data-fresh] .ui-file-name::after { content: " · Nuevo"; color: var(--ui-accent); font-size: 11px; }
+
     /* Drop zone: covers the page while files are dragged over it. */
     .ui-dropzone { position: fixed; inset: 14px; z-index: 80; display: grid; place-content: center; justify-items: center; gap: 12px; border: 2px dashed var(--ui-accent); border-radius: 22px; background: #0d110ecc; color: var(--ui-text); font-size: 17px; font-weight: 750; pointer-events: none; }
     .ui-dropzone[hidden] { display: none; }

@@ -21,7 +21,7 @@ new #[Title('Preferencias')] class extends Component {
 
     public function mount(): void
     {
-        $this->fill(Auth::user()->preferences()->toArray());
+        $this->fill(array_intersect_key(Auth::user()->preferences()->toArray(), UserPreferences::rules()));
     }
 
     /** Every change is saved at once: no save button, no page reload. */
@@ -30,7 +30,8 @@ new #[Title('Preferencias')] class extends Component {
         $data = $this->validate(UserPreferences::rules());
         $data['per_page'] = (int) $data['per_page'];
         $user = Auth::user();
-        $user->preferences = UserPreferences::from($data)->toArray();
+        // Keys set on other pages (e.g. the Mis archivos view) are kept.
+        $user->preferences = UserPreferences::from($data + $user->preferences()->toArray())->toArray();
         $user->save();
         $this->applyHtmlAttributes($user->preferences()->htmlAttributes());
         $this->toast('Preferencias guardadas');
