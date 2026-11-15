@@ -47,6 +47,9 @@ Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md
 - Descargas, vídeo y audio con rangos sobre el contenido cifrado; ZIP escritos en flujo directamente cifrados (sin `ZipArchive` ni copias intermedias).
 - Validado: CI y pruebas locales del formato (rangos, alteración, recorte, clave equivocada) y del ZIP con libzip, unzip y Python. **Pendiente del usuario**: guardar `NAS_FILES_KEY` fuera del servidor.
 
+## En revisión: corrección de la barra de selección — rama `fix/selection-trash`
+- Al marcar el primer elemento, la barra de filtros (más alta) se cambiaba por la de selección y la lista subía ~100 px bajo el puntero: el siguiente clic caía en otra fila (por eso «con uno no funcionaba»). Ahora ambas barras comparten hueco (`x-ui::command-stack`) y no se mueve nada. Reproducido y comprobado en el navegador del usuario.
+
 ## Siguiente acción ejecutable
 1. Usuario: revisar D03, D04 y S03.7 (`make up` crea la clave de cifrado; `make npm CMD="run build"`). Los archivos subidos antes siguen abriéndose sin cifrar; los nuevos se guardan cifrados.
 2. Usuario: ensayo de copia de seguridad desde WSL (`make nas-backup`, `make nas-backup-verify`) y QA pendiente de D02.

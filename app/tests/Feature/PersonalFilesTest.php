@@ -328,7 +328,9 @@ class PersonalFilesTest extends TestCase
         $a = $this->entry('a.txt');
         $b = $this->entry('b.txt');
 
-        $page = Livewire::test('pages::files.index')->assertSee('ui-selection-bar', false)->assertDontSee('Volver a');
+        // Selection bar and filters share one slot: selecting never shifts the list under the pointer.
+        $page = Livewire::test('pages::files.index')->assertSee('ui-selection-bar', false)->assertSee('ui-command-stack', false)
+            ->assertSee('x-bind:inert', false)->assertDontSee('Volver a');
         // Someone else's file in the selection: nothing moves (all or nothing).
         $page->set('selectedFiles', [$a->id, $foreign->id])->call('trashSelected')->assertNotFound();
         $this->assertNull($a->fresh()->trashed_at);

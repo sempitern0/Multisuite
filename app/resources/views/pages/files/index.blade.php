@@ -278,13 +278,14 @@ new #[Title('Mis archivos')] class extends Component {
         @endforeach
 
         <x-ui::stack gap="sm">
+            <x-ui::command-stack :selecting="$selected.' > 0'">
             <x-ui::selection-bar :show="$selected.' > 0'">
                 <span class="ui-selection-count" x-text="(n => n === 1 ? '1 elemento seleccionado' : n + ' elementos seleccionados')({{ $selected }})"></span>
                 <x-ui::button variant="secondary" size="sm" icon="archive" wire:click="export('selection')">Descargar en ZIP</x-ui::button>
                 <x-ui::button variant="secondary" size="sm" icon="trash" wire:click="trashSelected" x-bind:disabled="$wire.selectedFiles.length === 0" title="Las carpetas no van a la papelera; solo los archivos seleccionados">Mover a la papelera</x-ui::button>
                 <x-ui::button variant="ghost" size="sm" icon="close" label="Quitar la selección" x-on:click="$wire.selectedFiles = []; $wire.selectedFolders = []" />
             </x-ui::selection-bar>
-            <x-ui::toolbar surface x-show="{{ $selected }} === 0">
+            <x-ui::toolbar surface x-bind:inert="{{ $selected }} > 0">
                 <x-ui::field name="q" type="search" :label="$folder === null ? 'Buscar en Mis archivos' : 'Buscar en Mis archivos (todas las carpetas)'" maxlength="100" placeholder="Nombre del archivo o carpeta" wire:model.live.debounce.300ms="search" />
                 <x-ui::select name="tipo" label="Tipo" :options="['' => 'Todos'] + \App\Enums\FileKind::options()" wire:model.live="kind" />
                 <x-ui::select name="orden" label="Ordenar por" :options="\App\Services\Files\PersonalFiles::SORTS" wire:model.live="sort" />
@@ -297,6 +298,7 @@ new #[Title('Mis archivos')] class extends Component {
                     </x-ui::segmented>
                 </x-slot:end>
             </x-ui::toolbar>
+            </x-ui::command-stack>
 
             @if ($l['searching'] || $kind !== '')
                 <x-ui::row>

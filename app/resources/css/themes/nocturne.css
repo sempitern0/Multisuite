@@ -365,6 +365,11 @@
     /* Command bar and selection bar: the controls of a list, set apart from its content. */
     .ui-toolbar-surface { padding: 14px 16px; border: 1px solid #2b342c; border-radius: 16px; background: #141a15; }
     .ui-toolbar-surface .ui-label { font-size: 12px; }
+    .ui-command-stack { display: grid; }
+    .ui-command-stack > * { grid-area: 1 / 1; min-width: 0; }
+    .ui-command-stack[data-selecting] { position: sticky; top: 10px; z-index: 30; }
+    .ui-command-stack[data-selecting] > .ui-toolbar { visibility: hidden; }
+    .ui-command-stack > .ui-selection-bar { position: static; align-self: stretch; }
     .ui-selection-bar { position: sticky; top: 10px; z-index: 30; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px 12px 18px; border-radius: 16px; background: #2a3520; border: 1px solid #55692f; box-shadow: 0 12px 30px #0008; }
     .ui-selection-count { flex: 1; min-width: 160px; font-weight: 750; font-size: 15px; color: var(--ui-text); }
     .ui-table-wrap[data-quiet] .ui-cell-actions { opacity: 0; transition: opacity .15s ease; }
