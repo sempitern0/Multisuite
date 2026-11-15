@@ -59,6 +59,7 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | `file-grid` | `view` gallery/list, `label` | Archivos y carpetas en mosaico: galería con miniaturas o lista compacta en columnas. |
 | `file-card` | `href`, `name`, `icon`, `meta`, `thumb` image/video, `src`, `spa`, `fresh`; slots `select`, `actions` | Elemento de `file-grid`. La miniatura solo se carga en galería y de forma diferida. |
 | `tile-art` | `name` | Fondo vectorial decorativo de una tarjeta de servicio según su icono (music, folder, video, book, image; otro nombre: patrón neutro). Lo dibuja `service-tile`; sin texto ni significado propio. |
+| `command-stack` | `selecting` (expresión Alpine) | Coloca la barra de filtros y la de selección en el mismo hueco: al seleccionar se intercambian sin desplazar la lista (nada se mueve bajo el puntero); la barra oculta queda inerte y el conjunto se fija arriba mientras hay selección. |
 | `selection-bar` | `show` (expresión Alpine), `label` | Barra contextual con el número de elementos seleccionados y las acciones en bloque; aparece solo con selección y queda fija arriba al desplazarse. |
 | `entry` | `href`, `icon`, `spa` | Nombre de archivo o carpeta con icono, como enlace. En tablas se recorta a dos líneas; el nombre completo queda en el tooltip. |
 | `uploader` | `store-url`, `upload-url`, `max-bytes`, `folder`, `hint` | Selector de archivos con lista de progreso; lo maneja `resources/js/files.js` (ganchos `data-uploader*`, estado en `data-state`) y emite `files-uploaded`. |
