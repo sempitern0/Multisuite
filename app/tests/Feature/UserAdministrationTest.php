@@ -90,6 +90,17 @@ class UserAdministrationTest extends TestCase
         return $member;
     }
 
+    /** A real picture of one colour: different colours give different photos. */
+    private function picture(string $name, int $width, int $height, int $red): UploadedFile
+    {
+        $image = imagecreatetruecolor($width, $height);
+        imagefill($image, 0, 0, (int) imagecolorallocate($image, $red, 90, 140));
+        ob_start();
+        imagepng($image);
+
+        return UploadedFile::fake()->createWithContent($name, (string) ob_get_clean());
+    }
+
     private function page(User $target)
     {
         return Livewire::test('pages::admin.user-edit', ['user' => User::findOrFail($target->id)]);
@@ -209,7 +220,7 @@ class UserAdministrationTest extends TestCase
         $this->actingAs($member);
 
         Livewire::test('pages::settings.profile')
-            ->set('avatar', UploadedFile::fake()->image('foto.jpg', 900, 600))
+            ->set('avatar', $this->picture('foto.png', 900, 600, 200))
             ->call('saveAvatar')->assertHasNoErrors()->assertDispatched('avatar-changed');
 
         $first = $member->fresh()->avatar_hash;
@@ -223,7 +234,7 @@ class UserAdministrationTest extends TestCase
             ->assertHeader('Content-Type', 'image/webp')->assertHeader('X-Content-Type-Options', 'nosniff');
 
         Livewire::test('pages::settings.profile')
-            ->set('avatar', UploadedFile::fake()->image('otra.png', 300, 300))
+            ->set('avatar', $this->picture('otra.png', 300, 300, 20))
             ->call('saveAvatar')->assertHasNoErrors();
         $this->assertNotSame($first, $member->fresh()->avatar_hash);
         Storage::disk('local')->assertMissing($path);

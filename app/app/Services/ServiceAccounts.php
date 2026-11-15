@@ -28,8 +28,11 @@ class ServiceAccounts
     /** @return list<string> */
     public function available(): array
     {
+        /** @var array<string, mixed> $services */
+        $services = config('portal.services', []);
+
         return array_values(array_filter(
-            array_keys(config('portal.services', [])),
+            array_map(strval(...), array_keys($services)),
             fn (string $service): bool => config('portal.services.'.$service.'.enabled')
                 && config('provisioning.'.$service.'.enabled')
                 && $this->provisioners->supports($service),

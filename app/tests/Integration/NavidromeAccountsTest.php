@@ -62,7 +62,8 @@ class NavidromeAccountsTest extends TestCase
         $this->assertSame(401, $this->login($url, ['username' => $user->email, 'password' => 'second-password'])->status());
         $this->assertSame(401, $this->login($url, ['username' => 'suite-user', 'password' => 'first-password'])->status());
         // An administrator's rename keeps the password; a lock keeps the account but stops sign-in.
-        sleep(21);
+        // Navidrome's login limiter is a sliding window: wait two windows so the operator's own logins fit.
+        sleep(41);
         $account = ServiceAccount::where('user_id', $user->id)->firstOrFail();
         app(NavidromeAccounts::class)->rename($account, 'renamed-user');
         $this->assertTrue($this->login($url, ['username' => 'renamed-user', 'password' => 'second-password'])->successful());
@@ -71,8 +72,8 @@ class NavidromeAccountsTest extends TestCase
         app(NavidromeAccounts::class)->lock($account);
         $this->assertSame(401, $this->login($url, ['username' => 'renamed-user', 'password' => 'second-password'])->status());
         $this->assertSame($remoteId, $account->remote_id);
-        // Start the second enrollment outside Navidrome's default 20-second window.
-        sleep(21);
+        // Start the second enrollment outside Navidrome's sliding 20-second window.
+        sleep(41);
         $newUser = User::factory()->create(['email' => 'another@example.com']);
         $newUser->username = 'another-user';
         $newUser->save();

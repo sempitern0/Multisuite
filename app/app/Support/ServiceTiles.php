@@ -3,8 +3,8 @@
 namespace App\Support;
 
 use App\Models\ServiceAccount;
-use App\Services\ServiceAccounts;
 use App\Models\User;
+use App\Services\ServiceAccounts;
 
 /**
  * Presentation-neutral state of the services home page. Decides which services a
