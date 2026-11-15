@@ -1,7 +1,7 @@
 @props(['model' => 'avatar', 'save' => 'saveAvatar', 'src' => null, 'initials' => ''])
 {{--
-    Contract: choose a photo and frame it (drag to move, slider, Ctrl/⌘ + wheel or pinch to zoom,
-    arrow keys and + / −) inside a circle. The browser crops it to a 512 px square and uploads it to
+    Contract: choose a photo and frame it inside a circle with Cropper.js (drag to move, zoom buttons,
+    Ctrl/⌘ + wheel or pinch, arrow keys and + / −). The browser crops it to a 512 px square and uploads it to
     the Livewire property `model`, then calls the `save` method. The server re-processes whatever
     arrives, so this is convenience, not a security boundary. Default slot: extra actions next to
     "Cambiar foto" (e.g. removing it). Errors for `model` are shown under the editor.
@@ -21,14 +21,11 @@
     <div class="ui-avatar-editor-crop" x-show="editing" x-cloak wire:ignore>
         <div class="ui-avatar-stage" x-ref="stage" tabindex="0" role="group"
              aria-label="Encuadre de la foto. Arrastra o usa las flechas para moverla; + y − para acercar o alejar."
-             x-on:pointerdown="press($event)" x-on:pointermove="drag($event)" x-on:pointerup="release($event)" x-on:pointercancel="release($event)"
-             x-on:wheel="wheel($event)" x-on:keydown="key($event)">
-            <img x-ref="image" alt="" draggable="false">
+             x-on:wheel.capture="wheel($event)" x-on:keydown="key($event)"></div>
+        <div class="ui-avatar-editor-actions">
+            <button type="button" class="ui-btn ui-btn-ghost ui-btn-icon" title="Alejar" aria-label="Alejar" x-on:click="zoom(-0.1)"><x-ui::icon name="zoom-out" /></button>
+            <button type="button" class="ui-btn ui-btn-ghost ui-btn-icon" title="Acercar" aria-label="Acercar" x-on:click="zoom(0.1)"><x-ui::icon name="zoom-in" /></button>
         </div>
-        <label class="ui-avatar-zoom">
-            <span>Zoom</span>
-            <input type="range" min="1" max="4" step="0.01" x-model.number="zoom" x-on:input="render()" aria-label="Zoom de la foto">
-        </label>
         <div class="ui-avatar-editor-actions">
             <button type="button" class="ui-btn ui-btn-primary" x-on:click="upload()" x-bind:disabled="busy">
                 <x-ui::icon name="check" /><span x-text="busy ? 'Guardando… ' + progress + ' %' : 'Guardar foto'">Guardar foto</span>

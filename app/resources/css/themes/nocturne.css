@@ -112,13 +112,11 @@
     .ui-avatar-editor-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     .ui-avatar-editor-actions .ui-btn:has(input:focus-visible) { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
     .ui-avatar-editor-crop { display: grid; gap: 14px; justify-items: start; }
-    .ui-avatar-stage { position: relative; width: min(280px, 100%); aspect-ratio: 1; overflow: hidden; border-radius: var(--ui-radius); background: var(--ui-bg); touch-action: none; cursor: grab; user-select: none; }
-    .ui-avatar-stage:active { cursor: grabbing; }
+    .ui-avatar-stage { position: relative; width: min(280px, 100%); aspect-ratio: 1; overflow: hidden; border-radius: var(--ui-radius); background: var(--ui-bg); touch-action: none; }
     .ui-avatar-stage:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; }
-    .ui-avatar-stage img { position: absolute; left: 50%; top: 50%; max-width: none; transform-origin: center; pointer-events: none; }
-    .ui-avatar-stage::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 999px #0d100eb3; outline: 2px solid #dfec7099; pointer-events: none; }
-    .ui-avatar-zoom { display: flex; align-items: center; gap: 12px; width: min(280px, 100%); color: var(--ui-sub); font-size: 13px; font-weight: 650; }
-    .ui-avatar-zoom input { flex: 1; accent-color: var(--ui-accent); }
+    /* Cropper.js elements: the canvas fills the stage; the fixed selection is drawn as a circle. */
+    .ui-avatar-stage cropper-canvas { width: 100%; height: 100%; }
+    .ui-avatar-stage cropper-selection { border-radius: 50%; box-shadow: 0 0 0 999px #0d100eb3; outline: 2px solid #dfec7099; pointer-events: none; }
     .ui-main { min-width: 0; flex: 1; }
     .ui-topbar { height: 64px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--ui-line); padding: 0 40px; }
     .ui-topbar-title { font-size: 13px; color: var(--ui-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

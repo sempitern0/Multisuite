@@ -47,6 +47,8 @@
         'key' => '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3M14 9l2 2"/>',
         'copy' => '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
         'fingerprint' => '<path d="M6 10a6 6 0 0 1 12 0c0 4-.5 7-2 10M9 20c1.5-3 2-6 2-10a1 1 0 0 1 2 0c0 3-.3 6-1.5 9M4.5 15c.5-1.5.5-3 .5-5M19.5 15c.3-1.5.5-3 .5-5"/>',
+        'zoom-in' => '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5M8.5 11h5M11 8.5v5"/>',
+        'zoom-out' => '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5M8.5 11h5"/>',
         'plus' => '<path d="M12 5v14M5 12h14"/>',
     ];
 @endphp

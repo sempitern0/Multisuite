@@ -1,22 +1,42 @@
-// Profile photo editor (x-ui::avatar-editor): frame a photo inside a circle and upload a
-// 512 px square. Only convenience: the server decodes, crops and re-encodes whatever arrives.
+// Profile photo editor (x-ui::avatar-editor) on Cropper.js 2: a fixed square selection
+// shown as a circle; the picture moves and zooms underneath and always covers it. Only
+// convenience: the server decodes, crops and re-encodes whatever arrives.
+import Cropper from 'cropperjs';
 
 const OUTPUT = 512;
-const MAX_ZOOM = 4;
 const MAX_INPUT = 40 * 1024 * 1024;
 const TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+// Fixed selection (not movable or resizable): the person frames the picture, not the box.
+const TEMPLATE = `
+<cropper-canvas background>
+  <cropper-image translatable scalable></cropper-image>
+  <cropper-shade hidden></cropper-shade>
+  <cropper-handle action="move" plain></cropper-handle>
+  <cropper-selection aspect-ratio="1" initial-coverage="0.9"></cropper-selection>
+</cropper-canvas>`;
+
+// Rejects a move or zoom that would uncover part of the circle (Cropper.js documented recipe).
+const keepCovered = (canvas, image, selection) => (event) => {
+    const probe = image.cloneNode();
+    probe.style.transform = `matrix(${event.detail.matrix.join(', ')})`;
+    probe.style.opacity = '0';
+    canvas.appendChild(probe);
+    const picture = probe.getBoundingClientRect();
+    canvas.removeChild(probe);
+    const circle = selection.getBoundingClientRect();
+    if (circle.top < picture.top || circle.right > picture.right || circle.bottom > picture.bottom || circle.left < picture.left) {
+        event.preventDefault();
+    }
+};
 
 const avatarEditor = ({ model, save }) => ({
     editing: false,
     busy: false,
     progress: 0,
     problem: '',
-    zoom: 1,
-    x: 0,
-    y: 0,
     url: null,
-    pointers: new Map(),
-    pinch: 0,
+    cropper: null,
 
     choose(event) {
         const file = event.target.files?.[0];
@@ -32,116 +52,63 @@ const avatarEditor = ({ model, save }) => ({
             this.problem = 'La foto pesa demasiado (más de 40 MB).';
             return;
         }
-        this.release();
+        this.problem = '';
+        this.close();
         this.url = URL.createObjectURL(file);
-        const image = this.$refs.image;
-        image.onload = () => {
-            this.problem = '';
-            this.zoom = 1;
-            this.x = 0;
-            this.y = 0;
+        const source = new Image();
+        source.alt = '';
+        source.onload = () => {
             this.editing = true;
-            this.$nextTick(() => {
-                this.render();
-                this.$refs.stage.focus();
-            });
+            this.$nextTick(() => this.mount(source));
         };
-        image.onerror = () => {
+        source.onerror = () => {
             this.problem = 'No se ha podido abrir la foto. Prueba con otra.';
+            this.close();
         };
-        image.src = this.url;
+        source.src = this.url;
     },
 
-    // Scale at zoom 1: the picture just covers the circle.
-    base() {
-        const image = this.$refs.image;
-        return this.$refs.stage.clientWidth / Math.min(image.naturalWidth || 1, image.naturalHeight || 1);
-    },
-
-    render() {
-        const image = this.$refs.image;
+    mount(source) {
         const stage = this.$refs.stage;
-        if (!image.naturalWidth || !stage.clientWidth) {
-            return;
-        }
-        const scale = this.base() * this.zoom;
-        const limitX = Math.max(0, (image.naturalWidth * scale - stage.clientWidth) / 2);
-        const limitY = Math.max(0, (image.naturalHeight * scale - stage.clientHeight) / 2);
-        this.x = Math.min(limitX, Math.max(-limitX, this.x));
-        this.y = Math.min(limitY, Math.max(-limitY, this.y));
-        image.style.width = `${image.naturalWidth * this.base()}px`;
-        image.style.height = `${image.naturalHeight * this.base()}px`;
-        image.style.transform = `translate(-50%, -50%) translate(${this.x}px, ${this.y}px) scale(${this.zoom})`;
+        stage.replaceChildren();
+        this.cropper = new Cropper(source, { container: stage, template: TEMPLATE });
+        const canvas = this.cropper.getCropperCanvas();
+        const image = this.cropper.getCropperImage();
+        const selection = this.cropper.getCropperSelection();
+        image.$ready().then(() => {
+            image.$center('cover');
+            image.addEventListener('transform', keepCovered(canvas, image, selection));
+            stage.focus();
+        });
     },
 
-    setZoom(value) {
-        this.zoom = Math.min(MAX_ZOOM, Math.max(1, value));
-        this.render();
+    zoom(step) {
+        this.cropper?.getCropperImage()?.$zoom(step);
     },
 
-    press(event) {
-        this.$refs.stage.setPointerCapture(event.pointerId);
-        this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-        this.pinch = this.pointers.size === 2 ? this.spread() : 0;
-    },
-
-    drag(event) {
-        const last = this.pointers.get(event.pointerId);
-        if (!last) {
-            return;
-        }
-        const now = { x: event.clientX, y: event.clientY };
-        this.pointers.set(event.pointerId, now);
-        if (this.pointers.size === 2) {
-            const spread = this.spread();
-            if (this.pinch > 0) {
-                this.setZoom(this.zoom * (spread / this.pinch));
-            }
-            this.pinch = spread;
-            return;
-        }
-        this.x += now.x - last.x;
-        this.y += now.y - last.y;
-        this.render();
-    },
-
-    release(event) {
-        if (event) {
-            this.pointers.delete(event.pointerId);
-        } else {
-            this.pointers.clear();
-        }
-        this.pinch = 0;
-    },
-
-    spread() {
-        const [a, b] = [...this.pointers.values()];
-        return Math.hypot(a.x - b.x, a.y - b.y);
-    },
-
-    // Same rule as the image viewer: the wheel alone keeps scrolling the page.
+    // Same rule as the image viewer: the wheel alone keeps scrolling the page, Ctrl/⌘ + wheel zooms.
     wheel(event) {
         if (!event.ctrlKey && !event.metaKey) {
-            return;
+            event.stopPropagation();
         }
-        event.preventDefault();
-        this.setZoom(this.zoom * (event.deltaY < 0 ? 1.08 : 1 / 1.08));
     },
 
     key(event) {
+        const image = this.cropper?.getCropperImage();
+        if (!image) {
+            return;
+        }
         const step = event.shiftKey ? 40 : 10;
-        const moves = { ArrowLeft: [step, 0], ArrowRight: [-step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] };
+        const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
         if (moves[event.key]) {
             event.preventDefault();
-            this.x += moves[event.key][0];
-            this.y += moves[event.key][1];
-            this.render();
+            image.$move(...moves[event.key]);
         } else if (event.key === '+' || event.key === '=') {
             event.preventDefault();
-            this.setZoom(this.zoom + 0.1);
+            image.$zoom(0.1);
         } else if (event.key === '-') {
             event.preventDefault();
-            this.setZoom(this.zoom - 0.1);
+            image.$zoom(-0.1);
         } else if (event.key === 'Enter') {
             event.preventDefault();
             this.upload();
@@ -151,37 +118,21 @@ const avatarEditor = ({ model, save }) => ({
         }
     },
 
-    // The visible circle, in picture pixels, drawn onto a 512 px square.
-    crop() {
-        const image = this.$refs.image;
-        const stage = this.$refs.stage;
-        const scale = this.base() * this.zoom;
-        const side = stage.clientWidth / scale;
-        const left = image.naturalWidth / 2 - this.x / scale - side / 2;
-        const top = image.naturalHeight / 2 - this.y / scale - side / 2;
-        const canvas = document.createElement('canvas');
-        canvas.width = OUTPUT;
-        canvas.height = OUTPUT;
-        canvas.getContext('2d').drawImage(image, left, top, side, side, 0, 0, OUTPUT, OUTPUT);
-        return new Promise((resolve) => {
-            canvas.toBlob((blob) => {
-                if (blob && blob.type === 'image/webp') {
-                    resolve(blob);
-                } else {
-                    canvas.toBlob(resolve, 'image/jpeg', 0.92);
-                }
-            }, 'image/webp', 0.92);
-        });
+    async blob() {
+        const canvas = await this.cropper.getCropperSelection().$toCanvas({ width: OUTPUT, height: OUTPUT });
+        const encode = (type, quality) => new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+        const webp = await encode('image/webp', 0.92);
+        return webp && webp.type === 'image/webp' ? webp : encode('image/jpeg', 0.92);
     },
 
     async upload() {
-        if (this.busy || !this.$refs.image.naturalWidth) {
+        if (this.busy || !this.cropper) {
             return;
         }
         this.busy = true;
         this.progress = 0;
         this.problem = '';
-        const blob = await this.crop();
+        const blob = await this.blob().catch(() => null);
         if (!blob) {
             this.busy = false;
             this.problem = 'Tu navegador no ha podido preparar la foto.';
@@ -213,7 +164,8 @@ const avatarEditor = ({ model, save }) => ({
 
     close() {
         this.editing = false;
-        this.release();
+        this.cropper = null;
+        this.$refs.stage?.replaceChildren();
         if (this.url) {
             URL.revokeObjectURL(this.url);
             this.url = null;

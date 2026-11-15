@@ -30,8 +30,8 @@ Instantánea a 2026-11-15. Historial detallado: git log y PRs #1–#33. Este arc
 
 Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md); entorno local desechable mientras no haya producción; el diseño va por delante para que lo nuevo nazca con el tema; sin librerías de tablas por ahora (D010 en DEPENDENCIES.md).
 
-## Pendiente inmediato
-- Sustituir el editor de recorte propio de la foto de perfil por Cropper.js 2 (política «librería antes que código propio», DEPENDENCIES.md). Código preparado; falta el lockfile, que genera el usuario con `make npm CMD="install cropperjs@2"` (el entorno del agente no alcanza npm).
+## En revisión: editor de foto con Cropper.js — rama `feat/u03b-cropperjs`
+- El encuadre de la foto de perfil usa Cropper.js 2.3.1 en lugar del editor propio (D014). Validación: CI (compilación y pruebas); comprobación visual pendiente del usuario.
 
 ## Siguiente acción ejecutable
 1. Usuario: `make rebuild` y QA de U03 y S03.8 (ROADMAP).
