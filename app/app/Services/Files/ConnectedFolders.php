@@ -45,12 +45,12 @@ class ConnectedFolders
             if (! in_array($definition['service'], $this->accounts->available(), true) || ! $this->accounts->entitled($user, $definition['service'])) {
                 continue;
             }
-            if (Folder::where('user_id', $user->id)->where('connection', $connection)->exists()) {
+            if (Folder::where('user_id', $user->id)->where('media_link', $connection)->exists()) {
                 continue;
             }
             DB::transaction(function () use ($user, $connection, $definition): void {
                 User::whereKey($user->id)->lockForUpdate()->firstOrFail();
-                if (Folder::where('user_id', $user->id)->where('connection', $connection)->exists()) {
+                if (Folder::where('user_id', $user->id)->where('media_link', $connection)->exists()) {
                     return;
                 }
                 // An ordinary folder may already use the name: never take over its (encrypted) content.
@@ -64,7 +64,7 @@ class ConnectedFolders
                 $folder->user_id = $user->id;
                 $folder->parent_id = null;
                 $folder->name = $name;
-                $folder->connection = $connection;
+                $folder->media_link = $connection;
                 $folder->save();
             });
         }
@@ -75,7 +75,7 @@ class ConnectedFolders
     {
         for ($depth = 0; $folder !== null && $depth < 32; $depth++) {
             if ($folder->parent_id === null) {
-                return $folder->connection;
+                return $folder->media_link;
             }
             $folder = Folder::find($folder->parent_id);
         }

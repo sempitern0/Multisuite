@@ -531,7 +531,7 @@ class PersonalFiles
     private function assertNotConnected(Folder $folder): void
     {
         if ($folder->isConnected()) {
-            throw new RuntimeException('Esta carpeta está conectada con '.config('portal.services.'.ConnectedFolders::definition((string) $folder->connection)['service'].'.name').': no se puede renombrar ni eliminar.');
+            throw new RuntimeException('Esta carpeta está conectada con '.config('portal.services.'.ConnectedFolders::definition((string) $folder->media_link)['service'].'.name').': no se puede renombrar ni eliminar.');
         }
     }
 

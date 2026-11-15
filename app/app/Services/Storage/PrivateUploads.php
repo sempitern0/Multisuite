@@ -45,7 +45,7 @@ class PrivateUploads
             $upload->id = $key;
             $upload->location_id = $location;
             $upload->root_hash = hash('sha256', $root);
-            $upload->connection = $connection;
+            $upload->media_link = $connection;
             $upload->state = 'pending';
             $upload->save();
 
@@ -90,7 +90,7 @@ class PrivateUploads
             if ($received === 0) {
                 // The type is decided by the first bytes, so a refused file stops at once.
                 $mime = (new finfo(FILEINFO_MIME_TYPE))->buffer($data);
-                $allowed = [...(array) config('nas.allowed_mimes', []), ...($upload->connection === null ? [] : ConnectedFolders::definition($upload->connection)['mimes'])];
+                $allowed = [...(array) config('nas.allowed_mimes', []), ...($upload->media_link === null ? [] : ConnectedFolders::definition($upload->media_link)['mimes'])];
                 if ($mime === false || ! in_array($mime, $allowed, true)) {
                     throw new RuntimeException('Tamaño o formato no permitido.');
                 }
@@ -99,7 +99,7 @@ class PrivateUploads
                 // removed (and a JPEG repacked) once the whole file is here, then they are sealed.
                 // A connected folder keeps it unencrypted: its service reads the same bytes.
                 $whole = $this->metadata->wants($mime) || $this->optimizer->wants($mime, $reservation->bytes);
-                $upload->cipher = $this->cipher() !== null && ! $whole && $upload->connection === null ? FileCipher::FORMAT : null;
+                $upload->cipher = $this->cipher() !== null && ! $whole && $upload->media_link === null ? FileCipher::FORMAT : null;
             }
             $hash = $this->hashUpTo($upload, $part, $sealed, $received);
             hash_update($hash, $data);
@@ -197,11 +197,11 @@ class PrivateUploads
     /** Whole-file uploads (encryption off, or an optimised JPEG): encrypt once if needed, then publish. */
     private function publishWhole(PrivateUpload $upload, string $part, string $sealed, string $final): void
     {
-        $cipher = $upload->connection === null ? $this->cipher() : null;
+        $cipher = $upload->media_link === null ? $this->cipher() : null;
         if ($cipher === null) {
             // Connected files are also read by the service (through MediaLibrary's link); the
             // private directory itself stays 0700, so nobody else can reach them there.
-            if (($upload->connection !== null && ! chmod($part, 0644)) || ! rename($part, $final)) {
+            if (($upload->media_link !== null && ! chmod($part, 0644)) || ! rename($part, $final)) {
                 throw new RuntimeException('No se puede finalizar el archivo.');
             }
 
@@ -376,7 +376,7 @@ class PrivateUploads
      */
     public function connectedPath(PrivateUpload $upload): ?string
     {
-        if ($upload->state !== 'ready' || $upload->connection === null || $upload->cipher !== null) {
+        if ($upload->state !== 'ready' || $upload->media_link === null || $upload->cipher !== null) {
             return null;
         }
         [$root, , $location] = $this->destination();

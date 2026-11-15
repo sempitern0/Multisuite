@@ -347,9 +347,9 @@ new #[Title('Mis archivos')] class extends Component {
                     @foreach ($l['folders'] as $child)
                         <tr wire:key="folder-{{ $child->id }}">
                             <x-ui::td check><input type="checkbox" value="{{ $child->id }}" wire:model="selectedFolders" aria-label="Seleccionar carpeta {{ $child->name }}"></x-ui::td>
-                            <x-ui::td><x-ui::entry :href="route('files.folder', $child)" :icon="$child->isConnected() ? \App\Services\Files\ConnectedFolders::definition($child->connection)['icon'] : 'folder'" spa>{{ $child->name }}</x-ui::entry></x-ui::td>
+                            <x-ui::td><x-ui::entry :href="route('files.folder', $child)" :icon="$child->isConnected() ? \App\Services\Files\ConnectedFolders::definition($child->media_link)['icon'] : 'folder'" spa>{{ $child->name }}</x-ui::entry></x-ui::td>
                             @if ($l['searching'])<x-ui::td label="Ubicación">{{ $where($child->parent_id) }}</x-ui::td>@endif
-                            <x-ui::td label="Tipo" nowrap>{{ $child->isConnected() ? 'Conectada con '.config('portal.services.'.\App\Services\Files\ConnectedFolders::definition($child->connection)['service'].'.name') : 'Carpeta' }}</x-ui::td>
+                            <x-ui::td label="Tipo" nowrap>{{ $child->isConnected() ? 'Conectada con '.config('portal.services.'.\App\Services\Files\ConnectedFolders::definition($child->media_link)['service'].'.name') : 'Carpeta' }}</x-ui::td>
                             <x-ui::td label="Subido" nowrap>{{ $child->created_at?->format('d/m/Y') }}</x-ui::td>
                             <x-ui::td label="Tamaño" nowrap>{{ $describe($l['summaries'][$child->id] ?? ['items' => 0, 'bytes' => 0]) }}</x-ui::td>
                             <x-ui::td align="end"></x-ui::td>
@@ -378,7 +378,7 @@ new #[Title('Mis archivos')] class extends Component {
             @else
                 <x-ui::file-grid :view="$l['view']" label="Contenido de la carpeta">
                     @foreach ($l['folders'] as $child)
-                        <x-ui::file-card wire:key="folder-{{ $child->id }}" :href="route('files.folder', $child)" spa :icon="$child->isConnected() ? \App\Services\Files\ConnectedFolders::definition($child->connection)['icon'] : 'folder'" :name="$child->name"
+                        <x-ui::file-card wire:key="folder-{{ $child->id }}" :href="route('files.folder', $child)" spa :icon="$child->isConnected() ? \App\Services\Files\ConnectedFolders::definition($child->media_link)['icon'] : 'folder'" :name="$child->name"
                             :meta="($l['searching'] ? $where($child->parent_id).' · ' : '').$describe($l['summaries'][$child->id] ?? ['items' => 0, 'bytes' => 0])">
                             <x-slot:select><input type="checkbox" value="{{ $child->id }}" wire:model="selectedFolders" aria-label="Seleccionar carpeta {{ $child->name }}"></x-slot:select>
                         </x-ui::file-card>

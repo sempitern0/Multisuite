@@ -65,8 +65,8 @@ class MediaLibrary
         return Cache::lock('media-sync:'.$user->id, 120)->block(30, function () use ($user): int {
             $this->folders->ensure($user);
             $linked = 0;
-            foreach (Folder::where('user_id', $user->id)->whereNotNull('connection')->get() as $root) {
-                $definition = ConnectedFolders::definition((string) $root->connection);
+            foreach (Folder::where('user_id', $user->id)->whereNotNull('media_link')->get() as $root) {
+                $definition = ConnectedFolders::definition((string) $root->media_link);
                 $account = ServiceAccount::where('user_id', $user->id)->where('service', $definition['service'])->first();
                 if ($account === null) {
                     continue;

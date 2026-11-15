@@ -80,7 +80,7 @@ class ConnectedFoldersTest extends TestCase
 
     private function connected(User $user, string $connection): Folder
     {
-        return Folder::where('user_id', $user->id)->where('connection', $connection)->firstOrFail();
+        return Folder::where('user_id', $user->id)->where('media_link', $connection)->firstOrFail();
     }
 
     private function media(ServiceAccount $account, ?string $section): string
@@ -96,14 +96,14 @@ class ConnectedFoldersTest extends TestCase
         $this->get('/files')->assertOk()->assertSee('Música')->assertSee('Libros (conectada)')->assertSee('Cómics')->assertSee('Conectada con Lectura');
         app(ConnectedFolders::class)->ensure($this->owner);
 
-        $this->assertSame(['books', 'comics', 'music'], Folder::where('user_id', $this->owner->id)->whereNotNull('connection')->orderBy('connection')->pluck('connection')->all());
-        $this->assertSame(0, Folder::where('name', 'Libros')->whereNotNull('connection')->count());
+        $this->assertSame(['books', 'comics', 'music'], Folder::where('user_id', $this->owner->id)->whereNotNull('media_link')->orderBy('media_link')->pluck('media_link')->all());
+        $this->assertSame(0, Folder::where('name', 'Libros')->whereNotNull('media_link')->count());
 
         $member = User::factory()->create();
         $member->service_access = ['music'];
         $member->save();
         app(ConnectedFolders::class)->ensure($member);
-        $this->assertSame(['music'], Folder::where('user_id', $member->id)->whereNotNull('connection')->pluck('connection')->all());
+        $this->assertSame(['music'], Folder::where('user_id', $member->id)->whereNotNull('media_link')->pluck('media_link')->all());
     }
 
     public function test_connected_folders_cannot_be_renamed_or_deleted(): void
@@ -137,7 +137,7 @@ class ConnectedFoldersTest extends TestCase
 
         $entry = $this->entry('tomo 1.pdf');
         $upload = PrivateUpload::findOrFail($entry->upload_id);
-        $this->assertSame(['books', null], [$upload->connection, $upload->cipher]);
+        $this->assertSame(['books', null], [$upload->media_link, $upload->cipher]);
         $blob = $this->root.'/.multisuite-private/'.$upload->id.'.blob';
         $this->assertSame($pdf, file_get_contents($blob));
         $this->assertSame(0644, fileperms($blob) & 0777);
@@ -177,7 +177,7 @@ class ConnectedFoldersTest extends TestCase
         $this->upload($this->owner, 'privado.pdf', "%PDF-1.4\n%%EOF\n")->assertOk();
         app(MediaLibrary::class)->sync($this->owner);
 
-        $this->assertNull(PrivateUpload::findOrFail($this->entry('privado.pdf')->upload_id)->connection);
+        $this->assertNull(PrivateUpload::findOrFail($this->entry('privado.pdf')->upload_id)->media_link);
         $this->assertNotNull(PrivateUpload::findOrFail($this->entry('privado.pdf')->upload_id)->cipher);
         $this->assertSame([], glob($this->media($account, 'libros').'/*'));
     }

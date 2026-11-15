@@ -10,14 +10,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $user_id
  * @property int|null $parent_id
  * @property string $name
- * @property string|null $connection
+ * @property string|null $media_link
  */
 class Folder extends Model
 {
     /** A fixed top-level folder linked to a service: it cannot be renamed or deleted. */
     public function isConnected(): bool
     {
-        return $this->connection !== null;
+        return $this->media_link !== null;
     }
 
     /** @return BelongsTo<Folder, $this> */

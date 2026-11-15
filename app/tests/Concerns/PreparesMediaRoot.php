@@ -36,7 +36,7 @@ trait PreparesMediaRoot
     {
         app(StorageReservations::class)->setUserQuota($user, 10000000);
         app(ConnectedFolders::class)->ensure($user);
-        $folder = Folder::where('user_id', $user->id)->where('connection', $connection)->firstOrFail();
+        $folder = Folder::where('user_id', $user->id)->where('media_link', $connection)->firstOrFail();
         $key = (string) Str::uuid();
         app(PersonalFiles::class)->begin($user, $folder->id, $name, strlen($body), $key);
         $stream = fopen('php://memory', 'r+');
