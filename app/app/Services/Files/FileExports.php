@@ -6,6 +6,7 @@ use App\Models\FileExport;
 use App\Models\Folder;
 use App\Models\User;
 use App\Services\Storage\FileCipher;
+use App\Services\Storage\PlainWriter;
 use App\Services\Storage\PrivateUploads;
 use App\Services\Storage\StorageReservations;
 use App\Services\Storage\StoredBlob;
@@ -108,22 +109,11 @@ class FileExports
             // Streamed straight into its final form (encrypted when the server encrypts
             // files): no plaintext copy of the archive or its files ever lands on disk.
             $cipher = $this->uploads->cipher();
-            $writer = $cipher?->writer($part, 'export:'.$export->id);
-            $plain = null;
-            if ($writer === null) {
-                $plain = @fopen($part, 'xb');
-                if ($plain === false || ! chmod($part, 0600)) {
-                    throw new RuntimeException('No se pudo crear el ZIP.');
-                }
-            }
+            $writer = $cipher?->writer($part, 'export:'.$export->id) ?? PlainWriter::create($part);
             $zipBytes = 0;
-            $zip = new ZipStreamWriter(function (string $bytes) use ($writer, $plain, &$zipBytes): void {
+            $zip = new ZipStreamWriter(function (string $bytes) use ($writer, &$zipBytes): void {
                 $zipBytes += strlen($bytes);
-                if ($writer !== null) {
-                    $writer->write($bytes);
-                } elseif ($plain === null || fwrite($plain, $bytes) !== strlen($bytes)) {
-                    throw new RuntimeException('No se pudo escribir el ZIP (¿disco lleno?).');
-                }
+                $writer->write($bytes);
             });
             try {
                 foreach ($export->items as $item) {
@@ -131,16 +121,9 @@ class FileExports
                     $zip->addFile($item['path'], fn (callable $write) => $source->stream(0, $source->size(), $write));
                 }
                 $zip->finish();
-                if ($writer !== null) {
-                    $writer->finish();
-                } elseif ($plain === null || ! fflush($plain) || ! fsync($plain) || ! fclose($plain)) {
-                    throw new RuntimeException('No se pudo terminar el ZIP (¿disco lleno?).');
-                }
+                $writer->finish();
             } catch (Throwable $exception) {
-                $writer?->abort();
-                if (is_resource($plain)) {
-                    fclose($plain);
-                }
+                $writer->abort();
                 throw $exception;
             }
             clearstatcache(true, $part);
@@ -153,7 +136,7 @@ class FileExports
             }
             $export->state = 'ready';
             $export->bytes = $zipBytes;
-            $export->cipher = $writer === null ? null : FileCipher::FORMAT;
+            $export->cipher = $cipher === null ? null : FileCipher::FORMAT;
             $export->expires_at = now()->addHours(max(1, (int) config('nas.export_ttl_hours')));
             $export->save();
         } catch (Throwable $exception) {

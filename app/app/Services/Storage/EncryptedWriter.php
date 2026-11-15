@@ -9,7 +9,7 @@ use RuntimeException;
  * Buffers plaintext and writes it sealed in chunks (see FileCipher). The last chunk is
  * only known at finish(), so one full chunk is always held back until then.
  */
-final class EncryptedWriter
+final class EncryptedWriter implements FileWriter
 {
     private string $buffer = '';
 
