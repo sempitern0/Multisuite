@@ -97,10 +97,7 @@ new #[Title('Gestionar persona')] class extends Component {
 }; ?>
 
 <div>
-    <x-ui::page-header eyebrow="Personas" :title="'Gestionar a '.$this->managed->name" description="Cambia sus datos o su rol. Su contraseña solo puede cambiarla la propia persona.">
-        <x-slot:actions>
-            <x-ui::button variant="ghost" :href="route('users.index')" wire:navigate>Volver a Personas</x-ui::button>
-        </x-slot:actions>
+    <x-ui::page-header eyebrow="Personas" :back="route('users.index')" back-label="Personas" :title="'Gestionar a '.$this->managed->name" description="Cambia sus datos o su rol. Su contraseña solo puede cambiarla la propia persona.">
     </x-ui::page-header>
 
     <x-ui::container>

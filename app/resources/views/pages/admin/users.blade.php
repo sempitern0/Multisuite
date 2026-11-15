@@ -46,7 +46,7 @@ new #[Title('Personas')] class extends Component {
     </x-ui::page-header>
 
     <x-ui::stack gap="md">
-        <x-ui::toolbar>
+        <x-ui::toolbar surface>
             <x-ui::field name="q" type="search" label="Buscar por nombre, usuario o correo" maxlength="100" wire:model.live.debounce.300ms="search" />
         </x-ui::toolbar>
 

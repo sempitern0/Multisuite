@@ -26,13 +26,20 @@ Instantánea a 2026-11-15. Historial detallado: git log y PRs #1–#27. Este arc
 
 Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md); entorno local desechable mientras no haya producción; el diseño va por delante para que lo nuevo nazca con el tema; sin librerías de tablas por ahora (D010 en DEPENDENCIES.md).
 
-## En revisión: D03 Ajustes de interfaz — rama `feat/d03-ui-polish`
+## En revisión
+### D03 Ajustes de interfaz — PR #28 (`feat/d03-ui-polish`)
 - Tarjetas de servicios con fondo vectorial según su contenido (`x-ui::tile-art`).
 - Mayús + clic para marcar rangos de casillas en Mis archivos.
 - Visor: Ctrl/⌘ + rueda o pellizco para el zoom; la rueda sola ya no secuestra el scroll de la página y en móvil un dedo desplaza la página salvo con la imagen ampliada.
 - Iconos de navegación revisados (engranaje real, almacenamiento, actividad, invitaciones) y botón para contraer el menú lateral, recordado por persona (`PUT settings/sidebar`); la opción sale de Preferencias.
 - Audio en Mis archivos con el reproductor del navegador.
-- Validado: CI y prueba en Chrome de la selección por rango y del comportamiento de la rueda. No validado en el portal real.
+- Validado: CI y prueba en Chrome de la selección por rango y de la rueda; el usuario confirmó la mayoría en su entorno.
+
+### D04 Navegación y jerarquía de Mis archivos — PR apilada sobre #28 (`feat/d04-files-navigation`)
+- Flecha atrás en cabecera (carpetas, papelera, descargas, detalle de archivo, alta y edición de personas) y migas más legibles.
+- Zonas diferenciadas: cabecera con acciones principales, pestañas Archivos / Papelera / Descargas ZIP, barra de filtros en panel propio y selector de vista con texto.
+- Barra de selección contextual (Descargar en ZIP, Mover a la papelera en bloque, quitar selección); acciones de fila al pasar el ratón; nueva carpeta y opciones de la carpeta en diálogos.
+- Validado: CI. No validado en el portal real.
 
 ## Siguiente acción ejecutable
 1. Usuario: revisar D03 (`make npm CMD="run build"`): tarjetas, Mayús + clic, zoom del visor, menú contraíble y audio.

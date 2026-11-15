@@ -111,7 +111,7 @@ new #[Title('Invitaciones')] class extends Component {
         </x-ui::panel>
 
         <x-ui::stack gap="md">
-            <x-ui::toolbar>
+            <x-ui::toolbar surface>
                 <x-ui::choice-group name="status" label="Mostrar" wire:model.live="status"
                     :options="['' => 'Todas', 'pending' => 'Pendientes', 'accepted' => 'Aceptadas', 'expired' => 'Caducadas o anuladas']" />
             </x-ui::toolbar>

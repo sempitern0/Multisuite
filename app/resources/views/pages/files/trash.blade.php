@@ -55,7 +55,7 @@ new #[Title('Papelera')] class extends Component {
 
 <div>
     <x-ui::breadcrumbs :items="[['label' => 'Mis archivos', 'href' => route('files.index')], ['label' => 'Papelera', 'href' => route('files.trash')]]" />
-    <x-ui::page-header title="Papelera" :description="'Los archivos se borran definitivamente a los '.(int) config('nas.trash_days').' días. Mientras están aquí siguen ocupando '.\App\Support\Bytes::format($this->bytes).' de tu espacio.'">
+    <x-ui::page-header title="Papelera" :back="route('files.index')" back-label="Mis archivos" :description="'Los archivos se borran definitivamente a los '.(int) config('nas.trash_days').' días. Mientras están aquí siguen ocupando '.\App\Support\Bytes::format($this->bytes).' de tu espacio.'">
         @if ($this->entries->isNotEmpty())
             <x-slot:actions>
                 <x-ui::confirm title="¿Vaciar la papelera?">
@@ -68,6 +68,12 @@ new #[Title('Papelera')] class extends Component {
     </x-ui::page-header>
 
     <x-ui::stack gap="md">
+    <x-ui::subnav label="Mis archivos" :items="[
+        ['label' => 'Archivos', 'href' => route('files.index'), 'active' => false],
+        ['label' => 'Papelera', 'href' => route('files.trash'), 'active' => true],
+        ['label' => 'Descargas ZIP', 'href' => route('files.exports.index'), 'active' => false],
+    ]" />
+
         @foreach (['file_trash', 'file_purge'] as $field)
             @error($field)<x-ui::notice tone="bad">{{ $message }}</x-ui::notice>@enderror
         @endforeach

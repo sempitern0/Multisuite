@@ -71,7 +71,7 @@ new #[Title('Actividad')] class extends Component {
     <x-ui::page-header eyebrow="Administración" title="Actividad" :description="'Cambios administrativos y eventos de los servicios. Horas en '.config('app.timezone').'.'" />
 
     <x-ui::stack gap="md">
-        <x-ui::toolbar>
+        <x-ui::toolbar surface>
             <x-ui::select name="action" label="Acción" placeholder="Todas" wire:model.live="action" :options="$this->labels" />
             <x-ui::select name="service" label="Servicio" placeholder="Todos" wire:model.live="service"
                 :options="$this->services->mapWithKeys(fn ($id) => [$id => config('portal.services.'.$id.'.name', $id)])->all()" />

@@ -176,7 +176,7 @@ new #[Title('Almacenamiento')] class extends Component {
 
         <x-ui::stack gap="sm" aria-labelledby="people">
             <x-ui::heading id="people">Personas</x-ui::heading>
-            <x-ui::toolbar>
+            <x-ui::toolbar surface>
                 <x-ui::field name="q" type="search" label="Buscar por nombre, usuario o correo" maxlength="100" wire:model.live.debounce.300ms="search" />
                 @if ($o['canManagePools'])
                     <x-slot:end>

@@ -141,7 +141,8 @@ new #[Title('Archivo')] class extends Component {
     @endphp
 
     <x-ui::breadcrumbs :items="$this->crumbs" />
-    <x-ui::page-header :title="$file->name" :description="$p['error'] === null ? $fmt($p['size']).' · '.$p['mime'] : null">
+    @php($folderCrumb = $this->crumbs[count($this->crumbs) - 2])
+    <x-ui::page-header :title="$file->name" :back="$file->trashed_at !== null ? route('files.trash') : $folderCrumb['href']" :back-label="$file->trashed_at !== null ? 'Papelera' : $folderCrumb['label']" :description="$p['error'] === null ? $fmt($p['size']).' · '.$p['mime'] : null">
         @if ($p['error'] === null)
             <x-slot:actions>
                 <x-ui::button icon="download" :href="route('files.content', ['fileId' => $file->id, 'download' => 1])">Descargar</x-ui::button>

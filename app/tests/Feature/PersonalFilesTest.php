@@ -172,7 +172,7 @@ class PersonalFilesTest extends TestCase
         $this->actingAs($this->owner)->trashFile($file->id)->assertRedirect(route('files.folder', $folder));
         // The flash message names the file, so check the listing links instead of the text.
         $this->get('/files/folder/'.$folder->id)->assertDontSee('href="'.route('files.show', $file).'"', false)
-            ->assertSee('En esta carpeta: 0 elementos · 0 B');
+            ->assertSee('0 elementos · 0 B');
         $this->get('/files/trash')->assertSee('luz.txt')->assertSee('14 B');
         $this->assertSame(14, $this->used($this->owner));
         $this->deleteFolder($folder->id)->assertRedirect();             // folder now empty
@@ -309,6 +309,36 @@ class PersonalFilesTest extends TestCase
         $this->assertSame('gallery', $this->owner->fresh()->preferences()->filesView());
     }
 
+    public function test_selection_bar_trashes_several_files_and_back_arrow_returns_to_the_parent(): void
+    {
+        $this->upload($this->owner, 'a.txt', 'a')->assertOk();
+        $this->upload($this->owner, 'b.txt', 'b')->assertOk();
+        $this->upload($this->owner, 'c.txt', 'c')->assertOk();
+        $other = User::factory()->create();
+        app(StorageReservations::class)->setUserQuota($other, 500000);
+        $this->upload($other, 'ajeno.txt', 'x')->assertOk();
+        $foreign = UserFile::where('user_id', $other->id)->firstOrFail();
+        $this->actingAs($this->owner);
+        $a = $this->entry('a.txt');
+        $b = $this->entry('b.txt');
+
+        $page = Livewire::test('pages::files.index')->assertSee('ui-selection-bar', false)->assertDontSee('Volver a');
+        // Someone else's file in the selection: nothing moves (all or nothing).
+        $page->set('selectedFiles', [$a->id, $foreign->id])->call('trashSelected')->assertNotFound();
+        $this->assertNull($a->fresh()->trashed_at);
+        $page->set('selectedFiles', [$a->id, (string) $b->id])->call('trashSelected')->assertSet('selectedFiles', []);
+        $this->assertNotNull($a->fresh()->trashed_at);
+        $this->assertNotNull($b->fresh()->trashed_at);
+        $this->assertNull($this->entry('c.txt')->trashed_at);
+
+        $this->createFolder('Fotos');
+        $photos = Folder::where('user_id', $this->owner->id)->where('name', 'Fotos')->firstOrFail();
+        $this->createFolder('2026', $photos->id);
+        $year = Folder::where('user_id', $this->owner->id)->where('name', '2026')->firstOrFail();
+        $this->get('/files/folder/'.$year->id)->assertSee('Volver a Fotos')->assertSee('href="'.route('files.folder', $photos).'"', false);
+        $this->get('/files/folder/'.$photos->id)->assertSee('Volver a Mis archivos');
+    }
+
     public function test_just_uploaded_files_are_marked_as_new_in_the_listing(): void
     {
         $this->upload($this->owner, 'nota.txt', 'hola')->assertOk();
@@ -410,7 +440,7 @@ class PersonalFilesTest extends TestCase
         $this->assertSame(['items' => 2, 'bytes' => 10], $summaries[$docs->id]);   // 2026 + a.txt; pending ignored
         $this->assertSame(['items' => 2, 'bytes' => 7], $summaries[$year->id]);    // Vacía + b.txt
 
-        $this->actingAs($this->owner)->get('/files')->assertSee('En esta carpeta: 2 elementos · 15 B')->assertSee('2 elementos · 10 B');
-        $this->get('/files/folder/'.$year->id)->assertSee('En esta carpeta: 2 elementos · 7 B')->assertSee('0 elementos · 0 B');
+        $this->actingAs($this->owner)->get('/files')->assertSee('2 elementos · 15 B')->assertSee('2 elementos · 10 B');
+        $this->get('/files/folder/'.$year->id)->assertSee('2 elementos · 7 B')->assertSee('0 elementos · 0 B');
     }
 }
