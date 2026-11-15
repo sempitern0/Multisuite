@@ -1,17 +1,25 @@
 <?php
 
+use App\Actions\Users\RemoveAvatar;
 use App\Actions\Users\SetUsername;
-use App\Concerns\ProfileValidationRules;
+use App\Actions\Users\UpdateAvatar;
+use App\Actions\Users\UpdateProfile;
 use App\Livewire\Concerns\ForgetsSecrets;
 use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
+use App\Services\Users\Avatars;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 new #[Title('Perfil')] class extends Component {
-    use ForgetsSecrets, NotifiesInterface, ProfileValidationRules, ThrottlesActions;
+    use ForgetsSecrets, NotifiesInterface, ThrottlesActions, WithFileUploads;
+
+    /** Cropped photo uploaded by the editor; consumed by saveAvatar(). */
+    public ?TemporaryUploadedFile $avatar = null;
 
     public string $name = '';
 
@@ -29,16 +37,36 @@ new #[Title('Perfil')] class extends Component {
         $this->email = Auth::user()->email;
     }
 
-    public function updateProfileInformation(): void
+    public function updateProfileInformation(UpdateProfile $update): void
     {
-        $user = Auth::user();
-        $validated = $this->validate($this->profileRules($user->id));
-        $user->fill($validated);
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
-        }
-        $user->save();
+        /** @var array{name: string, email: string} $data */
+        $data = $this->validate($update->rules(Auth::user()));
+        $update->handle(Auth::user(), $data);
         $this->toast('Perfil actualizado');
+    }
+
+    public function saveAvatar(UpdateAvatar $update): void
+    {
+        $this->throttle('account-change');
+        $this->validate(Avatars::rules());
+        /** @var TemporaryUploadedFile $file */
+        $file = $this->avatar;
+        try {
+            $update->handle(Auth::user(), Auth::user(), $file);
+        } finally {
+            $file->delete();
+            $this->avatar = null;
+        }
+        $this->dispatch('avatar-changed', url: Auth::user()->fresh()?->avatarUrl());
+        $this->toast('Foto guardada');
+    }
+
+    public function removeAvatar(RemoveAvatar $remove): void
+    {
+        $this->throttle('account-change');
+        $remove->handle(Auth::user(), Auth::user());
+        $this->dispatch('avatar-changed', url: null);
+        $this->toast('Foto quitada');
     }
 
     public function resendVerificationNotification(): void
@@ -72,8 +100,20 @@ new #[Title('Perfil')] class extends Component {
 }; ?>
 
 <div>
-    <x-pages::settings.layout heading="Perfil" subheading="Tu nombre, tu correo y tu nombre de usuario.">
+    <x-pages::settings.layout heading="Perfil" subheading="Tu foto, tu nombre, tu correo y tu nombre de usuario.">
         <x-ui::stack gap="lg">
+            <x-ui::panel aria-labelledby="avatar-heading">
+                <x-ui::stack gap="md">
+                    <x-ui::heading id="avatar-heading">Foto de perfil</x-ui::heading>
+                    <x-ui::avatar-editor model="avatar" save="saveAvatar" :src="auth()->user()->avatarUrl()" :initials="auth()->user()->initials()">
+                        @if (auth()->user()->avatar_hash)
+                            <x-ui::button variant="ghost" icon="trash" wire:click="removeAvatar">Quitar foto</x-ui::button>
+                        @endif
+                    </x-ui::avatar-editor>
+                    <x-ui::text tone="muted">La ven tú y quienes administran Multisuite. Se guarda recortada y sin datos de ubicación.</x-ui::text>
+                </x-ui::stack>
+            </x-ui::panel>
+
             <x-ui::panel>
                 <x-ui::form wire:submit="updateProfileInformation">
                     <x-ui::field name="name" label="Nombre" wire:model="name" required autocomplete="name" />

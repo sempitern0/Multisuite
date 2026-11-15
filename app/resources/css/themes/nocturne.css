@@ -94,7 +94,31 @@
     .ui-person { display: flex; gap: 11px; align-items: center; padding: 4px 6px 8px; min-width: 0; }
     .ui-person-text { min-width: 0; }
     .ui-person-name { display: block; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .ui-avatar { display: inline-grid; place-items: center; flex: none; width: 33px; height: 33px; border-radius: 11px; background: #404d2e; color: #e9f4a4; font-weight: 800; font-size: 13px; }
+    .ui-avatar { display: inline-grid; place-items: center; flex: none; width: 33px; height: 33px; border-radius: 11px; background: #404d2e; color: #e9f4a4; font-weight: 800; font-size: 13px; overflow: hidden; }
+    .ui-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .ui-avatar-sm { width: 30px; height: 30px; border-radius: 10px; font-size: 12px; }
+    .ui-avatar-lg { width: 56px; height: 56px; border-radius: 17px; font-size: 19px; }
+    .ui-avatar-xl { width: 104px; height: 104px; border-radius: 30px; font-size: 34px; }
+    .ui-person-cell { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .ui-person-cell-text { min-width: 0; display: grid; }
+    .ui-person-cell .ui-cell-main { font-weight: 650; color: var(--ui-text); word-break: break-word; }
+    .ui-person-cell .ui-cell-sub { font-size: 12px; color: var(--ui-muted); word-break: break-all; margin-top: 2px; }
+    .ui-person-cell-lg { gap: 16px; }
+    .ui-person-cell-lg .ui-cell-main { font-size: 18px; }
+    .ui-person-cell-lg .ui-cell-sub { font-size: 13px; word-break: normal; }
+    /* Photo editor: the circle is the stage, everything outside it is dimmed. */
+    .ui-avatar-editor { display: grid; gap: 12px; }
+    .ui-avatar-editor-current { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    .ui-avatar-editor-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .ui-avatar-editor-actions .ui-btn:has(input:focus-visible) { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+    .ui-avatar-editor-crop { display: grid; gap: 14px; justify-items: start; }
+    .ui-avatar-stage { position: relative; width: min(280px, 100%); aspect-ratio: 1; overflow: hidden; border-radius: var(--ui-radius); background: var(--ui-bg); touch-action: none; cursor: grab; user-select: none; }
+    .ui-avatar-stage:active { cursor: grabbing; }
+    .ui-avatar-stage:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; }
+    .ui-avatar-stage img { position: absolute; left: 50%; top: 50%; max-width: none; transform-origin: center; pointer-events: none; }
+    .ui-avatar-stage::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 999px #0d100eb3; outline: 2px solid #dfec7099; pointer-events: none; }
+    .ui-avatar-zoom { display: flex; align-items: center; gap: 12px; width: min(280px, 100%); color: var(--ui-sub); font-size: 13px; font-weight: 650; }
+    .ui-avatar-zoom input { flex: 1; accent-color: var(--ui-accent); }
     .ui-main { min-width: 0; flex: 1; }
     .ui-topbar { height: 64px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--ui-line); padding: 0 40px; }
     .ui-topbar-title { font-size: 13px; color: var(--ui-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

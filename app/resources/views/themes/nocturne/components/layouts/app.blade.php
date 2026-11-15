@@ -33,7 +33,7 @@
                         <x-ui::icon name="sidebar" /><span class="ui-hide-compact">Contraer menú</span>
                     </button>
                     <div class="ui-person">
-                        <span class="ui-avatar" aria-hidden="true">{{ $account['initials'] }}</span>
+                        <x-ui::avatar :src="$account['avatar']" :initials="$account['initials']" live />
                         <span class="ui-hide-compact ui-person-text">
                             <span class="ui-person-name">{{ $account['name'] }}</span>
                             <span class="ui-muted">{{ $account['role'] }}</span>

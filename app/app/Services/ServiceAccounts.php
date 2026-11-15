@@ -4,29 +4,67 @@ namespace App\Services;
 
 use App\Models\ServiceAccount;
 use App\Models\User;
+use App\Services\Provisioning\ServiceProvisioners;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 
+use function Illuminate\Support\defer;
+
+/**
+ * Local side of the accounts each person has in third-party services. Passwords are only
+ * held encrypted, for one hour, while they are pushed to the service (docs/SERVICE_ACCOUNTS.md).
+ */
 class ServiceAccounts
 {
+    /** Disabled or suspended: the remote password was replaced and is waiting for access to return. */
+    public const LOCKED = 'locked';
+
+    /** Access granted again (or for the first time): the next sign-in with a password activates it. */
+    public const AWAITING_PASSWORD = 'awaiting_password';
+
+    public function __construct(private ServiceProvisioners $provisioners) {}
+
     /** @return list<string> */
     public function available(): array
     {
-        return config('portal.services.music.enabled') && config('provisioning.music.enabled') ? ['music'] : [];
+        /** @var array<string, mixed> $services */
+        $services = config('portal.services', []);
+
+        return array_values(array_filter(
+            array_map(strval(...), array_keys($services)),
+            fn (string $service): bool => config('portal.services.'.$service.'.enabled')
+                && config('provisioning.'.$service.'.enabled')
+                && $this->provisioners->supports($service),
+        ));
+    }
+
+    /** May the person use the service now? A null access list predates per-service access and grants everything. */
+    public function entitled(User $user, string $service): bool
+    {
+        return $user->suspended_at === null
+            && ($user->service_access === null || in_array($service, $user->service_access, true));
     }
 
     /** @param list<string> $services */
     public function enroll(User $user, array $services, #[\SensitiveParameter] string $password): void
     {
         foreach ($services as $service) {
-            $account = new ServiceAccount;
-            $account->user_id = $user->id;
-            $account->service = $service;
-            $account->remote_id = (string) Str::uuid();
-            $account->username = $user->username ?? $user->email;
-            $this->stage($account, $password);
+            if (ServiceAccount::where('user_id', $user->id)->where('service', $service)->exists()) {
+                continue;
+            }
+            $this->stage($this->newAccount($user, $service), $password);
         }
+    }
+
+    /** Reserves the account (remote id and name) without a password; the next sign-in activates it. */
+    public function reserve(User $user, string $service): ServiceAccount
+    {
+        $account = $this->newAccount($user, $service);
+        $account->status = self::AWAITING_PASSWORD;
+        $account->save();
+
+        return $account;
     }
 
     public function changePassword(User $user, #[\SensitiveParameter] string $password): void
@@ -41,11 +79,96 @@ class ServiceAccounts
                 $this->enroll($locked, $locked->service_access ?? [], $password);
             }
             foreach (ServiceAccount::where('user_id', $user->id)->lockForUpdate()->get() as $account) {
-                $this->stage($account, $password);
+                // A disabled service keeps its scrambled password until access is granted again.
+                if ($this->entitled($locked, $account->service)) {
+                    $this->stage($account, $password);
+                }
             }
         });
         $user->refresh();
         $this->syncUser($user);
+    }
+
+    /**
+     * Called after a successful sign-in with a password: accounts waiting for one (access granted
+     * again, or a credential that expired before reaching the service) receive it. Pushed after the
+     * response so signing in never waits for a third-party service.
+     */
+    public function resume(User $user, #[\SensitiveParameter] string $password): void
+    {
+        $staged = DB::transaction(function () use ($user, $password): bool {
+            $locked = User::whereKey($user->id)->lockForUpdate()->first();
+            if ($locked === null || $locked->must_change_password) {
+                return false;
+            }
+            $accounts = ServiceAccount::where('user_id', $locked->id)
+                ->whereIn('status', [self::AWAITING_PASSWORD, 'expired'])->lockForUpdate()->get()
+                ->filter(fn (ServiceAccount $account): bool => $this->entitled($locked, $account->service));
+            foreach ($accounts as $account) {
+                $this->stage($account, $password);
+            }
+
+            return $accounts->isNotEmpty();
+        });
+        if ($staged) {
+            $userId = $user->id;
+            defer(fn () => $this->syncUser(User::findOrFail($userId)));
+        }
+    }
+
+    /**
+     * Blocks sign-in to the service (the person's data stays). Must run inside the caller's
+     * transaction with the account locked; throws RuntimeException if the service cannot confirm it.
+     */
+    public function lock(ServiceAccount $account): void
+    {
+        if ($account->status !== self::LOCKED) {
+            if (! in_array($account->service, $this->available(), true)) {
+                throw new RuntimeException('configuration');
+            }
+            $this->provisioners->for($account->service)->lock($account);
+        }
+        $account->pending_password = null;
+        $account->credential_expires_at = null;
+        $account->retry_at = null;
+        $account->status = self::LOCKED;
+        $account->save();
+    }
+
+    /**
+     * After access is granted or the account is reactivated: every service the person is now
+     * entitled to waits for their next sign-in with a password. Accounts for people who have not
+     * chosen their first password yet are created by changePassword() instead.
+     */
+    public function awaitPassword(User $locked): void
+    {
+        if ($locked->must_change_password || $locked->suspended_at !== null) {
+            return;
+        }
+        $accounts = ServiceAccount::where('user_id', $locked->id)->lockForUpdate()->get()->keyBy('service');
+        foreach ($this->available() as $service) {
+            if (! $this->entitled($locked, $service)) {
+                continue;
+            }
+            $account = $accounts->get($service);
+            if ($account === null) {
+                $this->reserve($locked, $service);
+            } elseif ($account->status === self::LOCKED) {
+                $account->status = self::AWAITING_PASSWORD;
+                $account->save();
+            }
+        }
+    }
+
+    private function newAccount(User $user, string $service): ServiceAccount
+    {
+        $account = new ServiceAccount;
+        $account->user_id = $user->id;
+        $account->service = $service;
+        $account->remote_id = (string) Str::uuid();
+        $account->username = $user->username ?? $user->email;
+
+        return $account;
     }
 
     private function stage(ServiceAccount $account, #[\SensitiveParameter] string $password): void
@@ -71,6 +194,17 @@ class ServiceAccounts
             if ($account === null || $account->pending_password === null) {
                 return;
             }
+            $user = User::find($account->user_id);
+            if ($user === null || ! $this->entitled($user, $account->service)) {
+                // Access was withdrawn after the password was staged: never push it.
+                $account->pending_password = null;
+                $account->credential_expires_at = null;
+                $account->retry_at = null;
+                $account->status = self::LOCKED;
+                $account->save();
+
+                return;
+            }
             if ($account->credential_expires_at === null || $account->credential_expires_at->isPast()) {
                 $account->pending_password = null;
                 $account->credential_expires_at = null;
@@ -80,10 +214,10 @@ class ServiceAccounts
                 return;
             }
             try {
-                if ($account->service !== 'music' || ! in_array('music', $this->available(), true)) {
+                if (! in_array($account->service, $this->available(), true)) {
                     throw new RuntimeException('configuration');
                 }
-                app(NavidromeAccounts::class)->synchronize($account, $account->pending_password);
+                $this->provisioners->for($account->service)->synchronize($account, $account->pending_password);
                 $account->status = 'ready';
                 $account->pending_password = null;
                 $account->credential_expires_at = null;

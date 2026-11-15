@@ -38,7 +38,7 @@ class Navigation
      * @return array{
      *     home: string,
      *     groups: list<array{label: ?string, items: list<array{label: string, icon: string, href: string, active: bool, spa: bool}>}>,
-     *     account: array{name: string, initials: string, role: string, settings: array{label: string, icon: string, href: string, active: bool, spa: bool}, logout: string},
+     *     account: array{name: string, initials: string, avatar: ?string, role: string, settings: array{label: string, icon: string, href: string, active: bool, spa: bool}, logout: string},
      *     sidebar: array{compact: bool, save: string}
      * }
      */
@@ -64,6 +64,7 @@ class Navigation
             'account' => [
                 'name' => $user->name,
                 'initials' => $user->initials(),
+                'avatar' => $user->avatarUrl(),
                 'role' => $user->roleLabel(),
                 'settings' => self::link(self::SETTINGS),
                 'logout' => route('logout'),

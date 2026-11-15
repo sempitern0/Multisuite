@@ -23,6 +23,9 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - [ ] Resumen de administración con métricas reales (solo gates de admin).
 - [ ] Sustituir `flux:otp` por un campo propio del tema y retirar entonces Flux y la reasignación de paleta `zinc`/`teal`.
 
+## U03 — Gestión de personas
+- [ ] QA del usuario tras `make rebuild`: subir y encuadrar una foto (también en móvil), cambiar el usuario de alguien con Música, desactivar y volver a activar Música, suspender y reactivar una cuenta de prueba.
+
 ## DB — Modelo de datos (ARCHITECTURE.md § Modelo de datos)
 - [ ] Enums PHP respaldados (`Role`, `ReservationState`, `UploadState`, `ExportState`, `ServiceAccountStatus`) con casts y `CHECK` en PostgreSQL añadidos en la misma migración que los cubra con tests en PostgreSQL. Hoy son cadenas validadas solo en código.
 - [ ] Si aparece un tercer subtipo de reserva, mover `location_id`/`root_hash` de `private_uploads`/`file_exports` a `storage_reservations`.
@@ -76,8 +79,8 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - [ ] P02-03/06: QA visual de la portada 360/768/1440 px, foco, contraste, zoom y reduced-motion.
 
 ## P03 — Identidad, acceso y red privada
-- [ ] P03-06c Vincular cuentas preexistentes y añadir servicios a usuarios existentes (prueba de titularidad; nunca por coincidencia de email).
-- [ ] P03-06d Baja integral, revocación y permisos por servicio/biblioteca; auditar invitaciones y consola.
+- [ ] P03-06c Vincular cuentas remotas preexistentes (prueba de titularidad; nunca por coincidencia de email). Añadir servicios a personas existentes ya está hecho (U03).
+- [ ] P03-06d Permisos por biblioteca y cierre de sesiones ya abiertas en el servicio al desactivarlo; auditar invitaciones y consola. Activar/desactivar por servicio y suspensión ya están hechos (U03).
 - [ ] P03-06e Entrada web sin segundo login (proxy/identidad central) sin romper clientes móviles. QA pendiente del puente actual en MUSIC_SESSION_BRIDGE.md.
 - [ ] P03-02 Subruta `/music/` solo si se valida BaseUrl, assets, Range y clientes.
 - [ ] P03-03 VPN (Tailscale u otra), TLS, permisos mínimos y revocación.

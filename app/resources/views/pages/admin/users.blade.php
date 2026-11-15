@@ -56,11 +56,13 @@ new #[Title('Personas')] class extends Component {
             </x-slot:head>
             @forelse ($this->users as $listedUser)
                 <tr wire:key="user-{{ $listedUser->id }}">
-                    <x-ui::td primary :sub="$listedUser->email">{{ $listedUser->name }}</x-ui::td>
+                    <x-ui::td><x-ui::person :name="$listedUser->name" :sub="$listedUser->email" :src="$listedUser->avatarUrl()" :initials="$listedUser->initials()" /></x-ui::td>
                     <x-ui::td label="Usuario">{{ $listedUser->username ? '@'.$listedUser->username : '—' }}</x-ui::td>
                     <x-ui::td label="Rol"><x-ui::tag :tone="$listedUser->role === 'member' ? 'grey' : null">{{ $listedUser->roleLabel() }}</x-ui::tag></x-ui::td>
                     <x-ui::td label="Estado">
-                        @if ($listedUser->must_change_password)
+                        @if ($listedUser->isSuspended())
+                            <x-ui::status tone="bad">Suspendida</x-ui::status>
+                        @elseif ($listedUser->must_change_password)
                             <x-ui::status tone="warn">Debe cambiar su contraseña</x-ui::status>
                         @elseif ($listedUser->hasVerifiedEmail())
                             <x-ui::status>Activa</x-ui::status>

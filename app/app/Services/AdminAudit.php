@@ -16,10 +16,21 @@ class AdminAudit
         'storage.default_quota' => 'Espacio por defecto modificado',
     ];
 
+    /** @var array<string, string> */
+    public const USER_ACTIONS = [
+        'user.created' => 'Usuario creado',
+        'user.updated' => 'Usuario modificado',
+        'user.deleted' => 'Usuario eliminado',
+        'user.username_changed' => 'Nombre de usuario cambiado',
+        'user.suspended' => 'Cuenta suspendida',
+        'user.reactivated' => 'Cuenta reactivada',
+        'user.avatar_removed' => 'Foto de perfil retirada',
+    ];
+
     /** @return array<string, string> */
     public static function actionLabels(): array
     {
-        $labels = ['user.created' => 'Usuario creado', 'user.updated' => 'Usuario modificado', 'user.deleted' => 'Usuario eliminado', ...self::STORAGE_ACTIONS];
+        $labels = [...self::USER_ACTIONS, ...self::STORAGE_ACTIONS];
         foreach (ServiceAuditAction::cases() as $action) {
             $labels[$action->value] = $action->label();
         }
@@ -79,7 +90,7 @@ class AdminAudit
     /** @param list<string> $changedFields */
     public function record(User $actor, User $subject, string $action, array $changedFields = [], ?string $previousRole = null): void
     {
-        if (! in_array($action, ['user.created', 'user.updated', 'user.deleted'], true)) {
+        if (! array_key_exists($action, self::USER_ACTIONS)) {
             throw new LogicException('Unknown user audit action.');
         }
         $actorId = $actor->id;
@@ -96,7 +107,7 @@ class AdminAudit
         $event->subject_name = $subject->name;
         $event->action = $action;
         $event->details = [
-            'fields' => array_values(array_intersect($changedFields, ['name', 'email', 'role'])),
+            'fields' => array_values(array_intersect($changedFields, ['name', 'email', 'role', 'username'])),
             'role' => $subject->role,
             'previous_role' => $previousRole,
         ];
