@@ -40,6 +40,8 @@ return [
 
     // Lossless only: JPEG is repacked by jpegtran (same pixels and metadata). Nothing is re-encoded.
     'optimize_images' => (bool) env('NAS_OPTIMIZE_IMAGES', true),
+    // Larger JPEGs are stored as received: optimising needs the whole file at the end of the upload.
+    'optimize_max_bytes' => (int) env('NAS_OPTIMIZE_MAX_BYTES', 67108864),
 
     // Development only (portal:dev-bootstrap): default per-person space applied when
     // none has been chosen yet. Production leaves this at 0.

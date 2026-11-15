@@ -11,6 +11,8 @@ return new class extends Migration
     {
         Schema::table('private_uploads', function (Blueprint $table) {
             $table->string('cipher', 16)->nullable()->after('sha256');
+            // Running SHA-256 of a chunked upload (bytes covered + serialized context); null once ready.
+            $table->text('hash_state')->nullable()->after('cipher');
         });
         Schema::table('file_exports', function (Blueprint $table) {
             $table->string('cipher', 16)->nullable()->after('bytes');
@@ -19,7 +21,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('private_uploads', fn (Blueprint $table) => $table->dropColumn('cipher'));
+        Schema::table('private_uploads', fn (Blueprint $table) => $table->dropColumn(['cipher', 'hash_state']));
         Schema::table('file_exports', fn (Blueprint $table) => $table->dropColumn('cipher'));
     }
 };

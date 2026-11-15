@@ -7,6 +7,7 @@ use App\Models\PrivateUpload;
 use App\Models\StorageReservation;
 use App\Models\User;
 use finfo;
+use HashContext;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -72,94 +73,179 @@ class PrivateUploads
             if ($upload->state !== 'pending' || $reservation->state !== 'reserved' || $reservation->expires_at->isPast()) {
                 throw new RuntimeException('La subida no está disponible.');
             }
-            $part = $base.'.part';
-            $final = $base.'.blob';
-            if (is_link($part) || file_exists($final) || is_link($final) || (file_exists($part) && ! is_file($part))) {
+            [$part, $sealed, $final] = [$base.'.part', $base.'.enc', $base.'.blob'];
+            if (file_exists($final) || is_link($final)) {
                 throw new RuntimeException('Quedan datos de un intento anterior. Cancela la subida antes de empezar otra.');
             }
-            $received = $this->receivedBytes($part);
+            $received = $this->storedBytes($part, $sealed);
             if ($offset !== $received) {
                 throw new UploadOffsetMismatch($received);
             }
-            $output = @fopen($part, 'ab');
-            if ($output === false) {
-                throw new RuntimeException('No se puede crear el archivo privado.');
+            $data = $this->readChunk($input, $reservation->bytes - $received);
+            $last = $received + strlen($data) === $reservation->bytes;
+
+            if ($received === 0) {
+                // The type is decided by the first bytes, so a refused file stops at once.
+                $mime = (new finfo(FILEINFO_MIME_TYPE))->buffer($data);
+                if ($mime === false || ! in_array($mime, (array) config('nas.allowed_mimes', []), true)) {
+                    throw new RuntimeException('Tamaño o formato no permitido.');
+                }
+                $upload->mime = $mime;
+                // Sealed as it arrives (no plaintext on disk), except a JPEG small enough to
+                // optimise losslessly, which needs the whole picture once.
+                $upload->cipher = $this->cipher() !== null && ! $this->optimizer->wants($mime, $reservation->bytes) ? FileCipher::FORMAT : null;
             }
-            try {
-                if (! chmod($part, 0600)) {
-                    throw new RuntimeException('No se pueden restringir los permisos.');
-                }
-                $size = $received;
-                while (! feof($input)) {
-                    $chunk = fread($input, 65536);
-                    if ($chunk === false || ($chunk === '' && ! feof($input))) {
-                        throw new RuntimeException('Lectura interrumpida.');
-                    }
-                    $size += strlen($chunk);
-                    if ($size > $reservation->bytes) {
-                        throw new RuntimeException('El archivo supera la reserva.');
-                    }
-                    if ($chunk !== '' && fwrite($output, $chunk) !== strlen($chunk)) {
-                        throw new RuntimeException('Escritura incompleta; revisa el espacio disponible.');
-                    }
-                }
-                if (! fflush($output) || ! fsync($output)) {
-                    throw new RuntimeException('No se ha podido persistir el fragmento.');
-                }
-            } finally {
-                fclose($output);
+            $hash = $this->hashUpTo($upload, $part, $sealed, $received);
+            hash_update($hash, $data);
+            if ($upload->cipher !== null) {
+                $this->cipherOrFail()->append($sealed, 'file:'.$upload->id, $data, $last);
+            } else {
+                $this->appendPlain($part, $data);
             }
-            if ($size < $reservation->bytes) {
+
+            if (! $last) {
+                $upload->hash_state = $this->packHash($hash, $received + strlen($data));
+                $upload->save();
                 // Still arriving: keep the reservation alive while chunks keep coming.
                 $this->reservations->extend($user, $key, self::RESERVATION_MINUTES);
 
                 return $upload;
             }
-            clearstatcache(true, $part);
-            $actual = filesize($part);
-            $mime = (new finfo(FILEINFO_MIME_TYPE))->file($part);
-            if ($actual !== $reservation->bytes || $mime === false || ! in_array($mime, (array) config('nas.allowed_mimes', []), true)) {
-                throw new RuntimeException('Tamaño o formato no permitido.');
-            }
-            // Same picture in fewer bytes when possible; the person is charged the final size.
-            $this->optimizer->optimize($part, $mime);
-            clearstatcache(true, $part);
-            $actual = filesize($part);
-            $hash = hash_file('sha256', $part);
-            if ($actual === false || $actual < 1 || $actual > $reservation->bytes || $hash === false) {
-                throw new RuntimeException('No se puede verificar el archivo recibido.');
-            }
-            $cipher = $this->cipher();
-            if ($cipher !== null) {
-                // Encrypted at rest: the plaintext part only exists while the upload arrives.
-                $sealed = $base.'.enc';
-                if (file_exists($sealed) || is_link($sealed)) {
-                    throw new RuntimeException('Quedan restos de un cifrado anterior.');
-                }
-                try {
-                    $cipher->encryptFile($part, $sealed, 'file:'.$upload->id);
-                } catch (\Throwable $exception) {
-                    @unlink($sealed);
-                    throw $exception instanceof RuntimeException ? $exception : new RuntimeException('No se pudo cifrar el archivo.');
-                }
-                if (! rename($sealed, $final) || ! unlink($part)) {
+
+            $sha256 = hash_final($hash);
+            $actual = $reservation->bytes;
+            if ($upload->cipher !== null) {
+                if (! rename($sealed, $final)) {
                     throw new RuntimeException('No se puede finalizar el archivo.');
                 }
-                $upload->cipher = FileCipher::FORMAT;
-            } elseif (! rename($part, $final)) {
-                throw new RuntimeException('No se puede finalizar el archivo.');
+            } else {
+                // Same picture in fewer bytes when possible; the person is charged the final size.
+                if ($this->optimizer->optimize($part, (string) $upload->mime)) {
+                    clearstatcache(true, $part);
+                    $actual = (int) filesize($part);
+                    $sha256 = (string) hash_file('sha256', $part);
+                }
+                $this->publishWhole($upload, $part, $sealed, $final);
             }
             // A crash/rollback leaves pending + reserved, with bytes for cleanup.
             $this->reservations->commit($user, $key, $actual);
             $upload->state = 'ready';
-            $upload->mime = $mime;
-            $upload->sha256 = $hash;
+            $upload->sha256 = $sha256;
+            $upload->hash_state = null;
             $upload->save();
             // Synchronous, inside this transaction: consumers (e.g. file versions) apply atomically.
             event(new PrivateUploadReady($upload->id, $user->id));
 
             return $upload;
         });
+    }
+
+    /**
+     * Reads one request body, refusing anything past the reserved size.
+     *
+     * @param  resource  $input
+     */
+    private function readChunk($input, int $remaining): string
+    {
+        $data = '';
+        while (! feof($input)) {
+            $piece = fread($input, 65536);
+            if ($piece === false || ($piece === '' && ! feof($input))) {
+                throw new RuntimeException('Lectura interrumpida.');
+            }
+            $data .= $piece;
+            if (strlen($data) > $remaining) {
+                throw new RuntimeException('El archivo supera la reserva.');
+            }
+        }
+        if ($data === '' && $remaining > 0) {
+            throw new RuntimeException('Fragmento vacío.');
+        }
+
+        return $data;
+    }
+
+    private function appendPlain(string $part, string $data): void
+    {
+        $output = @fopen($part, 'ab');
+        if ($output === false) {
+            throw new RuntimeException('No se puede crear el archivo privado.');
+        }
+        try {
+            if (! chmod($part, 0600)) {
+                throw new RuntimeException('No se pueden restringir los permisos.');
+            }
+            if (fwrite($output, $data) !== strlen($data)) {
+                throw new RuntimeException('Escritura incompleta; revisa el espacio disponible.');
+            }
+            if (! fflush($output) || ! fsync($output)) {
+                throw new RuntimeException('No se ha podido persistir el fragmento.');
+            }
+        } finally {
+            fclose($output);
+        }
+    }
+
+    /** Whole-file uploads (encryption off, or an optimised JPEG): encrypt once if needed, then publish. */
+    private function publishWhole(PrivateUpload $upload, string $part, string $sealed, string $final): void
+    {
+        $cipher = $this->cipher();
+        if ($cipher === null) {
+            if (! rename($part, $final)) {
+                throw new RuntimeException('No se puede finalizar el archivo.');
+            }
+
+            return;
+        }
+        if (file_exists($sealed) || is_link($sealed)) {
+            throw new RuntimeException('Quedan restos de un cifrado anterior.');
+        }
+        try {
+            $cipher->encryptFile($part, $sealed, 'file:'.$upload->id);
+        } catch (RuntimeException $exception) {
+            @unlink($sealed);
+            throw $exception;
+        }
+        if (! rename($sealed, $final) || ! unlink($part)) {
+            throw new RuntimeException('No se puede finalizar el archivo.');
+        }
+        $upload->cipher = FileCipher::FORMAT;
+    }
+
+    /**
+     * Running SHA-256 of the bytes stored so far. The state is saved with each chunk; if a
+     * crash left more bytes on disk than the state covers, the difference is read back.
+     */
+    private function hashUpTo(PrivateUpload $upload, string $part, string $sealed, int $stored): HashContext
+    {
+        $saved = $upload->hash_state === null ? null : json_decode((string) $upload->hash_state, true);
+        $context = is_array($saved) && is_string($saved['context'] ?? null)
+            ? unserialize((string) base64_decode($saved['context'], true), ['allowed_classes' => [HashContext::class]])
+            : null;
+        $covered = is_array($saved) && is_int($saved['bytes'] ?? null) ? $saved['bytes'] : 0;
+        if (! $context instanceof HashContext || $covered > $stored) {
+            [$context, $covered] = [hash_init('sha256'), 0];
+        }
+        if ($covered < $stored) {
+            $update = fn (string $piece) => hash_update($context, $piece);
+            if ($upload->cipher !== null) {
+                $this->cipherOrFail()->read($sealed, 'file:'.$upload->id, $covered, $stored - $covered, $update);
+            } else {
+                (new StoredBlob($part, null, ''))->stream($covered, $stored - $covered, $update);
+            }
+        }
+
+        return $context;
+    }
+
+    private function packHash(HashContext $context, int $bytes): string
+    {
+        return (string) json_encode(['bytes' => $bytes, 'context' => base64_encode(serialize($context))]);
+    }
+
+    private function cipherOrFail(): FileCipher
+    {
+        return $this->cipher() ?? throw new RuntimeException('Falta la clave de cifrado de archivos.');
     }
 
     /** Bytes stored so far for a pending upload owned by the user (resume after a failed chunk). */
@@ -176,21 +262,23 @@ class PrivateUploads
         [$root, , $location] = $this->destination();
         $this->checkRoot($upload, $root, $location);
 
-        return $this->receivedBytes($root.'/'.$upload->id.'.part');
+        return $this->storedBytes($root.'/'.$upload->id.'.part', $root.'/'.$upload->id.'.enc');
     }
 
-    private function receivedBytes(string $part): int
+    /** Plaintext bytes received so far, whether sealed as they arrive (.enc) or kept whole (.part). */
+    private function storedBytes(string $part, string $sealed): int
     {
-        clearstatcache(true, $part);
-        if (! file_exists($part)) {
-            return 0;
+        foreach ([$part, $sealed] as $path) {
+            clearstatcache(true, $path);
+            if (is_link($path) || (file_exists($path) && ! is_file($path))) {
+                throw new RuntimeException('El archivo parcial no es válido.');
+            }
         }
-        $size = filesize($part);
-        if (is_link($part) || ! is_file($part) || $size === false) {
-            throw new RuntimeException('El archivo parcial no es válido.');
+        if (file_exists($sealed)) {
+            return $this->cipherOrFail()->appendedBytes($sealed);
         }
 
-        return $size;
+        return file_exists($part) ? (int) filesize($part) : 0;
     }
 
     public function cancel(User $user, string $key): void

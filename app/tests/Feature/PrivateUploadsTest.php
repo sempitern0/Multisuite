@@ -93,12 +93,17 @@ class PrivateUploadsTest extends TestCase
 
     public function test_truncated_and_html_files_are_not_committed(): void
     {
-        // A short body is an unfinished upload: kept pending, never committed.
+        // A short body is an unfinished upload. Sealed as it arrives, an intermediate piece
+        // must be whole 64 KiB chunks, so a ragged one is refused and nothing is stored.
         $short = (string) Str::uuid();
         app(PrivateUploads::class)->begin($this->user, 20, $short);
-        $this->receive($short, 'short');
-        $this->assertDatabaseHas('private_uploads', ['id' => $short, 'state' => 'pending']);
-        $this->assertSame(5, app(PrivateUploads::class)->received($this->user, $short));
+        try {
+            $this->receive($short, 'short');
+            $this->fail('Ragged intermediate chunk accepted');
+        } catch (RuntimeException) {
+            $this->assertDatabaseHas('private_uploads', ['id' => $short, 'state' => 'pending']);
+            $this->assertSame(0, app(PrivateUploads::class)->received($this->user, $short));
+        }
         app(PrivateUploads::class)->cancel($this->user, $short);
 
         $body = '<html><body>unsafe</body></html>';
@@ -116,21 +121,29 @@ class PrivateUploadsTest extends TestCase
 
     public function test_chunks_append_in_order_resume_after_a_lost_response_and_keep_the_reservation_alive(): void
     {
+        config(['nas.upload_max_bytes' => 300000]);
+        app(StorageReservations::class)->setPoolLimit('disk', 300000);
+        app(StorageReservations::class)->setUserQuota($this->user, 300000);
         $id = (string) Str::uuid();
-        $body = str_repeat('Lorem ipsum dolor sit amet. ', 20);
+        $body = str_repeat('Lorem ipsum dolor sit amet. ', 5000); // two whole 64 KiB chunks + a tail
         $put = fn (int $offset, string $chunk) => $this->call('PUT', '/uploads/'.$id.'?offset='.$offset, [], [], [], ['CONTENT_TYPE' => 'application/octet-stream', 'HTTP_ACCEPT' => 'application/json'], $chunk);
         $this->actingAs($this->user)->postJson('/uploads', ['key' => $id, 'bytes' => strlen($body)])->assertCreated();
 
-        $put(0, substr($body, 0, 200))->assertOk()->assertJsonPath('state', 'pending');
+        $put(0, substr($body, 0, 65536))->assertOk()->assertJsonPath('state', 'pending');
+        // Nothing readable on disk while it arrives: sealed chunks only, no plaintext part.
+        $this->assertFileDoesNotExist($this->root.'/.multisuite-private/'.$id.'.part');
+        $this->assertStringNotContainsString('Lorem ipsum', (string) file_get_contents($this->root.'/.multisuite-private/'.$id.'.enc'));
         $this->travel(25)->minutes();
         // The same chunk again (its response was lost): the server says where to continue.
-        $put(0, substr($body, 0, 200))->assertStatus(409)->assertExactJson(['state' => 'pending', 'received' => 200]);
-        $put(300, substr($body, 300))->assertStatus(409)->assertJsonPath('received', 200);
-        $this->getJson('/uploads/'.$id)->assertOk()->assertJsonPath('received', 200);
-        $put(200, substr($body, 200, 200))->assertOk()->assertJsonPath('state', 'pending');
+        $put(0, substr($body, 0, 65536))->assertStatus(409)->assertExactJson(['state' => 'pending', 'received' => 65536]);
+        $put(131072, substr($body, 131072))->assertStatus(409)->assertJsonPath('received', 65536);
+        $put(65536, substr($body, 65536, 100))->assertStatus(422);
+        $this->getJson('/uploads/'.$id)->assertOk()->assertJsonPath('received', 65536);
+        $put(65536, substr($body, 65536, 65536))->assertOk()->assertJsonPath('state', 'pending');
         $this->travel(25)->minutes();
         $this->artisan('portal:uploads-cleanup')->assertExitCode(0);
-        $put(400, substr($body, 400))->assertOk()->assertJsonPath('state', 'ready');
+        $put(131072, substr($body, 131072))->assertOk()->assertJsonPath('state', 'ready');
+        $this->assertDatabaseHas('private_uploads', ['id' => $id, 'sha256' => hash('sha256', $body), 'hash_state' => null]);
 
         $this->assertSame($body, $this->decrypted($this->root.'/.multisuite-private/'.$id.'.blob', 'file:'.$id));
         $this->assertStringNotContainsString($body, (string) file_get_contents($this->root.'/.multisuite-private/'.$id.'.blob'));

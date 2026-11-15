@@ -23,7 +23,8 @@ final class FileCipher
 
     private const MAGIC = 'MSF1';
 
-    private const CHUNK = 65536;
+    /** Plaintext bytes per sealed chunk; streamed appends must be multiples of it until the last one. */
+    public const CHUNK = 65536;
 
     private const TAG = SODIUM_CRYPTO_AEAD_XCHACHA20POLY1305_IETF_ABYTES;
 
@@ -96,6 +97,62 @@ final class FileCipher
         return new EncryptedWriter($handle, $header, self::CHUNK, fn (string $plain, int $index, bool $final): string => $this->seal($plain, $header, $index, $final, $key));
     }
 
+    /**
+     * Appends plaintext to an encrypted file that is still being written across several
+     * requests (chunked uploads). Non-final appends must be whole chunks; $final seals the
+     * last one. A half-written chunk left by a crash is dropped first, so the file always
+     * holds a valid prefix and appendedBytes() says where to resume.
+     */
+    public function append(string $path, string $context, string $data, bool $final): void
+    {
+        if (! $final && ($data === '' || strlen($data) % self::CHUNK !== 0)) {
+            throw new RuntimeException('Los fragmentos intermedios deben ser múltiplos de 64 KiB.');
+        }
+        if (! file_exists($path)) {
+            $created = @fopen($path, 'xb');
+            if ($created === false || ! chmod($path, 0600) || fwrite($created, self::MAGIC.pack('N', self::CHUNK).random_bytes(16)) !== self::HEADER || ! fclose($created)) {
+                throw new RuntimeException('No se puede crear el archivo cifrado.');
+            }
+        }
+        $handle = fopen($path, 'r+b');
+        if ($handle === false) {
+            throw new RuntimeException('No se puede abrir el archivo cifrado.');
+        }
+        try {
+            $header = $this->header($handle);
+            $index = intdiv($this->appendedBytes($path), self::CHUNK);
+            $length = self::HEADER + $index * (self::CHUNK + self::TAG);
+            if (! ftruncate($handle, $length) || fseek($handle, $length) !== 0) {
+                throw new RuntimeException('No se puede preparar el archivo cifrado.');
+            }
+            $key = $this->key($context);
+            $pieces = $data === '' ? [''] : str_split($data, self::CHUNK);
+            foreach ($pieces as $position => $piece) {
+                $sealed = $this->seal($piece, $header, $index++, $final && $position === count($pieces) - 1, $key);
+                if (fwrite($handle, $sealed) !== strlen($sealed)) {
+                    throw new RuntimeException('Escritura incompleta del archivo cifrado; revisa el espacio disponible.');
+                }
+            }
+            if (! fflush($handle) || ! fsync($handle)) {
+                throw new RuntimeException('No se ha podido guardar el archivo cifrado.');
+            }
+        } finally {
+            fclose($handle);
+        }
+    }
+
+    /** Plaintext bytes already appended to an unfinished encrypted file (whole chunks only). */
+    public function appendedBytes(string $path): int
+    {
+        clearstatcache(true, $path);
+        $length = filesize($path);
+        if ($length === false || $length < self::HEADER) {
+            throw new RuntimeException('El archivo cifrado está incompleto.');
+        }
+
+        return intdiv($length - self::HEADER, self::CHUNK + self::TAG) * self::CHUNK;
+    }
+
     /** Plaintext size of an encrypted file, from its length alone. */
     public function plainSize(string $path): int
     {
@@ -123,11 +180,7 @@ final class FileCipher
             throw new RuntimeException('No se puede abrir el archivo cifrado.');
         }
         try {
-            $header = (string) fread($handle, self::HEADER);
-            $chunk = strlen($header) === self::HEADER ? unpack('N', substr($header, 4, 4)) : false;
-            if ($chunk === false || ! str_starts_with($header, self::MAGIC) || ($chunk[1] ?? null) !== self::CHUNK) {
-                throw new RuntimeException('El archivo no tiene el formato cifrado esperado.');
-            }
+            $header = $this->header($handle);
             $key = $this->key($context);
             $end = $offset + $length;
             for ($index = intdiv($offset, self::CHUNK); $index < $count && $index * self::CHUNK < max($end, 1); $index++) {
@@ -161,6 +214,18 @@ final class FileCipher
         });
 
         return $out;
+    }
+
+    /** @param  resource  $handle */
+    private function header($handle): string
+    {
+        $header = (string) fread($handle, self::HEADER);
+        $chunk = strlen($header) === self::HEADER ? unpack('N', substr($header, 4, 4)) : false;
+        if ($chunk === false || ! str_starts_with($header, self::MAGIC) || ($chunk[1] ?? null) !== self::CHUNK) {
+            throw new RuntimeException('El archivo no tiene el formato cifrado esperado.');
+        }
+
+        return $header;
     }
 
     private function seal(string $plain, string $header, int $index, bool $final, string $key): string

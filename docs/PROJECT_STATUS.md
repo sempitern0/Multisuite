@@ -43,6 +43,7 @@ Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md
 
 ### S03.7 Cifrado en reposo — PR apilada sobre D04 (`feat/s03-file-encryption`)
 - Archivos y ZIP cifrados en disco con XChaCha20-Poly1305 por bloques (libsodium) y clave por archivo derivada de `NAS_FILES_KEY`, que vive solo en `app/.env`. `make up` la crea en desarrollo; sin clave no se guardan subidas nuevas.
+- Las subidas se cifran fragmento a fragmento con SHA-256 incremental: sin copia en claro (salvo JPEG ≤ 64 MiB que se optimizan), sin doble espacio y con un último fragmento rápido; el navegador espera a `ready`.
 - Descargas, vídeo y audio con rangos sobre el contenido cifrado; ZIP escritos en flujo directamente cifrados (sin `ZipArchive` ni copias intermedias).
 - Validado: CI y pruebas locales del formato (rangos, alteración, recorte, clave equivocada) y del ZIP con libzip, unzip y Python. **Pendiente del usuario**: guardar `NAS_FILES_KEY` fuera del servidor.
 
