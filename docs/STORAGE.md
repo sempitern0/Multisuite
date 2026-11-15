@@ -30,10 +30,10 @@ Recomendación de topología para el operador:
 ## 2. Uso desde la interfaz (propietario/administrador)
 
 Menú **Almacenamiento** (`/admin/storage`, requiere confirmación reciente de contraseña):
-- **Discos**: barra con contenido del portal, otros datos, margen y libre; límite actual y máximo recomendado. El propietario elige el límite con opciones predefinidas («Todo lo recomendado», «No usar este disco», 1 GB…4 TB) u «Otra cantidad» (número + MB/GB/TB).
-- **Reparto**: total de límites, total prometido, reparto equitativo sugerido y aviso de sobreasignación.
-- **Espacio por defecto** para personas nuevas (solo propietario).
-- **Personas**: barra de uso y selector de espacio máximo. El propietario gestiona a cualquiera (incluido él mismo); un administrador solo a miembros. Reducir por debajo de lo usado/reservado se rechaza con mensaje junto al formulario.
+- **Resumen**: límite total de los discos, ocupado, prometido (con aviso si supera lo que hay) y estado de la copia de seguridad.
+- **Discos del portal** (tabla): barra con contenido del portal, otros datos, margen y libre; límite, usado y máximo recomendado; el propietario cambia el límite en la misma fila («Todo lo recomendado», «No usar este disco», 1 GB…4 TB u «Otra cantidad»). Avisos breves debajo solo si hay subidas interrumpidas o un límite por encima del espacio real.
+- **Personas** (tabla con búsqueda y paginación): uso y espacio máximo editable en la fila. El propietario gestiona a cualquiera (incluido él mismo); un administrador solo a miembros. Reducir por debajo de lo usado/reservado se rechaza con mensaje junto al selector. El **espacio por defecto** para personas nuevas está junto a la búsqueda (solo propietario).
+- **Discos del servidor** (tabla, solo lectura): particiones de `make nas-discover`.
 - Cada cambio queda en **Actividad** (`storage.user_quota`, `storage.pool_limit`, `storage.default_quota`) con tamaño anterior y nuevo; sin rutas.
 - Los miembros ven «Tu almacenamiento» en la portada cuando tienen espacio asignado. La ficha de usuario enlaza a su cuota.
 

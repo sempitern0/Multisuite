@@ -57,8 +57,8 @@ class BackupStatusTest extends TestCase
         $owner->save();
         $page = fn () => $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])->get('/admin/storage')->assertOk();
 
-        $page()->assertSee('Todavía no se ha hecho ninguna copia');
+        $page()->assertSee('Sin copia externa');
         $this->state(['ok' => false, 'finished_at' => '2026-11-14T03:05:00Z', 'step' => 'check']);
-        $page()->assertSee('La última copia falló')->assertDontSee('Todavía no se ha hecho ninguna copia');
+        $page()->assertSee('La última copia falló')->assertDontSee('Sin copia externa');
     }
 }

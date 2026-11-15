@@ -28,6 +28,7 @@ Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md
 ## En revisión: S03.5 Fotos y vídeo en Mis archivos — rama `feat/s03-media-viewer`
 - Visor de imágenes con zoom (botones, rueda, doble clic, pellizco, teclado), arrastre, tamaño real y pantalla completa; al abrir, la imagen se ajusta al espacio disponible y muestra su porcentaje real.
 - Subida múltiple con bandeja flotante (resumen, barra total, errores primero), arrastrar y soltar, 3 archivos en paralelo y archivos nuevos resaltados en la lista.
+- Almacenamiento simplificado: resumen en una fila (incluida la copia de seguridad), discos y personas en tablas con el límite editable en la propia fila y discos del servidor en una sola tabla; sin textos explicativos largos.
 - Tablas de Mis archivos (archivos, papelera, versiones, descargas ZIP) con acciones de solo icono en una fila alineada, nombres largos recortados a dos líneas y tamaños sin partir; formularios de nombre en línea. La celda de acciones y el botón de los formularios en línea se corrigen en el tema, así que también mejoran Personas, Invitaciones y Seguridad.
 - Vídeo MP4/WebM/MOV reproducido por el navegador, con avance por tramos; sin conversión en el servidor.
 - Subida por fragmentos de 8 MiB con reanudación: el tamaño ya no lo limitan Nginx ni PHP (antes fallaba a partir de ~8 MB); tope de seguridad de 100 GiB por archivo, el límite real es el espacio de cada persona.

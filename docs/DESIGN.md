@@ -53,6 +53,7 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | `qr` | `label`, slot (SVG) | Código QR sobre fondo claro para que la cámara lo lea en tema oscuro. |
 | `breadcrumbs` | `items` ({label, href}) | Ubicación; el último elemento es la página actual. |
 | `uploader` | `store-url`, `upload-url`, `max-bytes`, `folder`, `label`, `hint` | Botón de subir, zona para soltar archivos sobre la página y bandeja flotante de progreso (resumen con barra total, lista desplegable con los errores primero, cierre al terminar). `files.js` clona `<template data-tray-row>` y solo cambia `data-state` (queued, uploading, ok, bad), textos y anchos. |
+| `size-picker` (compacto) | `compact`, `visible-label` | Fila de una línea para celdas de tabla y barras de herramientas; las etiquetas quedan solo para lectores de pantalla salvo `visible-label`. |
 | `entry` | `href`, `icon`, `spa` | Nombre de archivo o carpeta con icono, como enlace. En tablas se recorta a dos líneas; el nombre completo queda en el tooltip. |
 | `uploader` | `store-url`, `upload-url`, `max-bytes`, `folder`, `hint` | Selector de archivos con lista de progreso; lo maneja `resources/js/files.js` (ganchos `data-uploader*`, estado en `data-state`) y emite `files-uploaded`. |
 | `preview` | `kind` image/video/pdf/text/rich/none, `src`, `title`, `note` | Superficie de vista previa de solo lectura. `image` es un visor con zoom y `video` el reproductor del navegador; su comportamiento vive en `resources/js/viewer.js` (`data-viewer`, `data-player`). |
