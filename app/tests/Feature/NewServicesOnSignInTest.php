@@ -39,6 +39,7 @@ class NewServicesOnSignInTest extends TestCase
     {
         $user = User::factory()->create(['email' => 'persona@example.com']);
         $user->password = 'right-password';
+        $user->role = 'member';
         $user->service_access = $access;
         $user->services_revoked = $revoked;
         $user->save();
