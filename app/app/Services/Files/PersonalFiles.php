@@ -2,6 +2,7 @@
 
 namespace App\Services\Files;
 
+use App\Enums\FileKind;
 use App\Models\Folder;
 use App\Models\User;
 use App\Models\UserFile;
@@ -57,50 +58,7 @@ class PersonalFiles
         return $trail;
     }
 
-    /** @return Collection<int, Folder> */
-    public function folders(User $user, ?Folder $parent): Collection
-    {
-        return Folder::where('user_id', $user->id)->where('parent_id', $parent?->id)->orderBy('name')->get();
-    }
-
-    /**
-     * Ready files with their verified size and MIME; uploads in progress are counted apart.
-     *
-     * @return Collection<int, UserFile>
-     */
-    public function files(User $user, ?Folder $folder): Collection
-    {
-        return $this->visible($user)
-            ->where('user_files.folder_id', $folder?->id)
-            ->orderBy('user_files.name')
-            ->get(['user_files.*', 'private_uploads.mime as mime', 'storage_reservations.actual_bytes as size']);
-    }
-
-    /** Kinds offered by the file filter, matched on the verified MIME type. */
-    public const KINDS = ['image' => 'Imágenes', 'video' => 'Vídeos', 'audio' => 'Música y audio', 'document' => 'Documentos', 'other' => 'Otros'];
-
     public const SORTS = ['name' => 'Nombre', 'date' => 'Fecha de subida', 'size' => 'Tamaño', 'type' => 'Tipo'];
-
-    public static function kindOf(?string $mime): string
-    {
-        $mime = (string) $mime;
-
-        return match (true) {
-            str_starts_with($mime, 'image/') => 'image',
-            str_starts_with($mime, 'video/') => 'video',
-            str_starts_with($mime, 'audio/') || $mime === 'application/ogg' => 'audio',
-            str_starts_with($mime, 'text/') || in_array($mime, self::documentMimes(), true) => 'document',
-            default => 'other',
-        };
-    }
-
-    /** @return list<string> */
-    private static function documentMimes(): array
-    {
-        return array_values(array_filter((array) config('nas.allowed_mimes', []), fn ($mime) => is_string($mime)
-            && (str_starts_with($mime, 'application/pdf') || str_starts_with($mime, 'application/json') || str_starts_with($mime, 'application/epub')
-                || str_contains($mime, 'officedocument') || str_contains($mime, 'opendocument') || str_starts_with($mime, 'application/vnd.ms-') || $mime === 'application/msword')));
-    }
 
     /**
      * What Mis archivos shows: a folder's contents, or — with a search — matching files
@@ -121,22 +79,7 @@ class PersonalFiles
         } else {
             $files->whereRaw("lower(user_files.name) like ? escape '\\'", [$like]);
         }
-        if (array_key_exists($kind, self::KINDS)) {
-            $documents = self::documentMimes();
-            $match = [
-                'image' => fn ($q) => $q->where('private_uploads.mime', 'like', 'image/%'),
-                'video' => fn ($q) => $q->where('private_uploads.mime', 'like', 'video/%'),
-                'audio' => fn ($q) => $q->where('private_uploads.mime', 'like', 'audio/%')->orWhere('private_uploads.mime', 'application/ogg'),
-                'document' => fn ($q) => $q->where('private_uploads.mime', 'like', 'text/%')->orWhereIn('private_uploads.mime', $documents),
-            ];
-            if ($kind === 'other') {
-                foreach ($match as $condition) {
-                    $files->whereNot($condition);
-                }
-            } else {
-                $files->where($match[$kind]);
-            }
-        }
+        FileKind::tryFrom($kind)?->scope($files);
         match ($sort) {
             'date' => $files->orderBy('user_files.created_at', $direction),
             'size' => $files->orderBy('storage_reservations.actual_bytes', $direction),

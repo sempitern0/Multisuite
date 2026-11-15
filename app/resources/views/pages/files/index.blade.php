@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\FileKind;
 use App\Livewire\Concerns\ManagesOwnFiles;
 use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
@@ -92,7 +93,7 @@ new #[Title('Mis archivos')] class extends Component {
     /** @return array{folders: \Illuminate\Support\Collection<int, Folder>, entries: \Illuminate\Support\Collection<int, \App\Models\UserFile>} */
     private function browse(PersonalFiles $files): array
     {
-        $kind = array_key_exists($this->kind, PersonalFiles::KINDS) ? $this->kind : '';
+        $kind = FileKind::tryFrom($this->kind)?->value ?? '';
         $sort = array_key_exists($this->sort, PersonalFiles::SORTS) ? $this->sort : 'name';
         $found = $files->browse(Auth::user(), $this->folder, mb_substr($this->search, 0, 100), $kind, $sort, $this->direction);
 
@@ -212,20 +213,11 @@ new #[Title('Mis archivos')] class extends Component {
         $folder = $this->folder;
         $fmt = fn (?int $bytes): string => \App\Support\Bytes::format($bytes);
         $describe = fn (array $summary): string => $summary['items'].' '.($summary['items'] === 1 ? 'elemento' : 'elementos').' · '.$fmt($summary['bytes']);
-        $icon = fn (?string $mime): string => match (true) {
-            str_starts_with((string) $mime, 'image/') => 'image',
-            str_starts_with((string) $mime, 'audio/') => 'music',
-            str_starts_with((string) $mime, 'video/') => 'video',
-            default => 'document',
-        };
         $crumbs = [['label' => 'Mis archivos', 'href' => route('files.index')]];
         foreach ($l['breadcrumbs'] as $crumb) {
             $crumbs[] = ['label' => $crumb->name, 'href' => route('files.folder', $crumb)];
         }
         $empty = $l['folders']->isEmpty() && $l['entries']->isEmpty();
-        $kindLabel = fn (?string $mime): string => [
-            'image' => 'Imagen', 'video' => 'Vídeo', 'audio' => 'Audio', 'document' => 'Documento', 'other' => 'Archivo',
-        ][\App\Services\Files\PersonalFiles::kindOf($mime)];
     @endphp
 
     <x-ui::breadcrumbs :items="$crumbs" />
@@ -270,7 +262,7 @@ new #[Title('Mis archivos')] class extends Component {
         <x-ui::stack gap="sm">
             <x-ui::toolbar>
                 <x-ui::field name="q" type="search" :label="$folder === null ? 'Buscar en Mis archivos' : 'Buscar en Mis archivos (todas las carpetas)'" maxlength="100" placeholder="Nombre del archivo o carpeta" wire:model.live.debounce.300ms="search" />
-                <x-ui::select name="tipo" label="Tipo" :options="['' => 'Todos'] + \App\Services\Files\PersonalFiles::KINDS" wire:model.live="kind" />
+                <x-ui::select name="tipo" label="Tipo" :options="['' => 'Todos'] + \App\Enums\FileKind::options()" wire:model.live="kind" />
                 <x-ui::select name="orden" label="Ordenar por" :options="\App\Services\Files\PersonalFiles::SORTS" wire:model.live="sort" />
                 <x-ui::button variant="ghost" :icon="$direction === 'asc' ? 'sort-asc' : 'sort-desc'" :label="$direction === 'asc' ? 'Orden ascendente (pulsa para invertir)' : 'Orden descendente (pulsa para invertir)'" wire:click="toggleDirection" />
                 <x-slot:end>
@@ -320,16 +312,16 @@ new #[Title('Mis archivos')] class extends Component {
                         </tr>
                     @endforeach
                     @foreach ($l['entries'] as $entry)
+                        @php($kindOf = \App\Enums\FileKind::fromMime($entry->mime))
                         <tr wire:key="file-{{ $entry->id }}" @if (in_array($entry->id, $this->fresh, true)) data-fresh @endif>
                             <x-ui::td check><input type="checkbox" value="{{ $entry->id }}" wire:model="selectedFiles" aria-label="Seleccionar {{ $entry->name }}"></x-ui::td>
-                            <x-ui::td><x-ui::entry :href="route('files.show', $entry)" :icon="$icon($entry->mime)">{{ $entry->name }}</x-ui::entry></x-ui::td>
+                            <x-ui::td><x-ui::entry :href="route('files.show', $entry)" :icon="$kindOf->icon()">{{ $entry->name }}</x-ui::entry></x-ui::td>
                             @if ($l['searching'])<x-ui::td label="Ubicación">{{ $where($entry->folder_id) }}</x-ui::td>@endif
-                            <x-ui::td label="Tipo" nowrap>{{ $kindLabel($entry->mime) }}</x-ui::td>
+                            <x-ui::td label="Tipo" nowrap>{{ $kindOf->label() }}</x-ui::td>
                             <x-ui::td label="Subido" nowrap>{{ $entry->created_at?->format('d/m/Y H:i') }}</x-ui::td>
                             <x-ui::td label="Tamaño" nowrap>{{ $fmt((int) $entry->size) }}</x-ui::td>
                             <x-ui::td align="end">
-                                <x-ui::button variant="ghost" size="sm" icon="download" label="Descargar" :href="route('files.content', ['fileId' => $entry->id, 'download' => 1])" :aria-label="'Descargar '.$entry->name" />
-                                <x-ui::button variant="ghost" size="sm" icon="trash" label="Mover a la papelera" wire:click="trash({{ $entry->id }})" :aria-label="'Mover a la papelera '.$entry->name" />
+                                <x-pages::files.entry-actions :entry="$entry" />
                             </x-ui::td>
                         </tr>
                     @endforeach
@@ -348,15 +340,14 @@ new #[Title('Mis archivos')] class extends Component {
                         </x-ui::file-card>
                     @endforeach
                     @foreach ($l['entries'] as $entry)
-                        @php($kindOf = \App\Services\Files\PersonalFiles::kindOf($entry->mime))
-                        <x-ui::file-card wire:key="file-{{ $entry->id }}" :href="route('files.show', $entry)" :icon="$icon($entry->mime)" :name="$entry->name"
+                        @php($kindOf = \App\Enums\FileKind::fromMime($entry->mime))
+                        <x-ui::file-card wire:key="file-{{ $entry->id }}" :href="route('files.show', $entry)" :icon="$kindOf->icon()" :name="$entry->name"
                             :meta="($l['searching'] ? $where($entry->folder_id).' · ' : '').$fmt((int) $entry->size)"
-                            :thumb="in_array($kindOf, ['image', 'video'], true) ? $kindOf : null" :src="route('files.content', ['fileId' => $entry->id])"
+                            :thumb="$kindOf->hasThumbnail() ? $kindOf->value : null" :src="route('files.content', ['fileId' => $entry->id])"
                             :fresh="in_array($entry->id, $this->fresh, true)">
                             <x-slot:select><input type="checkbox" value="{{ $entry->id }}" wire:model="selectedFiles" aria-label="Seleccionar {{ $entry->name }}"></x-slot:select>
                             <x-slot:actions>
-                                <x-ui::button variant="ghost" size="sm" icon="download" label="Descargar" :href="route('files.content', ['fileId' => $entry->id, 'download' => 1])" :aria-label="'Descargar '.$entry->name" />
-                                <x-ui::button variant="ghost" size="sm" icon="trash" label="Mover a la papelera" wire:click="trash({{ $entry->id }})" :aria-label="'Mover a la papelera '.$entry->name" />
+                                <x-pages::files.entry-actions :entry="$entry" />
                             </x-slot:actions>
                         </x-ui::file-card>
                     @endforeach
