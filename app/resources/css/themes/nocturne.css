@@ -76,7 +76,9 @@
     .ui-shell { display: flex; min-height: 100vh; }
     .ui-sidebar { width: 250px; transition: width .2s ease; flex: none; background: #111612; border-right: 1px solid #29332b; display: flex; flex-direction: column; gap: 8px; padding: 23px 14px 14px; position: sticky; top: 0; height: 100vh; }
     .ui-sidebar-main { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #394635 transparent; }
-    .ui-brand { display: flex; gap: 12px; align-items: center; padding: 0 11px 20px; border-bottom: 1px solid #283329; }
+    /* Logo and the collapse button share the top row; compact stacks them. */
+    .ui-sidebar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 20px; border-bottom: 1px solid #283329; }
+    .ui-brand { display: flex; gap: 12px; align-items: center; padding: 0 11px; min-width: 0; }
     .ui-brandmark { width: 36px; height: 36px; display: grid; place-items: center; background: var(--ui-accent); color: var(--ui-accent-ink); border-radius: 12px; transform: rotate(-6deg); }
     .ui-brandmark svg { width: 20px; height: 20px; }
     .ui-brandtext { display: block; font-size: 17px; font-weight: 800; letter-spacing: -.04em; line-height: 1.1; }
@@ -86,8 +88,9 @@
     .ui-nav-item:hover { background: #222b22; color: var(--ui-text); }
     .ui-nav-item[aria-current="page"] { background: #28311f; color: var(--ui-accent); }
     .ui-nav-item svg { width: 20px; height: 20px; flex: none; stroke-width: 1.75; }
-    .ui-collapse { margin-bottom: 6px; color: var(--ui-muted); }
-    .ui-collapse svg { transition: transform .2s ease; }
+    .ui-collapse { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 10px; border: 0; background: transparent; color: var(--ui-muted); }
+    .ui-collapse:hover { background: #222b22; color: var(--ui-text); }
+    .ui-collapse svg { width: 18px; height: 18px; transition: transform .2s ease; }
     html[data-sidebar="compact"] .ui-collapse svg { transform: scaleX(-1); }
     @media (max-width: 1050px) { .ui-collapse { display: none; } }
     .ui-sidebar-bottom { border-top: 1px solid #283329; padding: 13px 0 0; }
@@ -112,13 +115,11 @@
     .ui-avatar-editor-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     .ui-avatar-editor-actions .ui-btn:has(input:focus-visible) { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
     .ui-avatar-editor-crop { display: grid; gap: 14px; justify-items: start; }
-    .ui-avatar-stage { position: relative; width: min(280px, 100%); aspect-ratio: 1; overflow: hidden; border-radius: var(--ui-radius); background: var(--ui-bg); touch-action: none; cursor: grab; user-select: none; }
-    .ui-avatar-stage:active { cursor: grabbing; }
+    .ui-avatar-stage { position: relative; width: min(280px, 100%); aspect-ratio: 1; overflow: hidden; border-radius: var(--ui-radius); background: var(--ui-bg); touch-action: none; }
     .ui-avatar-stage:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; }
-    .ui-avatar-stage img { position: absolute; left: 50%; top: 50%; max-width: none; transform-origin: center; pointer-events: none; }
-    .ui-avatar-stage::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 999px #0d100eb3; outline: 2px solid #dfec7099; pointer-events: none; }
-    .ui-avatar-zoom { display: flex; align-items: center; gap: 12px; width: min(280px, 100%); color: var(--ui-sub); font-size: 13px; font-weight: 650; }
-    .ui-avatar-zoom input { flex: 1; accent-color: var(--ui-accent); }
+    /* Cropper.js elements: the canvas fills the stage; the fixed selection is drawn as a circle. */
+    .ui-avatar-stage cropper-canvas { width: 100%; height: 100%; }
+    .ui-avatar-stage cropper-selection { border-radius: 50%; box-shadow: 0 0 0 999px #0d100eb3; outline: 2px solid #dfec7099; pointer-events: none; }
     .ui-main { min-width: 0; flex: 1; }
     .ui-topbar { height: 64px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--ui-line); padding: 0 40px; }
     .ui-topbar-title { font-size: 13px; color: var(--ui-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -575,7 +576,8 @@
     /* Compact sidebar preference (desktop only; mobile keeps the off-canvas menu) */
     @media (min-width: 701px) {
         html[data-sidebar="compact"] .ui-sidebar { width: 74px; padding-inline: 8px; }
-        html[data-sidebar="compact"] .ui-brand { justify-content: center; padding: 0 0 20px; }
+        html[data-sidebar="compact"] .ui-sidebar-head { flex-direction: column; gap: 12px; }
+        html[data-sidebar="compact"] .ui-brand { justify-content: center; padding: 0; }
         html[data-sidebar="compact"] .ui-sidebar .ui-hide-compact { display: none; }
         html[data-sidebar="compact"] .ui-nav-item, html[data-sidebar="compact"] .ui-person { justify-content: center; }
         html[data-sidebar="compact"] .ui-nav-item { width: 46px; height: 44px; margin-inline: auto; padding: 0; }
@@ -584,7 +586,8 @@
     /* Responsive & motion */
     @media (max-width: 1050px) {
         .ui-sidebar { width: 74px; padding-inline: 8px; }
-        .ui-brand { justify-content: center; padding: 0 0 20px; }
+        .ui-sidebar-head { justify-content: center; }
+        .ui-brand { justify-content: center; padding: 0; }
         .ui-sidebar .ui-hide-compact { display: none; }
         .ui-nav-item { justify-content: center; }
         .ui-person { justify-content: center; }
@@ -621,7 +624,8 @@
         .ui-toolbar-end .ui-size-picker-compact { width: 100%; }
         .ui-sidebar { position: fixed; inset: 0 auto 0 0; width: 272px; z-index: 50; transform: translateX(-105%); transition: transform .2s ease; padding: 23px 14px 14px; }
         .ui-sidebar .ui-hide-compact { display: block; }
-        .ui-brand { justify-content: flex-start; padding: 0 11px 20px; }
+        .ui-sidebar-head { justify-content: flex-start; }
+        .ui-brand { justify-content: flex-start; padding: 0 11px; }
         .ui-nav-item { justify-content: flex-start; }
         .ui-person { justify-content: flex-start; }
         .ui-nav-open .ui-sidebar { transform: translateX(0); }

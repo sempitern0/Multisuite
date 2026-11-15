@@ -12,13 +12,20 @@
         <a href="#contenido" class="ui-skip">Saltar al contenido</a>
         <div class="ui-shell" data-layout="app" x-data="{ navOpen: false }" x-bind:class="navOpen && 'ui-nav-open'" x-on:keydown.escape.window="navOpen = false">
             <aside class="ui-sidebar" aria-label="Navegación principal">
-                <a href="{{ $navigation['home'] }}" wire:navigate class="ui-brand">
-                    <span class="ui-brandmark"><x-ui::icon name="diamond" /></span>
-                    <span class="ui-hide-compact">
-                        <span class="ui-brandtext">Multisuite</span>
-                        <span class="ui-brandsub">Tu espacio</span>
-                    </span>
-                </a>
+                <div class="ui-sidebar-head">
+                    <a href="{{ $navigation['home'] }}" wire:navigate class="ui-brand">
+                        <span class="ui-brandmark"><x-ui::icon name="diamond" /></span>
+                        <span class="ui-hide-compact">
+                            <span class="ui-brandtext">Multisuite</span>
+                            <span class="ui-brandsub">Tu espacio</span>
+                        </span>
+                    </a>
+                    @php($compact = $navigation['sidebar']['compact'])
+                    <button type="button" class="ui-collapse" data-sidebar-toggle data-save="{{ $navigation['sidebar']['save'] }}" data-csrf="{{ csrf_token() }}"
+                        aria-label="Contraer o expandir el menú" aria-expanded="{{ $compact ? 'false' : 'true' }}" title="{{ $compact ? 'Expandir el menú' : 'Contraer el menú' }}">
+                        <x-ui::icon name="chevrons-left" />
+                    </button>
+                </div>
                 <nav class="ui-sidebar-main">
                     @foreach ($navigation['groups'] as $group)
                         @if ($group['label'])<p class="ui-nav-title ui-hide-compact">{{ $group['label'] }}</p>@endif
@@ -29,9 +36,6 @@
                 </nav>
                 @php($account = $navigation['account'])
                 <div class="ui-sidebar-bottom">
-                    <button type="button" class="ui-nav-item ui-collapse" data-sidebar-toggle data-save="{{ $navigation['sidebar']['save'] }}" data-csrf="{{ csrf_token() }}" aria-expanded="{{ $navigation['sidebar']['compact'] ? 'false' : 'true' }}" title="{{ $navigation['sidebar']['compact'] ? 'Expandir el menú' : 'Contraer el menú' }}">
-                        <x-ui::icon name="sidebar" /><span class="ui-hide-compact">Contraer menú</span>
-                    </button>
                     <div class="ui-person">
                         <x-ui::avatar :src="$account['avatar']" :initials="$account['initials']" live />
                         <span class="ui-hide-compact ui-person-text">

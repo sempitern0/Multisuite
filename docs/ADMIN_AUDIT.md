@@ -14,7 +14,7 @@ El menú **Actividad** muestra las altas manuales, modificaciones y eliminacione
 `make artisan CMD="migrate --force"` (incremental, no inventa historial). Tests: `make test CMD="--filter=AdminAuditTest"`. Registra también cambios de almacenamiento (`storage.*`, solo tamaños e ID de disco; ver STORAGE.md).
 
 ## Límites y continuación
-Este incremento audita únicamente el CRUD administrativo. Invitaciones/aceptación, autoeliminación, consola, cambios personales, intentos fallidos, permisos por servicio y vinculación de cuentas preexistentes siguen fuera. No hay purga automática: no se destruye historial sin una política acordada. Continuación en ROADMAP (P03-06c/d).
+Este incremento audita únicamente el CRUD administrativo. Invitaciones/aceptación, autoeliminación, consola, cambios personales, intentos fallidos, permisos por servicio y vinculación de cuentas preexistentes siguen fuera. No hay purga automática: no se destruye historial sin una política acordada. Continuación en ROADMAP (P03).
 
 ## Contrato para futuros servicios del NAS
 

@@ -19,7 +19,7 @@ Cada operación es una Action en `app/Actions/Users` (caso de uso único): la p�
 Límites: las sesiones ya abiertas dentro de Navidrome siguen válidas hasta que caducan (su propia duración de sesión); bloquear la contraseña impide entrar de nuevo, también desde aplicaciones Subsonic. La baja remota y la transacción local no son una transacción distribuida. Solo cubre cuentas vinculadas por Multisuite; no descubre cuentas creadas manualmente.
 
 ## Foto de perfil
-Ajustes → Perfil. La persona elige una imagen (JPG, PNG, WebP o GIF) y la encuadra en un círculo; el navegador la recorta a 512 px y la sube. El servidor (`Services/Users/Avatars`) la vuelve a decodificar, recorta al centro y guarda un **WebP de 256 px** en el disco privado, sin metadatos (ubicación incluida). Límites: 8 MB, entre 64 y 4096 px de lado. Se sirve en `/avatars/{id}/{hash}` solo a la propia persona y a propietario/administradores, con caché de un año (la dirección cambia con cada foto). La foto anterior se borra cuando la nueva queda registrada.
+Ajustes → Perfil. La persona elige una imagen (JPG, PNG, WebP o GIF) y la encuadra en un círculo con Cropper.js; el navegador la recorta a 512 px y la sube. El servidor (`Services/Users/Avatars`) la vuelve a decodificar, recorta al centro y guarda un **WebP de 256 px** en el disco privado, sin metadatos (ubicación incluida). Límites: 8 MB, entre 64 y 4096 px de lado. Se sirve en `/avatars/{id}/{hash}` solo a la propia persona y a propietario/administradores, con caché de un año (la dirección cambia con cada foto). La foto anterior se borra cuando la nueva queda registrada.
 
 ## QA pendiente con cuentas desechables
 1. Como miembro, comprobar ausencia del menú y HTTP 403 al acceder directamente a `/users`.

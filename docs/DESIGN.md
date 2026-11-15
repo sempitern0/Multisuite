@@ -1,7 +1,6 @@
 # Diseño de la interfaz (capa de tema)
 
-Estado: **D01, D02a y D02b.1 implementados** (fundación, shell, acceso, portada y toda la administración: listas, crear/editar personas y Almacenamiento; ajustes con preferencias). Todas las pantallas están migradas (D02b.2b); de Flux solo queda el campo de código de un solo uso (`flux:otp`).
-Referencia visual: [design/nocturne-v2/GUIA.md](design/nocturne-v2/GUIA.md) y el prototipo estático `design/nocturne-v2/prototipo-28-pantallas.html` (abrir en el navegador; no forma parte de la app).
+Todas las pantallas usan el tema Nocturne; de Flux solo queda el campo de código de un solo uso (`flux:otp`). El prototipo visual original quedó en el historial de git (`docs/design/nocturne-v2`, retirado tras la migración).
 
 ## Objetivo
 El diseño está separado de la lógica para poder sustituirlo sin tocar controladores, rutas, policies ni la estructura de las vistas de dominio.
@@ -60,7 +59,7 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | `file-card` | `href`, `name`, `icon`, `meta`, `thumb` image/video, `src`, `spa`, `fresh`; slots `select`, `actions` | Elemento de `file-grid`. La miniatura solo se carga en galería y de forma diferida. |
 | `tile-art` | `name` | Fondo vectorial decorativo de una tarjeta de servicio según su icono (music, folder, video, book, image; otro nombre: patrón neutro). Lo dibuja `service-tile`; sin texto ni significado propio. |
 | `avatar` | `src`, `initials`, `size` sm/md/lg/xl, `label`, `live` | Foto de la persona o sus iniciales. `live` (la propia persona, p. ej. en el menú) se actualiza con el evento `avatar-changed` sin recargar. |
-| `avatar-editor` | `model`, `save`, `src`, `initials`; ranura para acciones extra | Elegir foto y encuadrarla en un círculo (arrastrar, deslizador, Ctrl/⌘ + rueda, pellizco, flechas y + / −). El navegador la recorta a 512 px y la sube a la propiedad `model`; luego llama a `save`. El servidor la vuelve a procesar. |
+| `avatar-editor` | `model`, `save`, `src`, `initials`; ranura para acciones extra | Elegir foto y encuadrarla en un círculo con Cropper.js (arrastrar, botones de zoom, Ctrl/⌘ + rueda, pellizco, flechas y + / −). El navegador la recorta a 512 px y la sube a la propiedad `model`; luego llama a `save`. El servidor la vuelve a procesar. |
 | `person` | `name`, `sub`, `src`, `initials`, `size` sm/lg | Avatar con nombre y una línea secundaria (listas de personas y cabecera de su ficha). |
 | `command-stack` | `selecting` (expresión Alpine) | Coloca la barra de filtros y la de selección en el mismo hueco: al seleccionar se intercambian sin desplazar la lista (nada se mueve bajo el puntero); la barra oculta queda inerte y el conjunto se fija arriba mientras hay selección. |
 | `selection-bar` | `show` (expresión Alpine), `label` | Barra contextual con el número de elementos seleccionados y las acciones en bloque; aparece solo con selección y queda fija arriba al desplazarse. |
@@ -103,12 +102,3 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 - Contraste AA comprobado (texto ≥ 4,5:1, contornos de controles ≥ 3:1). Desviaciones mínimas respecto a la guía para cumplirlo: texto atenuado `#818e81` (guía `#778477`), placeholder `#758575` y borde de campos `#5a675b`.
 - Accesibilidad: foco visible amarillo, `aria-current` en navegación, errores con `role="alert"` y `aria-describedby`, `prefers-reduced-motion`, responsive (≤1050 px barra de iconos, ≤700 px menú desplegable, rejilla de 2 columnas).
 
-## Estado por pantalla
-| Pantalla | Estado |
-|---|---|
-| Acceso, recuperar/guardar contraseña, confirmar, 2FA, verificar correo, invitación, contraseña inicial | Migradas (D01). Sin página de bienvenida: `/` lleva a entrar o a la página de inicio elegida |
-| Shell y portada de servicios | Migradas (D01) |
-| Personas (lista, crear, editar), Invitaciones, Actividad, Almacenamiento, Preferencias | Migradas (D02a, D02b.1) |
-| Mis archivos, vista previa, papelera, descargas ZIP | Migradas (D02b.2a) |
-| Perfil (nombre, correo, nombre de usuario, eliminar cuenta) y Seguridad (contraseña, verificación en dos pasos, llaves de acceso) | Migradas (D02b.2b) |
-| Resumen de administración con métricas reales | Pendiente (D02, solo admin) |

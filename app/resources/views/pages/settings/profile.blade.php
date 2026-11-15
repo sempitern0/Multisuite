@@ -57,7 +57,9 @@ new #[Title('Perfil')] class extends Component {
             $file->delete();
             $this->avatar = null;
         }
-        $this->dispatch('avatar-changed', url: Auth::user()->fresh()?->avatarUrl());
+        // The Action saved a locked copy: re-read so this render shows the new photo at once.
+        Auth::user()->refresh();
+        $this->dispatch('avatar-changed', url: Auth::user()->avatarUrl());
         $this->toast('Foto guardada');
     }
 
@@ -65,6 +67,7 @@ new #[Title('Perfil')] class extends Component {
     {
         $this->throttle('account-change');
         $remove->handle(Auth::user(), Auth::user());
+        Auth::user()->refresh();
         $this->dispatch('avatar-changed', url: null);
         $this->toast('Foto quitada');
     }

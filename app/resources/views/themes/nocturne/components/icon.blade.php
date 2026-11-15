@@ -36,7 +36,6 @@
         'storage' => '<rect x="3.5" y="4" width="17" height="7" rx="2"/><rect x="3.5" y="13" width="17" height="7" rx="2"/><path d="M7.5 7.5h.01M7.5 16.5h.01M11.5 7.5h5M11.5 16.5h5"/>',
         'activity' => '<path d="M3 12h4l2.5-6.5 5 13 2.5-6.5h4"/>',
         'invite' => '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/><path d="M17.5 2.5v4M15.5 4.5h4" />',
-        'sidebar' => '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16M15.5 9.5 13 12l2.5 2.5"/>',
         'arrow-left' => '<path d="M19 12H5M11 6l-6 6 6 6"/>',
         'download' => '<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/>',
         'upload' => '<path d="M12 20V9M7 13.5l5-5 5 5M5 4h14"/>',
@@ -47,6 +46,9 @@
         'key' => '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3M14 9l2 2"/>',
         'copy' => '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
         'fingerprint' => '<path d="M6 10a6 6 0 0 1 12 0c0 4-.5 7-2 10M9 20c1.5-3 2-6 2-10a1 1 0 0 1 2 0c0 3-.3 6-1.5 9M4.5 15c.5-1.5.5-3 .5-5M19.5 15c.3-1.5.5-3 .5-5"/>',
+        'chevrons-left' => '<path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/>',
+        'zoom-in' => '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5M8.5 11h5M11 8.5v5"/>',
+        'zoom-out' => '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5M8.5 11h5"/>',
         'plus' => '<path d="M12 5v14M5 12h14"/>',
     ];
 @endphp

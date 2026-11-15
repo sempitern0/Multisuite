@@ -92,7 +92,7 @@ Reglas del inventario: mismo FS declarado en grupos distintos → `configuration
 ### Reconciliación de reservas caducadas
 La página Almacenamiento muestra, por disco, las reservas caducadas que siguen contando contra la cuota:
 - **Con subida privada pendiente**: `portal:uploads-cleanup` (scheduler, cada 10 min) borra `.part`/`.blob` y solo después libera. Si falla (volumen ausente, permisos, symlink), conserva la reserva y lo registra en consola.
-- **Sin subida asociada**: hoy no deberían existir, porque `PrivateUploads::begin` crea la reserva y la subida en la misma transacción. Aparecerán si un futuro integrador reserva sin registro propio. No hay comando para liberarlas todavía (ROADMAP S02): no editar la base de datos a mano; comprobar primero que no quedan bytes en disco.
+- **Sin subida asociada**: hoy no deberían existir, porque `PrivateUploads::begin` crea la reserva y la subida en la misma transacción. Aparecerán si un futuro integrador reserva sin registro propio. No hay comando para liberarlas todavía (ROADMAP, Mis archivos y almacenamiento): no editar la base de datos a mano; comprobar primero que no quedan bytes en disco.
 
 `portal:storage-quota` acepta bytes o unidades (`50GB`, `1,5TB`, `500MB`).
 
@@ -138,23 +138,6 @@ Decisión del usuario (2026-11-13): gestor de archivos propio del portal con car
 - El aislamiento lo debe aplicar el servicio (web, API, clientes, descargas); ocultar enlaces no es autorización.
 - Navidrome 0.64.2 (laboratorio S01, 30 comprobaciones en CI): asignación por biblioteca y aislamiento entre miembros comprobados por API; sus administradores ven todo. **No** demostrado: publicar un archivo individual sin moverlo, cuotas o subida de audio nativas, clientes móviles y streams ya abiertos. Ver `tests/isolation/navidrome.py` y la sección de aislamiento en NAVIDROME.md.
 - Pendiente de decidir con el usuario antes de S04: imputación de contenido global a cuotas, borrado de contenido publicado y baja del aportante.
-
-## 7. Estado
-
-| Pieza | Estado |
-| --- | --- |
-| Inventario de solo lectura (S02.1) | Integrado (PR #9) |
-| Reservas y cuotas transaccionales (S02.2) | Integrado (PR #10), concurrencia PostgreSQL en CI |
-| Recepción privada HTTP (S03.1) | Integrado (PR #11) |
-| Mis archivos: carpetas, subida web, vista previa y descarga (S03.2) | Integrado (PR #13) |
-| Descubrimiento de discos del servidor y panel de solo lectura (S02.4) | Integrado (PR #16); pendiente prueba en servidor real |
-| Papelera, borrado verificado, versiones y retención (S03.3) | Integrado (PR #17) |
-| Descargas ZIP: selección, carpeta y exportar todo (S03.4) | Rama `feat/s03-zip-exports` |
-| GUI de almacenamiento y cuota por defecto (S02.3) | Rama `feat/s02-storage-admin-gui`, pendiente de CI y QA visual |
-| Visor de imágenes, vídeo en el navegador, JPEG sin pérdida y subida por fragmentos (S03.5) | Rama `feat/s03-media-viewer`; CI, pendiente de prueba en navegador |
-| Cifrado en reposo de archivos y ZIP (S03.7) | Rama `feat/s03-file-encryption`; CI |
-| Copia de seguridad externa con restic, retención, comprobación y ensayo de restauración (S05.1) | Integrado (PR #25); probado con Docker simulado, pendiente de una copia real en el servidor |
-| Mover entre carpetas, reconciliación, bibliotecas por usuario, publicación y movimientos | Pendiente (ROADMAP S03–S05) |
 
 ## Fotos y vídeo en Mis archivos (S03.5)
 
