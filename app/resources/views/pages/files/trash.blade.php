@@ -68,11 +68,7 @@ new #[Title('Papelera')] class extends Component {
     </x-ui::page-header>
 
     <x-ui::stack gap="md">
-    <x-ui::subnav label="Mis archivos" :items="[
-        ['label' => 'Archivos', 'href' => route('files.index'), 'active' => false],
-        ['label' => 'Papelera', 'href' => route('files.trash'), 'active' => true],
-        ['label' => 'Descargas ZIP', 'href' => route('files.exports.index'), 'active' => false],
-    ]" />
+    <x-pages::files.tabs active="trash" />
 
         @foreach (['file_trash', 'file_purge'] as $field)
             @error($field)<x-ui::notice tone="bad">{{ $message }}</x-ui::notice>@enderror

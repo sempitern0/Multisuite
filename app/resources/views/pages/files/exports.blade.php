@@ -44,11 +44,7 @@ new #[Title('Descargas ZIP')] class extends Component {
     <x-ui::page-header title="Descargas ZIP" :back="route('files.index')" back-label="Mis archivos" :description="'Cada ZIP se puede descargar durante '.(int) config('nas.export_ttl_hours').' horas y después se borra solo. No ocupa espacio de tu cuota.'" />
 
     <x-ui::stack gap="md">
-    <x-ui::subnav label="Mis archivos" :items="[
-        ['label' => 'Archivos', 'href' => route('files.index'), 'active' => false],
-        ['label' => 'Papelera', 'href' => route('files.trash'), 'active' => false],
-        ['label' => 'Descargas ZIP', 'href' => route('files.exports.index'), 'active' => true],
-    ]" />
+    <x-pages::files.tabs active="exports" />
         @error('export')<x-ui::notice tone="bad">{{ $message }}</x-ui::notice>@enderror
         <x-ui::table label="Descargas ZIP">
             <x-slot:head><tr><th>Nombre</th><th>Contenido</th><th>Estado</th><th data-align="end"><x-ui::sr>Acciones</x-ui::sr></th></tr></x-slot:head>

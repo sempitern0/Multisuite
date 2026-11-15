@@ -260,11 +260,7 @@ new #[Title('Mis archivos')] class extends Component {
     </x-ui::page-header>
 
     <x-ui::stack gap="lg">
-        <x-ui::subnav label="Mis archivos" :items="[
-            ['label' => 'Archivos', 'href' => route('files.index'), 'active' => true],
-            ['label' => 'Papelera', 'href' => route('files.trash'), 'active' => false],
-            ['label' => 'Descargas ZIP', 'href' => route('files.exports.index'), 'active' => false],
-        ]" />
+        <x-pages::files.tabs active="files" />
 
         @if (! $l['enabled'])
             <x-ui::notice tone="info">Los archivos privados todavía no están activados en este servidor. El responsable técnico debe preparar una ubicación privada (docs/STORAGE.md). Mientras tanto puedes ver lo que ya tengas guardado.</x-ui::notice>
