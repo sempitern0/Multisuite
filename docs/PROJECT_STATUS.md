@@ -28,15 +28,15 @@ Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md
 ## En revisión: S03.5 Fotos y vídeo en Mis archivos — rama `feat/s03-media-viewer`
 - Visor de imágenes con zoom (botones, rueda, doble clic, pellizco, teclado), arrastre, tamaño real y pantalla completa.
 - Vídeo MP4/WebM/MOV reproducido por el navegador, con avance por tramos; sin conversión en el servidor.
+- Subida por fragmentos de 8 MiB con reanudación: el tamaño ya no lo limitan Nginx ni PHP (antes fallaba a partir de ~8 MB); tope de seguridad de 100 GiB por archivo, el límite real es el espacio de cada persona.
 - Al subir, los JPEG se reempaquetan sin pérdida con `jpegtran` y se descuenta el tamaño final; el resto se guarda tal cual (`Services/Storage/LosslessOptimizer`).
 - Regla de alcance ampliada en AGENTS.md (decisión del usuario 2026-11-14); DEPENDENCIES D012. Sin migraciones ni paquetes PHP/JS; la imagen PHP añade `libjpeg-turbo-progs` (**requiere `make rebuild`**).
 - Validado: CI. **No validado**: el visor y el reproductor en un navegador real, ni `jpegtran` real dentro del contenedor (las pruebas lo simulan).
 
 ## Siguiente acción ejecutable
-1. Usuario: `git pull`, `make rebuild`, `make npm CMD="run build"` y probar la lista S03.5 del ROADMAP.
+1. Usuario: `git pull`, quitar o cambiar `NAS_UPLOAD_MAX_BYTES` en `app/.env` si conserva 104857600, `make rebuild`, `make npm CMD="run build"` y probar la lista S03.5 del ROADMAP.
 2. Usuario: ensayo de copia de seguridad desde WSL (`make nas-backup`, `make nas-backup-verify`) y QA pendiente de D02.
-3. Decidir el tamaño máximo por archivo para vídeo.
-4. Siguiente hito: S04 necesita tres decisiones del usuario (ROADMAP); si no, P03.
+3. Siguiente hito: S04 necesita tres decisiones del usuario (ROADMAP); si no, P03.
 
 ## Límites conocidos
 - Producción no desplegada; VPN/TLS, copia de seguridad real programada y piloto pendientes (P03/P05).

@@ -45,7 +45,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Folder::class, FolderPolicy::class);
         // Named limiters: unnamed `throttle:N,1` share one counter per user across every
         // route (and nested ones count twice), so each area gets its own key.
-        foreach (['files' => 120, 'uploads' => 60, 'file-exports' => 10, 'invitation-accept' => 10, 'account-change' => 5, 'admin' => 10, 'admin-storage' => 60] as $name => $perMinute) {
+        foreach (['files' => 120, 'uploads' => 60, 'upload-chunks' => 1200, 'file-exports' => 10, 'invitation-accept' => 10, 'account-change' => 5, 'admin' => 10, 'admin-storage' => 60] as $name => $perMinute) {
             RateLimiter::for($name, fn (Request $request) => Limit::perMinute($perMinute)->by($name.':'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
         }
         // Registered here (no app/Listeners) so event discovery cannot attach it twice.

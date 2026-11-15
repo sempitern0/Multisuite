@@ -47,7 +47,7 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 
 ## S03.5 — Fotos y vídeo
 - [ ] QA del usuario tras `make rebuild`: zoom con ratón y en móvil, pantalla completa, un vídeo MP4 y uno de iPhone (MOV), y comprobar que una foto subida ocupa menos y se ve igual.
-- [ ] Decidir el tamaño máximo por archivo para vídeo (hoy 100 MB) y, si sube, validar la subida grande de extremo a extremo.
+- [ ] QA del usuario: subir un vídeo de varios GB y una canción de más de 8 MB; cortar la red a mitad y comprobar que continúa.
 - [ ] Opcional: pasar a la foto anterior/siguiente de la carpeta desde el visor.
 
 ## S04 — Publicación administrativa

@@ -4,8 +4,9 @@ return [
     // JSON is decoded only by the inventory, never while booting the application.
     'uploads_enabled' => env('NAS_UPLOADS_ENABLED', false),
     'upload_location' => env('NAS_UPLOAD_LOCATION', ''),
-    // Keep at or below Nginx client_max_body_size (docker/nginx/site.conf).
-    'upload_max_bytes' => env('NAS_UPLOAD_MAX_BYTES', 104857600),
+    // Safety ceiling per file (100 GiB). Files arrive in 8 MiB chunks, so web server and
+    // PHP body limits do not apply; the real bound is each person's space.
+    'upload_max_bytes' => (int) env('NAS_UPLOAD_MAX_BYTES', 107374182400),
     'volumes' => env('NAS_STORAGE_VOLUMES', '[]'),
     // lsblk inventory written on the server by `make nas-discover` (read-only display).
     'hardware_snapshot' => env('NAS_HARDWARE_SNAPSHOT', ''),

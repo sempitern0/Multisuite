@@ -33,7 +33,14 @@ const firstError = async (response) => {
     }
 };
 
-const putBody = (url, file, csrf, onProgress) =>
+// Files travel in 8 MiB chunks: every request stays under the web server and PHP body
+// limits whatever the file size. Must stay <= PHP post_max_size (8M by default).
+const CHUNK_BYTES = 8 * 1024 * 1024;
+const RETRIES = 3;
+
+class UploadRefused extends Error {}
+
+const putChunk = (url, blob, csrf, onProgress) =>
     new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('PUT', url);
@@ -42,26 +49,64 @@ const putBody = (url, file, csrf, onProgress) =>
         xhr.setRequestHeader('X-CSRF-TOKEN', csrf);
         xhr.upload.addEventListener('progress', (event) => {
             if (event.lengthComputable) {
-                onProgress(event.loaded / event.total);
+                onProgress(event.loaded);
             }
         });
         xhr.addEventListener('load', () => {
+            let body = {};
+            try {
+                body = JSON.parse(xhr.responseText);
+            } catch {
+                // Non-JSON error page.
+            }
             if (xhr.status >= 200 && xhr.status < 300) {
-                resolve();
+                resolve({ received: null });
                 return;
             }
-            let message = xhr.status === 413 ? 'El archivo es demasiado grande para el servidor.' : 'El servidor rechazó el archivo (tipo no permitido o sin espacio).';
-            try {
-                const body = JSON.parse(xhr.responseText);
-                message = (body.errors && Object.values(body.errors).flat()[0]) || message;
-            } catch {
-                // Keep the generic message.
+            // The server already has a different amount (lost response, retry): continue from there.
+            if (xhr.status === 409 && Number.isInteger(body.received)) {
+                resolve({ received: body.received });
+                return;
             }
-            reject(new Error(message));
+            const message = (body.errors && Object.values(body.errors).flat()[0])
+                || (xhr.status === 413 ? 'El servidor rechazó el fragmento por tamaño.' : 'El servidor rechazó el archivo (tipo no permitido o sin espacio).');
+            // 4xx are decisions, not glitches: retrying cannot help (except rate limiting).
+            const Failure = xhr.status >= 400 && xhr.status < 500 && xhr.status !== 429 ? UploadRefused : Error;
+            reject(new Failure(message));
         });
         xhr.addEventListener('error', () => reject(new Error('Se perdió la conexión durante la subida.')));
-        xhr.send(file);
+        xhr.send(blob);
     });
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const putBody = async (url, file, csrf, onProgress) => {
+    let offset = 0;
+    let failures = 0;
+    while (offset < file.size) {
+        const end = Math.min(file.size, offset + CHUNK_BYTES);
+        try {
+            const { received } = await putChunk(`${url}?offset=${offset}`, file.slice(offset, end), csrf, (loaded) => onProgress((offset + loaded) / file.size));
+            offset = received ?? end;
+            failures = 0;
+        } catch (error) {
+            failures++;
+            if (error instanceof UploadRefused || failures > RETRIES) {
+                throw error;
+            }
+            await wait(1000 * failures);
+            // Ask where the server stands before resending (the chunk may have arrived).
+            const status = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+            if (status?.state === 'ready') {
+                break;
+            }
+            if (Number.isInteger(status?.received)) {
+                offset = status.received;
+            }
+        }
+        onProgress(offset / file.size);
+    }
+};
 
 // Rows carry only state (data-state); the active theme decides how they look.
 const row = (list, name) => {

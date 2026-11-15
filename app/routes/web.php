@@ -44,11 +44,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::livewire('{fileId}', 'pages::files.show')->whereNumber('fileId')->middleware(RestrictPreviewImages::class)->name('show');
         Route::get('{fileId}/content', [FileController::class, 'content'])->whereNumber('fileId')->name('content');
     });
-    Route::prefix('uploads')->middleware('throttle:uploads')->group(function () {
-        Route::post('/', [PrivateUploadController::class, 'store']);
-        Route::get('{key}', [PrivateUploadController::class, 'show'])->whereUuid('key');
-        Route::put('{key}', [PrivateUploadController::class, 'update'])->whereUuid('key');
-        Route::delete('{key}', [PrivateUploadController::class, 'destroy'])->whereUuid('key');
+    Route::prefix('uploads')->group(function () {
+        Route::post('/', [PrivateUploadController::class, 'store'])->middleware('throttle:uploads');
+        Route::get('{key}', [PrivateUploadController::class, 'show'])->whereUuid('key')->middleware('throttle:uploads');
+        // One request per 8 MiB chunk: its own limiter, sized above a gigabit link.
+        Route::put('{key}', [PrivateUploadController::class, 'update'])->whereUuid('key')->middleware('throttle:upload-chunks');
+        Route::delete('{key}', [PrivateUploadController::class, 'destroy'])->whereUuid('key')->middleware('throttle:uploads');
     });
     Route::get('dashboard', DashboardController::class)->name('dashboard');
     Route::get('services/{service}', ServiceController::class)->where('service', '[a-z0-9-]+')->name('services.open');

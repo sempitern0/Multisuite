@@ -176,7 +176,7 @@ new #[Title('Mis archivos')] class extends Component {
 
         @if ($l['enabled'] && $l['limit'] > 0)
             <x-ui::uploader :store-url="route('files.store')" :upload-url="url('uploads')" :folder="$folder->id ?? null" :max-bytes="$l['maxBytes']"
-                :hint="'Hasta '.$fmt($l['maxBytes']).' por archivo. Documentos, PDF, imágenes, texto y audio.'" />
+                :hint="'Hasta '.$fmt($l['maxBytes']).' por archivo. Documentos, PDF, imágenes, vídeo, texto y audio.'" />
         @endif
 
         <x-ui::toolbar>

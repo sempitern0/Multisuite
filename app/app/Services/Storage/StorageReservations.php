@@ -21,7 +21,7 @@ class StorageReservations
 
     public function reserve(User $user, string $poolId, int $bytes, string $key): StorageReservation
     {
-        return $this->allocate($user, $poolId, $bytes, $key, true, 30);
+        return $this->allocate($user, $poolId, $bytes, $key, true, PrivateUploads::RESERVATION_MINUTES);
     }
 
     /**
@@ -89,6 +89,20 @@ class StorageReservations
         $actualBytes = $this->validateBytes($actualBytes, true);
 
         return $this->transition($user, $key, 'committed', $actualBytes);
+    }
+
+    /** Pushes back the expiry of a live reservation (an upload still receiving chunks). */
+    public function extend(User $user, string $key, int $minutes): void
+    {
+        DB::transaction(function () use ($user, $key, $minutes): void {
+            $reservation = StorageReservation::whereKey($key)->lockForUpdate()->firstOrFail();
+            $this->owns($reservation, $user);
+            if ($reservation->state !== 'reserved' || $reservation->expires_at->isPast()) {
+                throw new RuntimeException('La reserva ya no está activa.');
+            }
+            $reservation->expires_at = now()->addMinutes(max(1, $minutes));
+            $reservation->save();
+        });
     }
 
     // Trusted cleanup only: caller must establish no writer or temporary file remains.
