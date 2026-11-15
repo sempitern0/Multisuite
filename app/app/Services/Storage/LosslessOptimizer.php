@@ -7,7 +7,7 @@ use Throwable;
 
 /**
  * Shrinks a received file without changing what it shows: JPEG entropy coding is
- * rebuilt by jpegtran (same pixels, metadata kept). Anything else, and any doubt
+ * rebuilt by jpegtran (same pixels; whatever metadata ImageMetadata left is kept). Anything else, and any doubt
  * about the result, leaves the file exactly as received. Never re-encodes.
  */
 class LosslessOptimizer

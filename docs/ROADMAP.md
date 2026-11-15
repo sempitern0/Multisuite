@@ -52,6 +52,10 @@ Solo trabajo **pendiente**. Lo completado se resume en [PROJECT_STATUS.md](PROJE
 - [ ] QA del usuario del explorador (búsqueda, filtros, orden y las tres vistas, también en móvil).
 - [ ] Miniaturas generadas en el servidor si la galería se vuelve lenta con fotos grandes.
 
+## S03.8 — Metadatos de fotos y vídeos
+- [ ] QA del usuario tras `make rebuild`: subir una foto del móvil con ubicación y comprobar (p. ej. `exiftool foto.jpg` tras descargarla) que ya no tiene GPS ni cámara y que se ve con la orientación correcta.
+- [ ] Quitar también la ubicación y los datos del dispositivo de los vídeos (MP4/MOV) con ExifTool, sin recodificar; exige guardar el vídeo entero sin cifrar mientras llega o limpiarlo después.
+
 ## S04 — Publicación administrativa
 - [ ] Cerrar con el usuario: imputación de contenido global a cuotas, borrado por el aportante de contenido publicado, baja del aportante.
 - [ ] Estados personal → pendiente → global (rechazo vuelve a personal); solo admin publica/retira; permisos aplicados en el servicio antes de confirmar.

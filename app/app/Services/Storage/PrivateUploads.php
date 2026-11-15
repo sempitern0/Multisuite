@@ -16,7 +16,7 @@ class PrivateUploads
     /** Idle time an upload may wait between chunks before cleanup reclaims it. */
     public const RESERVATION_MINUTES = 30;
 
-    public function __construct(private StorageReservations $reservations, private StorageInventory $inventory, private LosslessOptimizer $optimizer) {}
+    public function __construct(private StorageReservations $reservations, private StorageInventory $inventory, private LosslessOptimizer $optimizer, private ImageMetadata $metadata) {}
 
     public function begin(User $user, int $bytes, string $key): PrivateUpload
     {
@@ -91,9 +91,10 @@ class PrivateUploads
                     throw new RuntimeException('Tamaño o formato no permitido.');
                 }
                 $upload->mime = $mime;
-                // Sealed as it arrives (no plaintext on disk), except a JPEG small enough to
-                // optimise losslessly, which needs the whole picture once.
-                $upload->cipher = $this->cipher() !== null && ! $this->optimizer->wants($mime, $reservation->bytes) ? FileCipher::FORMAT : null;
+                // Sealed as it arrives (no plaintext on disk), except pictures: their metadata is
+                // removed (and a JPEG repacked) once the whole file is here, then they are sealed.
+                $whole = $this->metadata->wants($mime) || $this->optimizer->wants($mime, $reservation->bytes);
+                $upload->cipher = $this->cipher() !== null && ! $whole ? FileCipher::FORMAT : null;
             }
             $hash = $this->hashUpTo($upload, $part, $sealed, $received);
             hash_update($hash, $data);
@@ -119,8 +120,10 @@ class PrivateUploads
                     throw new RuntimeException('No se puede finalizar el archivo.');
                 }
             } else {
-                // Same picture in fewer bytes when possible; the person is charged the final size.
-                if ($this->optimizer->optimize($part, (string) $upload->mime)) {
+                // Private metadata out (or the upload is refused), then the same picture in fewer
+                // bytes when possible; the person is charged the final size.
+                $this->metadata->strip($part, (string) $upload->mime);
+                if ($this->optimizer->optimize($part, (string) $upload->mime) || $this->metadata->wants((string) $upload->mime)) {
                     clearstatcache(true, $part);
                     $actual = (int) filesize($part);
                     $sha256 = (string) hash_file('sha256', $part);

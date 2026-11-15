@@ -58,3 +58,13 @@ Decisión del usuario: visor con zoom y reproductor en Mis archivos; al subir, s
 
 ## D013 — Cifrado en reposo con libsodium (2026-11-15, S03.7)
 Sin dependencias nuevas: la extensión `sodium` viene incluida en PHP 8.4 (imagen oficial `php:8.4-fpm-bookworm`) y aporta XChaCha20-Poly1305; HKDF es `hash_hkdf` del núcleo. Se descartan un paquete de cifrado de archivos (añadiría código de terceros para ~200 líneas propias probadas) y `Crypt`/`encrypt()` de Laravel (cifra cadenas completas en memoria, sin acceso por rangos y ligado a `APP_KEY`). Los ZIP se generan con un escritor propio en flujo (`Services/Files/ZipStreamWriter`, almacenado y ZIP64) en lugar de `ZipArchive`, que solo admite archivos de origen en claro; validado con libzip (`CHECKCONS`), `unzip -t` y `zipfile` de Python.
+
+## D015 — ExifTool para quitar metadatos de las fotos (2026-11-15, S03.8)
+- **ExifTool** (paquete Debian `libimage-exiftool-perl` 12.57 de bookworm, https://packages.debian.org/bookworm/libimage-exiftool-perl, consultado 2026-11-15; proyecto https://exiftool.org, publicaciones cada pocas semanas desde 2003). Es la herramienta de referencia para leer y escribir metadatos: cubre JPEG, PNG, GIF y WebP (y vídeo, para el siguiente paso), reescribe solo los metadatos sin tocar los píxeles y permite conservar orientación y perfil de color. Licencia libre (la de Perl: Artistic/GPL). Actualizaciones de seguridad a través de Debian. Coste: Perl en la imagen (unos 20 MB).
+- Descartadas: recodificar con GD o Imagick (pierde calidad, contra la regla de no recodificar originales), `jpegtran -copy none` (solo JPEG y además pierde orientación y perfil de color) y librerías PHP de EXIF como PEL (solo JPEG/TIFF, sin escritura de PNG/WebP).
+- Se invoca con `Process` y argumentos en lista (sin shell) sobre una copia con nombre controlado; ver `Services/Storage/ImageMetadata`.
+- De paso, la imagen de producción instala también `libjpeg-turbo-progs`: faltaba, así que `jpegtran` no optimizaba en producción.
+- Requiere reconstruir las imágenes (`make rebuild`).
+
+## Política: librería antes que código propio (decisión del usuario, 2026-11-15)
+Para cada función nueva se busca primero una librería o herramienta segura, mantenida y usada por la comunidad (criterios de AGENTS.md); el código propio queda para cuando no exista una adecuada. Que el entorno del agente no alcance un registro (npm, Packagist) no es motivo para reimplementar: se pide acceso o se genera el lockfile donde haya red. Pendiente por esta regla: sustituir el editor de recorte propio (D014) por Cropper.js en cuanto haya acceso a npm.

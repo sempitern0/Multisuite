@@ -47,6 +47,8 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: app/package-lock.json
+      - name: Install image tools (metadata removal tests)
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libimage-exiftool-perl
       - name: Install locked dependencies
         id: dependencies
         run: |

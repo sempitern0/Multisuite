@@ -50,6 +50,11 @@ Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md
 ## En revisión: corrección de la barra de selección — rama `fix/selection-trash`
 - Al marcar el primer elemento, la barra de filtros (más alta) se cambiaba por la de selección y la lista subía ~100 px bajo el puntero: el siguiente clic caía en otra fila (por eso «con uno no funcionaba»). Ahora ambas barras comparten hueco (`x-ui::command-stack`) y no se mueve nada. Reproducido y comprobado en el navegador del usuario.
 
+## En revisión: S03.8 Metadatos fuera de las fotos — rama `feat/s03-8-strip-metadata`
+- Las fotos JPEG, PNG, GIF y WebP subidas a Mis archivos pierden sus metadatos (GPS, cámara, número de serie, fechas, autor, XMP, IPTC, miniaturas) con ExifTool; solo quedan la orientación y el perfil de color. Si no se pueden quitar, la subida se rechaza. Las fotos de perfil ya se guardaban sin metadatos.
+- La imagen de producción incluye ahora `jpegtran`, que faltaba.
+- Validación: CI con ExifTool real (foto con GPS, cámara y orientación). Necesita `make rebuild`.
+
 ## Siguiente acción ejecutable
 1. Usuario: revisar D03, D04 y S03.7 (`make up` crea la clave de cifrado; `make npm CMD="run build"`). Los archivos subidos antes siguen abriéndose sin cifrar; los nuevos se guardan cifrados.
 2. Usuario: ensayo de copia de seguridad desde WSL (`make nas-backup`, `make nas-backup-verify`) y QA pendiente de D02.
