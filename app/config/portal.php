@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'music_autologin' => env('NAVIDROME_AUTOLOGIN_ENABLED', false),
     'music_session_bridge' => env('NAVIDROME_SESSION_BRIDGE_ENABLED', false),
     'services' => [
         'music' => [

@@ -40,13 +40,13 @@ function browser(store = storage({ userId: 'remote-a', token: 'secret' })) {
     history: { replaceState: (...args) => events.push(['history', ...args]) },
   };
 }
-test('clears URL fragment first, verifies using POST without cookies, then clears stale session', async () => {
+test('clears URL fragment first, exchanges the ticket with a same-origin POST, then clears stale session', async () => {
   const b = browser();
   await launch(b, async (url, options) => {
     assert.equal(b.events[0][0], 'history');
     assert.equal(url, '/_multisuite/verify');
     assert.equal(options.method, 'POST');
-    assert.equal(options.credentials, 'omit');
+    assert.equal(options.credentials, 'same-origin');
     assert.equal(options.redirect, 'error');
     assert.deepEqual(JSON.parse(options.body), { ticket: 'encrypted-pass' });
     assert.ok(!options.body.includes('secret'));
@@ -76,4 +76,31 @@ test('missing pass never contacts verifier or touches storage', async () => {
   b.location.hash = '';
   await assert.rejects(launch(b, async () => assert.fail('unexpected request')));
   assert.equal(b.localStorage.getItem('token'), 'secret');
+});
+
+test('proxy login removes the native JWT even for the same listener and keeps their queue', async () => {
+  const store = storage({ userId: identity.id, username: identity.username, token: 'native', state: 'queue' });
+  const b = browser(store);
+  await launch(b, async url => url.endsWith('/authorize')
+    ? { ok: true, headers: new Headers({ 'X-Music-User': identity.username }) }
+    : { ok: true, json: async () => ({ ...identity, autologin: true }) });
+  assert.equal(store.getItem('token'), null);
+  assert.equal(store.getItem('state'), 'queue');
+  assert.deepEqual(b.events.at(-1), ['navigate', identity.destination]);
+});
+
+test('browser binding revisits the portal before changing the musical session', async () => {
+  const b = browser();
+  const confirm = 'https://multisuite.test/services/music?music_challenge=abc';
+  await launch(b, async () => ({ ok: true, json: async () => ({ confirm }) }));
+  assert.deepEqual(b.events.at(-1), ['navigate', confirm]);
+  assert.equal(b.localStorage.getItem('token'), 'secret');
+});
+
+test('blocked music cookie prevents opening the previous listener', async () => {
+  const b = browser();
+  await assert.rejects(launch(b, async url => url.endsWith('/authorize')
+    ? { ok: false }
+    : { ok: true, json: async () => ({ ...identity, autologin: true }) }));
+  assert.ok(!b.events.some(e => e[0] === 'navigate'));
 });

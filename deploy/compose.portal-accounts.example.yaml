@@ -2,6 +2,7 @@
 services:
   app:
     environment:
+      NAVIDROME_AUTOLOGIN_ENABLED: "${NAVIDROME_AUTOLOGIN_ENABLED:-true}"
       NAVIDROME_SESSION_BRIDGE_ENABLED: "${NAVIDROME_SESSION_BRIDGE_ENABLED:-true}"
     networks: [internal, accounts]
   web:

@@ -3,7 +3,7 @@
 ## Alcance
 La invitación selecciona servicios habilitados con adaptador: Música/Navidrome 0.64.2 y Lectura/Kavita 0.9.1 (detalles propios en [KAVITA.md](KAVITA.md)). Al aceptar, usuario elegido (o correo si no se elige) y contraseña crean una cuenta normal de Navidrome; el rol owner/admin del portal nunca concede administración de música. La biblioteca accesible es la configurada en Navidrome como predeterminada para nuevos usuarios: revisar esa selección antes de invitar.
 
-Los servicios futuros requieren un adaptador que implemente `Services/Provisioning/ServiceProvisioner` (sincronizar contraseña, renombrar, bloquear y eliminar, todos idempotentes) registrado en `ServiceProvisioners`, y pruebas propias. La sesión web de Navidrome sigue pidiendo login con esas mismas credenciales. SSO/proxy es el siguiente hito. Las cuentas antiguas mantienen su funcionamiento; vinculación de cuentas remotas preexistentes y incorporación posterior de servicios requieren P03-06c.
+Los servicios futuros requieren un adaptador que implemente `Services/Provisioning/ServiceProvisioner` (sincronizar contraseña, renombrar, bloquear y eliminar, todos idempotentes) registrado en `ServiceProvisioners`, y pruebas propias. Las cuentas musicales preparadas entran desde el portal con [inicio automático](MUSIC_SESSION_BRIDGE.md). Las cuentas antiguas mantienen su funcionamiento; vinculación de cuentas remotas preexistentes y incorporación posterior de servicios requieren P03-06c.
 
 ## Configuración local
 1. Aplicar `make artisan CMD="migrate"`.

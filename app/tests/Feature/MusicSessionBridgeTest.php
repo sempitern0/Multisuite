@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\ServiceAccount;
 use App\Models\User;
 use App\Services\MusicSessionBridge;
+use App\Services\NavidromeAccounts;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -71,6 +73,39 @@ class MusicSessionBridgeTest extends TestCase
         $this->postJson('/api/music/session/verify', ['ticket' => $this->ticket($account)])
             ->assertOk()->assertJsonMissingPath('token')->assertJsonMissingPath('password')
             ->assertCookieMissing(config('session.cookie'));
+    }
+
+    public function test_managed_login_uses_one_pass_and_stops_when_the_portal_session_ends(): void
+    {
+        config(['portal.music_autologin' => true]);
+        [$user, $account] = $this->account();
+        $this->mock(NavidromeAccounts::class)->shouldReceive('verifyForLogin')->once();
+        $session = session()->driver();
+        $session->put(Auth::guard('web')->getName(), $user->id);
+        $session->save();
+
+        $ticket = $this->ticket($account);
+        $start = $this->postJson('/api/music/session/verify', ['ticket' => $ticket])->assertOk();
+        $nonce = $start->getCookie('ms_music_browser', false)->getValue();
+        $confirm = $start->json('confirm');
+        $response = $this->actingAs($user)->get($confirm)->assertRedirect();
+        parse_str(parse_url($response->headers->get('Location'), PHP_URL_FRAGMENT), $fragment);
+        $ticket = $fragment['ticket'];
+        $exchange = $this->postJson('/api/music/session/verify', ['ticket' => $ticket], ['X-Music-Browser' => $nonce])
+            ->assertOk()->assertJsonPath('autologin', true);
+        $cookie = $exchange->getCookie('ms_music', false);
+        $this->assertTrue($cookie->isHttpOnly());
+        $this->assertSame('strict', $cookie->getSameSite());
+        $headers = ['X-Music-Grant' => $cookie->getValue()];
+        $this->postJson('/api/music/session/verify', ['ticket' => $ticket])->assertForbidden();
+        $this->getJson('/api/music/session/authorize', $headers)->assertNoContent()->assertHeader('X-Music-User', $account->username);
+        $user->service_access = [];
+        $user->save();
+        $this->getJson('/api/music/session/authorize', $headers)->assertForbidden();
+        $user->service_access = ['music'];
+        $user->save();
+        $session->invalidate();
+        $this->getJson('/api/music/session/authorize', $headers)->assertForbidden();
     }
 
     public function test_tampering_expiry_and_destination_change_are_rejected(): void

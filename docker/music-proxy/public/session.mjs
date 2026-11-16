@@ -39,15 +39,34 @@ export async function launch(browser, request = fetch) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ ticket }),
-      credentials: 'omit',
+      credentials: 'same-origin',
       cache: 'no-store',
       redirect: 'error',
       signal: controller.signal,
     });
     if (!response.ok) throw new Error('Verification failed');
     const identity = await response.json();
+    if (typeof identity.confirm === 'string') {
+      // Only the portal can supply this callback, from its original encrypted pass.
+      const portal = new URL(identity.confirm);
+      if (!['http:', 'https:'].includes(portal.protocol) || portal.username || portal.password) {
+        throw new Error('Invalid portal');
+      }
+      browser.location.replace(portal.href);
+      return;
+    }
     const destination = validateDestination(identity, browser.location.origin);
+    if (identity.autologin) {
+      const active = await request('/_multisuite/authorize', {
+        credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: controller.signal,
+      });
+      if (!active.ok || active.headers.get('X-Music-User') !== identity.username) {
+        throw new Error('Music cookie unavailable');
+      }
+    }
     reconcile(browser.localStorage, identity);
+    // A native JWT takes priority over proxy auth in Navidrome 0.64.
+    if (identity.autologin) browser.localStorage.removeItem('token');
     browser.location.replace(destination);
   } finally {
     clearTimeout(timeout);

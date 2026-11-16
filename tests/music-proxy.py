@@ -1,5 +1,6 @@
 """Exercise the real Nginx gateway: bridge isolation, BaseUrl and byte ranges."""
 import json
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -33,10 +34,16 @@ http {
       default_type application/json;
       return 200 '{"method":"$request_method","cookie":"$http_cookie","authorization":"$http_authorization"}';
     }
+    location = /api/music/session/authorize {
+      if ($http_x_music_grant != fixture) { return 403; }
+      add_header X-Music-User "test-listener";
+      return 204;
+    }
     location / { return 404; }
   }
   server {
     listen 4533;
+    location = /who { return 200 "identity=$http_x_multisuite_music_user;cookie=$http_cookie;jwt=$http_x_nd_authorization"; }
     location = /music/media.bin { alias /fixtures/media.bin; }
     location / { return 200 "$request_uri"; }
   }
@@ -81,12 +88,44 @@ http {
         proxied = request(url+"/music/app/?test=1")
         assert proxied.read() == b"/music/app/?test=1"
         assert proxied.headers.get("Content-Security-Policy") is None
+        assert request(url+"/who", headers={"X-Multisuite-Music-User": "ignored"}).read() == b"identity=;cookie=;jwt="
+        managed = {"Cookie": "ms_music=fixture", "X-ND-Authorization": "unused", "X-Multisuite-Music-User": "ignored"}
+        gateway_ip = docker("inspect", "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", prefix+"-gateway")
+        docker("run", "-d", "--name", prefix+"-nav", "--network", prefix, "--network-alias", "navidrome-sso",
+               "-e", "ND_EXTAUTH_USERHEADER=X-Multisuite-Music-User",
+               "-e", "ND_EXTAUTH_TRUSTEDSOURCES="+gateway_ip+"/32",
+               "-p", "127.0.0.1::4533", "navidrome/navidrome:0.64.2")
+        nav = "http://127.0.0.1:"+docker("port", prefix+"-nav", "4533/tcp").split(":")[-1]
+        for attempt in range(30):
+            try:
+                if request(nav+"/ping").status == 200:
+                    break
+            except OSError:
+                pass
+            time.sleep(1)
+        creds = {"username": "ci-operator", "password": "disposable-operator-password"}
+        post = {"Content-Type": "application/json"}
+        assert request(nav+"/auth/createAdmin", json.dumps(creds).encode(), post).status < 300
+        operator = json.load(request(nav+"/auth/login", json.dumps(creds).encode(), post))
+        listener_id = str(uuid.uuid4())
+        listener = {"id": listener_id, "userName": "test-listener", "name": "Listener",
+                    "password": "disposable-listener-password", "isAdmin": False}
+        assert request(nav+"/api/user", json.dumps(listener).encode(),
+                       {**post, "X-ND-Authorization": "Bearer "+operator["token"]}).status < 300
+        page = request(url+"/app/", headers=managed).read().decode()
+        config_text = re.split(r"window\.__APP_CONFIG__\s*=\s*", page, maxsplit=1)[1]
+        app_config = json.loads(json.JSONDecoder().raw_decode(config_text)[0])
+        assert app_config["auth"]["id"] == listener_id
+        assert app_config["auth"]["username"] == "test-listener" and not app_config["auth"]["isAdmin"]
+        assert request(url+"/api/album", headers=managed).status == 200
+        assert request(url+"/who", headers={"Cookie": "ms_music=expired"}).status == 403
+        assert request(url+"/who", headers={**managed, "Sec-Fetch-Site": "cross-site"}).status == 403
         media = request(url+"/music/media.bin", headers={"Range": "bytes=2-5"})
         assert media.status == 206
         assert media.read() == b"2345"
         assert media.headers["Content-Range"] == "bytes 2-5/10"
         print("Real gateway: static bridge, POST-only verification, credential isolation, BaseUrl and Range passed.")
     finally:
-        for suffix in ["-gateway", "-upstream"]:
+        for suffix in ["-nav", "-gateway", "-upstream"]:
             subprocess.run(["docker", "rm", "-f", prefix+suffix], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         subprocess.run(["docker", "network", "rm", prefix], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

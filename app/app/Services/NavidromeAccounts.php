@@ -190,6 +190,15 @@ class NavidromeAccounts implements PersonalLibraries, ServiceProvisioner
         }
     }
 
+    public function verifyForLogin(ServiceAccount $account): void
+    {
+        try {
+            $this->verify($this->client(), $account, $account->username);
+        } catch (RuntimeException|ConnectionException) {
+            abort(503, 'Music account unavailable.');
+        }
+    }
+
     private function client(): PendingRequest
     {
         $url = ServiceUrl::validated((string) config('provisioning.music.url'));

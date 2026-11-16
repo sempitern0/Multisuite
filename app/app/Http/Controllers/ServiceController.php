@@ -38,7 +38,9 @@ class ServiceController extends Controller
             abort_if(app()->isProduction() && $parts['scheme'] !== 'https', 404);
             abort_if(str_starts_with($parts['path'] ?? '', '/_multisuite/'), 404);
             $origin = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
-            $ticket = app(MusicSessionBridge::class)->issue($account, $url);
+            $challenge = request()->query('music_challenge');
+            abort_unless($challenge === null || (is_string($challenge) && preg_match('/^[a-f0-9]{64}$/D', $challenge)), 400);
+            $ticket = app(MusicSessionBridge::class)->issue($account, $url, $challenge);
 
             return redirect()->away($origin.'/_multisuite/session#ticket='.rawurlencode($ticket))
                 ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
