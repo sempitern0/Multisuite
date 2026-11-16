@@ -6,6 +6,7 @@ use App\Models\ServiceAccount;
 use App\Models\User;
 use Illuminate\Auth\SessionGuard;
 use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Session\Store;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
@@ -30,6 +31,7 @@ class MusicSessionBridge
     /**
      * @param-out string|null $grant
      * @param-out string|null $newNonce
+     *
      * @return array{id: string, username: string, destination: string}|array{confirm: string}
      */
     public function verify(string $ticket, ?string &$grant = null, ?string $browserNonce = null, ?string &$newNonce = null): array
@@ -87,6 +89,7 @@ class MusicSessionBridge
         abort_unless(is_array($payload) && $payload['destination'] === config('portal.services.music.url'), 403);
         if ($origin !== null && $origin !== '') {
             $parts = parse_url($payload['destination']);
+            abort_unless(is_array($parts) && isset($parts['host'], $parts['scheme']), 403);
             $expected = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
             abort_unless($origin === $expected, 403);
         }
@@ -102,7 +105,9 @@ class MusicSessionBridge
     {
         abort_unless(is_string($payload['session'] ?? null) && config('session.driver') !== 'cookie', 403);
         // A fresh store reads the original server-side session without touching its lifetime.
-        $session = clone app('session')->driver();
+        /** @var Store $store */
+        $store = app('session')->driver();
+        $session = clone $store;
         $session->flush();
         $session->setId($payload['session']);
         $session->start();
@@ -116,7 +121,7 @@ class MusicSessionBridge
     {
         $account = ServiceAccount::whereKey($payload['account_id'])
             ->where('user_id', $payload['user_id'])->where('service', 'music')->where('status', 'ready')->first();
-        $user = User::find($payload['user_id']);
+        $user = User::find((int) $payload['user_id']);
         abort_unless($account && $user && ! $user->isSuspended() && $user->hasVerifiedEmail() && ! $user->must_change_password
             && in_array('music', $user->service_access ?? [], true), 403);
 

@@ -88,7 +88,8 @@ class MusicSessionBridgeTest extends TestCase
         $start = $this->postJson('/api/music/session/verify', ['ticket' => $ticket])->assertOk();
         $nonce = $start->getCookie('ms_music_browser', false)->getValue();
         $confirm = $start->json('confirm');
-        $response = $this->actingAs($user)->get($confirm)->assertRedirect();
+        $response = $this->actingAs($user)->withCookie(config('session.cookie'), $session->getId())
+            ->get($confirm)->assertRedirect();
         parse_str(parse_url($response->headers->get('Location'), PHP_URL_FRAGMENT), $fragment);
         $ticket = $fragment['ticket'];
         $exchange = $this->postJson('/api/music/session/verify', ['ticket' => $ticket], ['X-Music-Browser' => $nonce])
@@ -97,6 +98,9 @@ class MusicSessionBridgeTest extends TestCase
         $this->assertTrue($cookie->isHttpOnly());
         $this->assertSame('strict', $cookie->getSameSite());
         $headers = ['X-Music-Grant' => $cookie->getValue()];
+        $copiedTicket = app(MusicSessionBridge::class)->issue($account, config('portal.services.music.url'), hash('sha256', $nonce));
+        $this->postJson('/api/music/session/verify', ['ticket' => $copiedTicket])->assertForbidden();
+        $this->getJson('/api/music/session/authorize', [...$headers, 'X-Music-Origin' => 'https://other.example'])->assertForbidden();
         $this->postJson('/api/music/session/verify', ['ticket' => $ticket])->assertForbidden();
         $this->getJson('/api/music/session/authorize', $headers)->assertNoContent()->assertHeader('X-Music-User', $account->username);
         $user->service_access = [];

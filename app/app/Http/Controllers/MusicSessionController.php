@@ -34,6 +34,9 @@ class MusicSessionController extends Controller
                 '/_multisuite/verify', null, str_starts_with((string) config('portal.services.music.url'), 'https://'),
                 true, false, 'strict'));
         }
+        if (! config('portal.music_autologin')) {
+            $response->headers->clearCookie('ms_music', '/');
+        }
         if ($grant !== null) {
             $response->headers->setCookie(Cookie::create('ms_music', $grant, 0, '/', null,
                 str_starts_with((string) config('portal.services.music.url'), 'https://'), true, false, 'strict'));

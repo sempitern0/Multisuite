@@ -66,7 +66,11 @@ export async function launch(browser, request = fetch) {
     }
     reconcile(browser.localStorage, identity);
     // A native JWT takes priority over proxy auth in Navidrome 0.64.
-    if (identity.autologin) browser.localStorage.removeItem('token');
+    if (identity.autologin) {
+      browser.localStorage.removeItem('token');
+    } else if (!browser.localStorage.getItem('token')) {
+      for (const key of authenticationKeys) browser.localStorage.removeItem(key);
+    }
     browser.location.replace(destination);
   } finally {
     clearTimeout(timeout);
