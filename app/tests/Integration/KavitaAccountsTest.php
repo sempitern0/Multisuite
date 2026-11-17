@@ -111,7 +111,7 @@ class KavitaAccountsTest extends TestCase
         app(MediaLibrary::class)->sync($people['bea']);
 
         $ana = ServiceAccount::where('user_id', $people['ana']->id)->firstOrFail();
-        $this->assertFileExists($root.'/.multisuite-media/reading/'.strtolower($ana->remote_id).'/libros/manual.pdf');
+        $this->assertFileExists($root.'/.multisuite-media/reading/'.strtolower($ana->remote_id).'/libros/_lectura-'.\App\Models\UserFile::where('user_id', $people['ana']->id)->where('name', 'manual.pdf')->firstOrFail()->id.'/manual.pdf');
         $client = app(KavitaAccounts::class)->client();
         $folder = '/personal/'.strtolower($ana->remote_id).'/libros';
         $library = collect((array) $client->get('/api/Library/libraries')->json())->first(fn ($library) => in_array($folder, (array) ($library['folders'] ?? []), true));

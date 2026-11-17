@@ -43,3 +43,5 @@ Contrato revisado en el código de v0.9.1.4 (`Kavita.Server/Controllers/AccountC
 - [ ] Copiar un EPUB, un PDF, un CBZ y un manga; leerlos desde el navegador y desde el móvil (o una app OPDS) y comprobar que el progreso se conserva.
 - [ ] Invitar a una persona con Lectura, entrar en Kavita con su usuario y contraseña del portal; cambiar la contraseña en el portal y comprobar la nueva.
 - [ ] Desactivar Lectura en su ficha: Kavita rechaza la entrada; activarla, salir y entrar en el portal con contraseña: vuelve a entrar con su progreso.
+
+Los archivos sueltos de las carpetas conectadas Libros y Cómics se publican en subdirectorios estables por archivo para que Kavita los escanee. La siguiente ejecución de `portal:media-sync` migra los enlaces existentes. Regresión cubierta en ConnectedFoldersTest; ejecución PHP y QA real pendientes en este entorno.

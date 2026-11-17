@@ -32,3 +32,5 @@ Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md
 - El montaje de las carpetas conectadas en los servicios solo está automatizado en desarrollo (P05).
 - Las cuotas solo cuentan lo que entra por el portal.
 - Hardware real del servidor (discos, capacidad): desconocido; pedirlo al preparar el despliegue.
+
+Los archivos sueltos de las carpetas conectadas Libros y Cómics se publican en subdirectorios estables por archivo para que Kavita los escanee. La siguiente ejecución de `portal:media-sync` migra los enlaces existentes. Regresión cubierta en ConnectedFoldersTest; ejecución PHP y QA real pendientes en este entorno.

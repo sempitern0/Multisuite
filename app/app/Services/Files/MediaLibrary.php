@@ -129,7 +129,12 @@ class MediaLibrary
             $upload = $uploads->get($file->upload_id);
             $path = $upload === null ? null : $this->uploads->connectedPath($upload);
             if ($path !== null) {
-                $desired[$paths[(int) $file->folder_id].self::segment($file->name)] = $path;
+                $relativeDirectory = $paths[(int) $file->folder_id];
+                // Kavita's library scanner enumerates child directories, skipping loose root files.
+                if ($relativeDirectory === '' && in_array($root->media_link, ['books', 'comics'], true)) {
+                    $relativeDirectory = '_lectura-'.$file->id.'/';
+                }
+                $desired[$relativeDirectory.self::segment($file->name)] = $path;
             }
         }
 
