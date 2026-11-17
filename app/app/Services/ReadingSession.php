@@ -46,7 +46,7 @@ class ReadingSession
     {
         $ticket = Str::random(64);
         Cache::put('reading-launch:'.hash('sha256', $ticket), Crypt::encrypt([
-            'user' => $user->id, 'login' => session('reading.login'), 'origin' => request()->getSchemeAndHttpHost(),
+            'user_id' => $user->id, 'session' => session()->getId(), 'login' => session('reading.login'), 'origin' => request()->getSchemeAndHttpHost(),
         ]), now()->addMinute());
 
         return $ticket;
@@ -63,11 +63,12 @@ class ReadingSession
         $pass = Crypt::decrypt($value);
         abort_unless($origin === $pass['origin'] && Cache::add($key.':used', true, 60), 403);
         Cache::forget($key);
-        $user = User::find((int) $pass['user']);
+        PortalSession::requireActive($pass);
+        $user = User::find((int) $pass['user_id']);
         abort_unless($user && $user->hasVerifiedEmail() && ! $user->isSuspended() && ! $user->must_change_password
             && in_array('reading', $user->service_access ?? [], true), 403);
         $account = $this->account($user);
-        abort_unless($account, 403);
+        abort_unless($account !== null, 403);
         $login = $pass['login'] ? Crypt::decrypt($pass['login']) : null;
         if (! $login || $login['user'] !== $user->id || $login['dto']['email'] !== KavitaAccounts::identity($account)
             || $login['dto']['username'] !== $account->username) {

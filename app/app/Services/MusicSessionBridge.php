@@ -4,10 +4,7 @@ namespace App\Services;
 
 use App\Models\ServiceAccount;
 use App\Models\User;
-use Illuminate\Auth\SessionGuard;
 use Illuminate\Contracts\Encryption\DecryptException;
-use Illuminate\Session\Store;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use JsonException;
@@ -59,7 +56,7 @@ class MusicSessionBridge
 
         $account = $this->readyAccount($payload);
         if (config('portal.music_autologin')) {
-            $this->requirePortalSession($payload);
+            PortalSession::requireActive($payload);
             abort_unless(Cache::add('music-ticket:'.hash('sha256', $ticket), true, 60), 403);
             if ($payload['challenge'] === null) {
                 $newNonce = bin2hex(random_bytes(32));
@@ -93,27 +90,11 @@ class MusicSessionBridge
             $expected = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
             abort_unless($origin === $expected, 403);
         }
-        $this->requirePortalSession($payload);
+        PortalSession::requireActive($payload);
         $account = $this->readyAccount($payload);
         abort_unless($account->remote_id === $payload['remote_id'] && $account->username === $payload['username'], 403);
 
         return $account->username;
-    }
-
-    /** @param array<string, mixed> $payload */
-    private function requirePortalSession(array $payload): void
-    {
-        abort_unless(is_string($payload['session'] ?? null) && config('session.driver') !== 'cookie', 403);
-        // A fresh store reads the original server-side session without touching its lifetime.
-        /** @var Store $store */
-        $store = app('session')->driver();
-        $session = clone $store;
-        $session->flush();
-        $session->setId($payload['session']);
-        $session->start();
-        /** @var SessionGuard $guard */
-        $guard = Auth::guard('web');
-        abort_unless((string) $session->get($guard->getName()) === (string) $payload['user_id'], 403);
     }
 
     /** @param array<string, mixed> $payload */
