@@ -43,3 +43,6 @@ Contrato revisado en el código de v0.9.1.4 (`Kavita.Server/Controllers/AccountC
 - [ ] Copiar un EPUB, un PDF, un CBZ y un manga; leerlos desde el navegador y desde el móvil (o una app OPDS) y comprobar que el progreso se conserva.
 - [ ] Invitar a una persona con Lectura, entrar en Kavita con su usuario y contraseña del portal; cambiar la contraseña en el portal y comprobar la nueva.
 - [ ] Desactivar Lectura en su ficha: Kavita rechaza la entrada; activarla, salir y entrar en el portal con contraseña: vuelve a entrar con su progreso.
+
+## Ensayar la recuperación de progreso
+En el servidor Linux, avanza en un libro, cierra el lector y comprueba que Kavita recuerda la posición al abrirlo. Ejecuta `make nas-backup` y después `make nas-backup-verify-kavita`. El ensayo restaura la última copia de Lectura en un volumen temporal, arranca Kavita sin red externa ni puertos publicados y compara las posiciones guardadas antes y después del arranque. Una copia sin progreso falla explícitamente. La comprobación cubre la base de datos y el arranque; para abrir el libro en el lector también se necesita recuperar sus archivos.

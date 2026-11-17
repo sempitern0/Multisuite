@@ -80,7 +80,7 @@ STARTER ?=
 # Explicit all-profiles stop also removes containers started manually through a
 # profile not included in the current .env.
 ALL_PROFILES := --profile dev --profile tools --profile workers --profile scheduler --profile redis --profile https --profile postgres --profile mariadb --profile mysql --profile phpmyadmin --profile mailpit --profile pgweb --profile adminer
-.PHONY: nas-discover nas-apply nas-backup nas-backup-verify nas-backup-restore nas-backup-snapshots music-up music-stop music-status music-logs music-config reading-up reading-stop reading-status reading-logs reading-config help check status doctor host-config setup reconfigure up up-detached up-wait up-logs start stop restart down build images rebuild ps logs shell artisan composer npm migrate test lint backup env-sync https-setup reset-project worker scheduler redis config tenancy-check
+.PHONY: nas-discover nas-apply nas-backup nas-backup-verify nas-backup-verify-kavita nas-backup-restore nas-backup-snapshots music-up music-stop music-status music-logs music-config reading-up reading-stop reading-status reading-logs reading-config help check status doctor host-config setup reconfigure up up-detached up-wait up-logs start stop restart down build images rebuild ps logs shell artisan composer npm migrate test lint backup env-sync https-setup reset-project worker scheduler redis config tenancy-check
 
 help:
 	@echo "Laravel Foundry - self-hosted Laravel environments with Docker Compose"
@@ -288,6 +288,9 @@ nas-backup:
 
 nas-backup-verify:
 	@$(NAS_BACKUP) verify
+
+nas-backup-verify-kavita:
+	@$(NAS_BACKUP) verify-kavita
 
 nas-backup-restore:
 	@$(NAS_BACKUP) restore

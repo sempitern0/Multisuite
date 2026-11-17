@@ -21,6 +21,8 @@ step=preflight
 started=''
 music_stopped=0
 kavita_to_restart=
+trial_volume=
+trial_container=
 locked=0
 
 die() { echo "nas-backup: $*" >&2; exit 1; }
@@ -52,7 +54,9 @@ cleanup() {
     if [ -n "$kavita_to_restart" ]; then
         "$DOCKER" start "$kavita_to_restart" >/dev/null || echo "nas-backup: ejecuta make reading-up para reanudar Kavita." >&2
     fi
-    rm -rf "$staging"
+    [ -z "$trial_container" ] || "$DOCKER" rm -f "$trial_container" >/dev/null
+    [ -z "$trial_volume" ] || "$DOCKER" volume rm "$trial_volume" >/dev/null
+    [ "$command" = verify-kavita ] || rm -rf "$staging"
     [ "$step" != database ] || "$DOCKER" compose exec -T postgres rm -f /tmp/portal.dump >/dev/null 2>&1 || true
     [ "$command" != verify ] || "$DOCKER" volume rm -f "$rehearsal" >/dev/null 2>&1 || true
     if [ "$command" = run ] && [ "$code" != 0 ] && [ "$locked" = 1 ]; then
@@ -204,6 +208,30 @@ run)
     step=done
     write_status true "$(now)"
     echo "Copia terminada y comprobada. Ensaya la restauración de vez en cuando: make nas-backup-verify"
+    ;;
+
+verify-kavita)
+    trial_volume=$("$DOCKER" volume create)
+    extra_mounts="-v $trial_volume:/restore"
+    restic restore latest --tag kavita --target /restore
+    trial_mount="type=volume,source=$trial_volume,destination=/kavita/config,volume-subpath=source/kavita"
+    progress() {
+        "$DOCKER" run --rm --network none --mount "$trial_mount,readonly" \
+            -v "$PWD/scripts/kavita-progress.py:/check.py:ro" python:3.13-alpine python /check.py
+    }
+    before=$(progress)
+    trial_image=$(setting KAVITA_IMAGE reading.env)
+    trial_container=$("$DOCKER" run -d --network none --mount "$trial_mount" "${trial_image:-jvmilazz0/kavita:0.9.1}")
+    attempt=0
+    until "$DOCKER" exec "$trial_container" curl -fsS http://localhost:5000/api/health >/dev/null 2>&1; do
+        attempt=$((attempt + 1))
+        [ "$attempt" -lt 60 ] || die "la instancia restaurada no responde."
+        sleep 2
+    done
+    "$DOCKER" stop "$trial_container" >/dev/null
+    after=$(progress)
+    [ "$before" = "$after" ] || die "las posiciones de lectura difieren después del arranque."
+    echo "Kavita restaurado: la instancia arrancó y conservó las posiciones de lectura."
     ;;
 
 verify)

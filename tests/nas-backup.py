@@ -26,6 +26,9 @@ with tempfile.TemporaryDirectory(prefix="multisuite-backup-") as directory:
     (bin_dir / "docker").write_text(f"""#!/bin/sh
 printf '%s\\n' "$*" >> "{log}"
 case "$*" in
+  "volume create") echo restore-volume ;;
+  "run -d --network none"*) echo restore-container ;;
+  *"python /check.py"*) echo position-digest ;;
   *"cat config"*) exit "${{REPO_MISSING:-0}}" ;;
   *"compose cp "*) for last; do :; done; printf dump > "$last" ;;
   *"ps -q --status running navidrome"*) echo abc123 ;;
@@ -107,6 +110,12 @@ case "$path" in {external}*) [ "${{SAME_DISK:-0}}" = 1 ] && echo /dev/sdb2 || ec
     assert result.returncode == 0 and "start kavita-id" not in calls and "stop kavita-id" not in calls
     result, calls = run("restore", TARGET=str(target))
     assert result.returncode == 0 and any("restore latest --tag kavita" in call for call in calls)
+
+    result, calls = run("verify-kavita")
+    assert result.returncode == 0, result.stderr
+    assert sum("python /check.py" in call for call in calls) == 2
+    assert any("restore latest --tag kavita" in call for call in calls)
+    assert "stop restore-container" in calls and calls[-1] == "volume rm restore-volume"
 
     result, calls = run("verify", FILES="0")
     assert result.returncode == 0, result.stderr
