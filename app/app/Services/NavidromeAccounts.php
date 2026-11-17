@@ -190,6 +190,30 @@ class NavidromeAccounts implements PersonalLibraries, ServiceProvisioner
         }
     }
 
+    public function verifyForLogin(ServiceAccount $account): void
+    {
+        // Navidrome's native user read checks the authenticated listener's own UUID.
+        // The gateway accepts this assertion only over its private Unix socket.
+        $base = rtrim((string) parse_url((string) config('provisioning.music.url'), PHP_URL_PATH), '/');
+        $client = Http::baseUrl('http://localhost'.$base)->acceptJson()->withoutRedirecting()
+            ->withOptions(['curl' => [CURLOPT_UNIX_SOCKET_PATH => '/run/music-identity/lookup.sock'], 'proxy' => ''])
+            ->withHeaders(['X-Music-Listener' => $account->username])->connectTimeout(2)->timeout(6);
+        try {
+            $response = $client->get('/api/user/'.$account->remote_id);
+        } catch (ConnectionException) {
+            abort(503, 'music_unreachable');
+        }
+        if (in_array($response->status(), [401, 403, 404], true)) {
+            abort(409, 'music_identity');
+        }
+        abort_unless($response->successful(), 503, 'music_unreachable');
+        try {
+            $this->assertIdentity($response->json(), $account, [$account->username]);
+        } catch (RuntimeException) {
+            abort(409, 'music_identity');
+        }
+    }
+
     private function client(): PendingRequest
     {
         $url = ServiceUrl::validated((string) config('provisioning.music.url'));

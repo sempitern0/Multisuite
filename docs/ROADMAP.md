@@ -9,6 +9,8 @@ Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_ST
 - Contenido privado por defecto; solo el administrador publica para todos.
 - Un incremento = una rama desde `main` + una PR. Se fusiona solo con indicación del usuario.
 
+Pendiente de validar en el piloto: autologin musical con dos usuarios y un navegador compartido ([guía](MUSIC_SESSION_BRIDGE.md)).
+
 ## Orden vigente
 1. **P04.1 Lectura (Kavita)** — en revisión; falta la QA del usuario con libros reales.
 2. **S04a Puente Mis archivos → servicios** — en revisión en la PR #36; falta la QA del usuario.

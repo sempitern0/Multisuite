@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\ServiceAccount;
 use App\Services\MusicSessionBridge;
+use App\Services\ReadingSession;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 
 class ServiceController extends Controller
 {
-    public function __invoke(string $service): RedirectResponse
+    public function __invoke(string $service): RedirectResponse|Response
     {
         $entry = config('portal.services', [])[$service] ?? null;
         abort_unless(is_array($entry) && ($entry['enabled'] ?? false), 404);
@@ -32,13 +34,24 @@ class ServiceController extends Controller
             && ! isset($parts['user']) && ! isset($parts['pass'])
             && ! preg_match('/[\x00-\x20\x7f]/', $url), 404);
 
+        if ($service === 'reading' && config('portal.reading_autologin') && config('provisioning.reading.enabled')
+            && $user !== null && $user->service_access !== null) {
+            abort_if(app()->isProduction() && $parts['scheme'] !== 'https', 404);
+            $origin = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
+
+            return response()->view('reading-launch', ['action' => $origin.'/_multisuite/launch', 'ticket' => app(ReadingSession::class)->issue($user)])
+                ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'origin');
+        }
+
         if ($service === 'music' && config('portal.music_session_bridge')
             && config('provisioning.music.enabled') && $user?->service_access !== null) {
             $account = ServiceAccount::where('user_id', $user->id)->where('service', 'music')->where('status', 'ready')->firstOrFail();
             abort_if(app()->isProduction() && $parts['scheme'] !== 'https', 404);
             abort_if(str_starts_with($parts['path'] ?? '', '/_multisuite/'), 404);
             $origin = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
-            $ticket = app(MusicSessionBridge::class)->issue($account, $url);
+            $challenge = request()->query('music_challenge');
+            abort_unless($challenge === null || (is_string($challenge) && preg_match('/^[a-f0-9]{64}$/D', $challenge)), 400);
+            $ticket = app(MusicSessionBridge::class)->issue($account, $url, $challenge);
 
             return redirect()->away($origin.'/_multisuite/session#ticket='.rawurlencode($ticket))
                 ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');

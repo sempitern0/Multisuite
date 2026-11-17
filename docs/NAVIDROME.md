@@ -82,7 +82,7 @@ Antes de actualizar, respaldar y revisar notas de versión. Una imagen anterior 
 Fuentes: https://www.navidrome.org/docs/installation/docker/ y https://github.com/navidrome/navidrome/releases/tag/v0.64.2
 
 ## Tarjeta en el portal
-En app/.env configurar PORTAL_MUSIC_ENABLED=true y PORTAL_MUSIC_URL=http://127.0.0.1:4533. Ejecutar `make artisan CMD="config:clear"` y abrir /dashboard autenticado. El enlace abre la UI independiente; no proporciona SSO. Esta URL solo sirve en el mismo ordenador.
+En app/.env configurar PORTAL_MUSIC_ENABLED=true y PORTAL_MUSIC_URL=http://127.0.0.1:4533. Ejecutar `make artisan CMD="config:clear"` y abrir /dashboard autenticado. En el despliegue integrado, las cuentas gestionadas acceden con [inicio automático](MUSIC_SESSION_BRIDGE.md). Esta URL solo sirve en el mismo ordenador.
 
 ## Aislamiento por biblioteca (laboratorio S01)
 Fuentes v0.64.2: [modelo Library](https://github.com/navidrome/navidrome/blob/v0.64.2/model/library.go), [servicio](https://github.com/navidrome/navidrome/blob/v0.64.2/core/library.go), [API nativa](https://github.com/navidrome/navidrome/blob/v0.64.2/server/nativeapi/library.go), [tests multibiblioteca](https://github.com/navidrome/navidrome/blob/v0.64.2/server/subsonic/e2e/subsonic_multilibrary_test.go).

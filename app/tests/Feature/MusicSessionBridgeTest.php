@@ -6,6 +6,9 @@ use App\Models\ServiceAccount;
 use App\Models\User;
 use App\Services\MusicSessionBridge;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -71,6 +74,50 @@ class MusicSessionBridgeTest extends TestCase
         $this->postJson('/api/music/session/verify', ['ticket' => $this->ticket($account)])
             ->assertOk()->assertJsonMissingPath('token')->assertJsonMissingPath('password')
             ->assertCookieMissing(config('session.cookie'));
+    }
+
+    public function test_managed_login_uses_one_pass_and_stops_when_the_portal_session_ends(): void
+    {
+        config(['portal.music_autologin' => true]);
+        [$user, $account] = $this->account();
+        config(['provisioning.music.url' => 'http://navidrome:4533/music']);
+        Http::preventStrayRequests();
+        Http::fake(['localhost/music/api/user/'.$account->remote_id => Http::response([
+            'id' => $account->remote_id, 'userName' => $account->username, 'isAdmin' => false,
+        ])]);
+        $session = session()->driver();
+        $session->put(Auth::guard('web')->getName(), $user->id);
+        $session->save();
+
+        $ticket = $this->ticket($account);
+        $start = $this->postJson('/api/music/session/verify', ['ticket' => $ticket])->assertOk();
+        $nonce = $start->getCookie('ms_music_browser', false)->getValue();
+        $confirm = $start->json('confirm');
+        $response = $this->actingAs($user)->withCookie(config('session.cookie'), $session->getId())
+            ->get($confirm)->assertRedirect();
+        parse_str(parse_url($response->headers->get('Location'), PHP_URL_FRAGMENT), $fragment);
+        $ticket = $fragment['ticket'];
+        $exchange = $this->postJson('/api/music/session/verify', ['ticket' => $ticket], ['X-Music-Browser' => $nonce])
+            ->assertOk()->assertJsonPath('autologin', true);
+        Http::assertSentCount(1);
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'GET'
+            && $request->hasHeader('X-Music-Listener', $account->username));
+        $cookie = $exchange->getCookie('ms_music', false);
+        $this->assertTrue($cookie->isHttpOnly());
+        $this->assertSame('strict', $cookie->getSameSite());
+        $headers = ['X-Music-Grant' => $cookie->getValue()];
+        $copiedTicket = app(MusicSessionBridge::class)->issue($account, config('portal.services.music.url'), hash('sha256', $nonce));
+        $this->postJson('/api/music/session/verify', ['ticket' => $copiedTicket])->assertForbidden();
+        $this->getJson('/api/music/session/authorize', [...$headers, 'X-Music-Origin' => 'https://other.example'])->assertForbidden();
+        $this->postJson('/api/music/session/verify', ['ticket' => $ticket])->assertForbidden();
+        $this->getJson('/api/music/session/authorize', $headers)->assertNoContent()->assertHeader('X-Music-User', $account->username);
+        $user->service_access = [];
+        $user->save();
+        $this->getJson('/api/music/session/authorize', $headers)->assertForbidden();
+        $user->service_access = ['music'];
+        $user->save();
+        $session->invalidate();
+        $this->getJson('/api/music/session/authorize', $headers)->assertForbidden();
     }
 
     public function test_tampering_expiry_and_destination_change_are_rejected(): void

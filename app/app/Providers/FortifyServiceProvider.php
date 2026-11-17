@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\LoginResponse;
 use App\Models\User;
+use App\Services\ReadingSession;
 use App\Services\ServiceAccounts;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -71,6 +72,8 @@ class FortifyServiceProvider extends ServiceProvider
             }
             // Services waiting for a password (access granted again) receive it now, after the response.
             app(ServiceAccounts::class)->resume($user, $password);
+
+            app(ReadingSession::class)->prepare($user, $password);
 
             return $user;
         });

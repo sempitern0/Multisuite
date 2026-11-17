@@ -2,21 +2,47 @@
 services:
   navidrome:
     ports: !reset []
-    networks: [default, accounts]
+    networks:
+      default: {}
+      accounts: {}
+      music-auth:
+        aliases: [navidrome-sso]
     environment:
+      ND_EXTAUTH_LOGOUTURL: "${MUSIC_PUBLIC_ORIGIN:-http://127.0.0.1:${NAVIDROME_PORT:-4533}}/_multisuite/logout"
+      ND_EXTAUTH_USERHEADER: X-Multisuite-Music-User
+      ND_EXTAUTH_TRUSTEDSOURCES: "${MUSIC_AUTH_GATEWAY_IP:-172.30.253.6}/32"
       ND_ENABLEUSEREDITING: 'false'
+  identity-directory:
+    image: nginx:1.27-alpine
+    network_mode: none
+    user: "0:0"
+    cap_drop: [ALL]
+    cap_add: [CHOWN]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    volumes:
+      - music-identity:/run/music-identity
+    entrypoint: ["chown", "101:101", "/run/music-identity"]
   music-gateway:
     image: nginx:1.27-alpine
     restart: unless-stopped
     depends_on:
+      identity-directory:
+        condition: service_completed_successfully
       navidrome:
         condition: service_started
     ports:
       - "127.0.0.1:${NAVIDROME_PORT:-4533}:8080"
     volumes:
       - ./docker/music-proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - music-identity:/run/music-identity
+      - ./docker/music-proxy/identity.conf:/etc/nginx/music-private/identity.conf:ro
       - ./docker/music-proxy/public:/usr/share/nginx/html:ro
-    networks: [default, accounts]
+    networks:
+      default: {}
+      accounts: {}
+      music-auth:
+        ipv4_address: "${MUSIC_AUTH_GATEWAY_IP:-172.30.253.6}"
     read_only: true
     tmpfs:
       - /tmp
@@ -24,7 +50,7 @@ services:
       - no-new-privileges:true
     cap_drop: [ALL]
     user: "101:101"
-    entrypoint: ["nginx", "-g", "daemon off;"]
+    entrypoint: ["sh", "-ec", "rm -f /run/music-identity/lookup.sock && exec nginx -g 'daemon off;'"]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/_multisuite/health"]
       interval: 30s
@@ -37,6 +63,16 @@ services:
         max-file: "3"
 networks:
   default: {}
+  music-auth:
+    internal: true
+    ipam:
+      config:
+        - subnet: "${MUSIC_AUTH_SUBNET:-172.30.253.0/29}"
   accounts:
     external: true
     name: multisuite-accounts
+
+volumes:
+  music-identity:
+    external: true
+    name: multisuite-music-identity
