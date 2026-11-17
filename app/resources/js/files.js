@@ -40,12 +40,13 @@ const RETRIES = 3;
 
 class UploadRefused extends Error {}
 
-const putChunk = (url, blob, csrf, onProgress) =>
+const putChunk = (url, blob, csrf, onProgress, checksum) =>
     new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('PUT', url);
         xhr.setRequestHeader('Content-Type', 'application/octet-stream');
         xhr.setRequestHeader('Accept', 'application/json');
+        if (checksum) xhr.setRequestHeader('X-Chunk-SHA256', checksum);
         xhr.setRequestHeader('X-CSRF-TOKEN', csrf);
         xhr.upload.addEventListener('progress', (event) => {
             if (event.lengthComputable) {
@@ -60,7 +61,7 @@ const putChunk = (url, blob, csrf, onProgress) =>
                 // Non-JSON error page.
             }
             if (xhr.status >= 200 && xhr.status < 300) {
-                resolve({ received: null, state: body.state ?? null });
+                resolve({ received: body.received ?? null, state: body.state ?? null });
                 return;
             }
             // The server already has a different amount (lost response, retry): continue from there.
@@ -89,10 +90,21 @@ const putBody = async (url, file, csrf, onProgress) => {
     while (offset < file.size) {
         const end = Math.min(file.size, offset + CHUNK_BYTES);
         try {
-            const result = await putChunk(`${url}?offset=${offset}`, file.slice(offset, end), csrf, (loaded) => onProgress((offset + loaded) / file.size));
+            const chunk = file.slice(offset, end);
+            const digest = window.crypto?.subtle
+                ? await window.crypto.subtle.digest('SHA-256', await chunk.arrayBuffer())
+                : null;
+            const checksum = digest
+                ? [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+                : null;
+            const result = await putChunk(`${url}?offset=${offset}`, chunk, csrf, (loaded) => onProgress((offset + loaded) / file.size), checksum);
             offset = result.received ?? end;
             state = result.state;
             failures = 0;
+            // Optimised pictures can occupy fewer bytes than the selected file.
+            if (state === 'ready') {
+                break;
+            }
         } catch (error) {
             failures++;
             if (error instanceof UploadRefused || failures > RETRIES) {

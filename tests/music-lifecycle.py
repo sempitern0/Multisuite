@@ -52,7 +52,7 @@ with tempfile.TemporaryDirectory(prefix="multisuite-music-") as directory:
     calls = run("up", "DEV_BOOTSTRAP=0")
     assert any("nas-dev" in c for c in calls) and all("dev-bootstrap" not in c for c in calls), calls
     calls = run("up", "NAS_DEV=0", "MUSIC_AUTO=0", "DEV_BOOTSTRAP=0")
-    assert "compose up -d" in calls and all("dev-bootstrap" not in c for c in calls), calls
+    assert any(c.endswith(" up -d") and "compose.portal-kavita-disabled.yaml" in c for c in calls) and all("dev-bootstrap" not in c for c in calls), calls
     assert any(c.endswith("exec -T app php artisan portal:dev-bootstrap") for c in run("rebuild", "HOST_PREPARE=true", "SETUP_SCRIPT=true")), "rebuild bootstrap"
     env["NETWORK_MISSING"] = "1"
     calls = run("up")

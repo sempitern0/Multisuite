@@ -1,0 +1,10 @@
+x-komga: &komga
+  PORTAL_KOMGA_ENABLED: "true"
+  PORTAL_KOMGA_URL: "${PORTAL_KOMGA_URL:-http://127.0.0.1:25600}"
+services:
+  app:
+    environment: *komga
+  worker:
+    environment: *komga
+  scheduler:
+    environment: *komga

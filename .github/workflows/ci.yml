@@ -35,6 +35,9 @@ jobs:
           docker compose -f compose.yaml -f deploy/compose.portal-accounts.example.yaml -f deploy/compose.nas-dev.yaml config --quiet
           python3 tests/accounts-profiles.py
           python3 tests/reading-lifecycle.py
+          python3 tests/komga-lifecycle.py
+          docker compose -f compose.komga.yaml config --quiet
+          docker compose -f compose.yaml -f deploy/compose.portal-komga.example.yaml -f deploy/compose.portal-kavita-disabled.yaml config --quiet
           docker compose --env-file reading.env.example -f compose.reading.yaml config --quiet
           docker compose --env-file reading.env.example -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml config --quiet
           docker volume create multisuite-nas-dev >/dev/null
@@ -43,6 +46,8 @@ jobs:
           docker compose -f compose.yaml -f deploy/compose.portal-accounts.example.yaml -f deploy/compose.portal-reading.example.yaml config --quiet
           python3 tests/nas-disk-discovery.py
           python3 tests/nas-backup.py
+      - name: Komga disposable EPUB integration
+        run: python3 tests/komga-smoke.py
       - name: Test music session bridge and gateway
         run: |
           node --test tests/music-session.test.mjs

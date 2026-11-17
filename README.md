@@ -45,3 +45,7 @@ No ejecutar `make setup`/`reset-project` sobre la app existente: el starter ya e
 
 ## Licencia
 [MIT](LICENSE) para este repositorio. Cada servicio integrado conserva su licencia.
+
+## Prueba local de Komga
+
+En esta rama, `make up` inicia Komga y deja Kavita desactivado. Consulta [KOMGA.md](docs/KOMGA.md) para crear la biblioteca de prueba y reactivar Kavita. El piloto de Komga está disponible solo para administradores.

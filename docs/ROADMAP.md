@@ -11,7 +11,12 @@ Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_ST
 
 Pendiente de validar en el piloto: autologin musical con dos usuarios y un navegador compartido ([guía](MUSIC_SESSION_BRIDGE.md)).
 
-## Orden vigente
+## Prioridad vigente desde el 17 de noviembre de 2026
+- [ ] Evaluar Komga con los libros ya subidos (KOMGA.md). Kavita deshabilitado y reactivable.
+- [ ] Tras validar su lector: aprovisionamiento, bibliotecas privadas por usuario, sincronización inmediata y autologin de Komga.
+- [ ] Adaptar copia y recuperación al lector elegido.
+
+## Orden anterior pendiente de replanificar
 1. **P04.1 Lectura (Kavita)** — en revisión; falta la QA del usuario con libros reales.
 2. **S04a Puente Mis archivos → servicios** — en revisión en la PR #36; falta la QA del usuario.
 3. **S04b** — Publicación administrativa (necesita tres decisiones del usuario).

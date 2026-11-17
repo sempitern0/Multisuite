@@ -39,7 +39,7 @@ DC := docker compose
 MUSIC_AUTO ?= $(if $(wildcard music.env),1,0)
 MUSIC_DC := docker compose --env-file music.env -f compose.music.yaml
 # A configured reading.env does the same for Lectura (Kavita); READING_AUTO=0 skips it.
-READING_AUTO ?= $(if $(wildcard reading.env),1,0)
+READING_AUTO ?= 0
 READING_DC := docker compose --env-file reading.env -f compose.reading.yaml
 # Any integrated service attaches the portal to the shared accounts network.
 SERVICES_AUTO := $(if $(filter 1,$(MUSIC_AUTO) $(READING_AUTO)),1,0)
@@ -47,6 +47,9 @@ SERVICES_AUTO := $(if $(filter 1,$(MUSIC_AUTO) $(READING_AUTO)),1,0)
 # development NAS volume (deploy/compose.nas-dev.yaml). NAS_DEV=0 also opts out.
 NAS_REAL := $(wildcard compose.nas.yaml)
 NAS_DEV ?= $(if $(NAS_REAL),0,1)
+# Local administrator pilot. Production opts in after configuring its own mounts.
+KOMGA_AUTO ?= $(NAS_DEV)
+KOMGA_DC := docker compose -f compose.komga.yaml
 DC_FILES := -f compose.yaml $(if $(wildcard compose.override.yaml),-f compose.override.yaml)
 ifeq ($(SERVICES_AUTO),1)
 # Keep host-generated overrides; append service connectivity without rewriting them.
@@ -59,6 +62,12 @@ ifeq ($(READING_AUTO),1)
 DC_FILES += -f deploy/compose.portal-reading.example.yaml
 READING_DC += -f deploy/compose.reading-accounts.example.yaml
 endif
+ifeq ($(KOMGA_AUTO),1)
+DC_FILES += -f deploy/compose.portal-komga.example.yaml
+endif
+ifeq ($(READING_AUTO),0)
+DC_FILES += -f deploy/compose.portal-kavita-disabled.yaml
+endif
 ifeq ($(NAS_DEV),1)
 DC_FILES += -f deploy/compose.nas-dev.yaml
 # Services read the people's connected folders from the same development volume.
@@ -68,9 +77,7 @@ endif
 ifneq ($(NAS_REAL),)
 DC_FILES += -f compose.nas.yaml
 endif
-ifneq ($(SERVICES_AUTO)$(NAS_DEV)$(NAS_REAL),00)
 DC := docker compose $(DC_FILES)
-endif
 # After start: wait for the DB, migrate and fill unset storage limits. Independent of
 # NAS_DEV; never overwrites GUI choices; no-op in production. DEV_BOOTSTRAP=0 opts out
 # (an empty recipe line is skipped by Make on every shell, including Windows).
@@ -129,6 +136,14 @@ endif
 ifeq ($(READING_AUTO),1)
 	@$(READING_DC) up -d
 endif
+ifeq ($(KOMGA_AUTO),1)
+	@$(KOMGA_DC) up -d
+endif
+ifeq ($(READING_AUTO),0)
+ifneq ($(wildcard reading.env),)
+	@docker compose --env-file reading.env -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml stop
+endif
+endif
 	-@$(BOOTSTRAP_STEP)
 	-@$(STATUS_SCRIPT)
 
@@ -144,17 +159,34 @@ endif
 ifeq ($(READING_AUTO),1)
 	@$(READING_DC) up -d --wait --wait-timeout 120
 endif
+ifeq ($(KOMGA_AUTO),1)
+	@$(KOMGA_DC) up -d --wait --wait-timeout 180
+endif
+ifeq ($(READING_AUTO),0)
+ifneq ($(wildcard reading.env),)
+	@docker compose --env-file reading.env -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml stop
+endif
+endif
 	-@$(BOOTSTRAP_STEP)
 	-$(HTTP_CHECK)
 	-@$(STATUS_SCRIPT)
 
 up-logs: accounts-network
 	@$(HOST_PREPARE)
+	@$(DC) up -d
 ifeq ($(MUSIC_AUTO),1)
 	@$(MUSIC_DC) up -d
 endif
 ifeq ($(READING_AUTO),1)
 	@$(READING_DC) up -d
+endif
+ifeq ($(KOMGA_AUTO),1)
+	@$(KOMGA_DC) up -d
+endif
+ifeq ($(READING_AUTO),0)
+ifneq ($(wildcard reading.env),)
+	@docker compose --env-file reading.env -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml stop
+endif
 endif
 	@$(DC) up
 
@@ -173,10 +205,21 @@ endif
 ifeq ($(READING_AUTO),1)
 	@$(READING_DC) up -d
 endif
+ifeq ($(KOMGA_AUTO),1)
+	@$(KOMGA_DC) up -d
+endif
+ifeq ($(READING_AUTO),0)
+ifneq ($(wildcard reading.env),)
+	@docker compose --env-file reading.env -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml stop
+endif
+endif
 	-@$(BOOTSTRAP_STEP)
 	-@$(STATUS_SCRIPT)
 
 stop:
+ifeq ($(KOMGA_AUTO),1)
+	@$(KOMGA_DC) stop
+endif
 ifeq ($(MUSIC_AUTO),1)
 	@$(MUSIC_DC) stop
 endif
@@ -188,6 +231,9 @@ endif
 restart: stop start
 
 down:
+ifeq ($(KOMGA_AUTO),1)
+	@$(KOMGA_DC) down
+endif
 ifeq ($(MUSIC_AUTO),1)
 	@$(MUSIC_DC) down
 endif
@@ -334,3 +380,12 @@ ifeq ($(SERVICES_AUTO),1)
 	@$(ACCOUNTS_NETWORK)
 	@docker volume create multisuite-music-identity
 endif
+
+.PHONY: komga-up komga-stop komga-status komga-logs
+komga-up: up
+komga-stop:
+	@$(KOMGA_DC) stop
+komga-status:
+	@$(KOMGA_DC) ps
+komga-logs:
+	@$(KOMGA_DC) logs --tail=100

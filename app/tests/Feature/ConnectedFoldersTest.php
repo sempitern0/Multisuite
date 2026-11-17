@@ -171,6 +171,25 @@ class ConnectedFoldersTest extends TestCase
         $this->assertSame(0, UserStorageQuota::findOrFail($this->owner->id)->used_bytes);
     }
 
+    public function test_loose_books_are_migrated_into_scannable_directories(): void
+    {
+        $account = $this->account($this->owner, 'reading');
+        app(ConnectedFolders::class)->ensure($this->owner);
+        $books = $this->connected($this->owner, 'books');
+        $this->withoutDefer();
+        $this->upload($this->owner, 'book.pdf', "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n", $books->id)->assertOk();
+        $entry = $this->entry('book.pdf');
+        $directory = $this->media($account, 'libros');
+        $target = $directory.'/_lectura-'.$entry->id.'/book.pdf';
+        $this->assertFileExists($target);
+        link($target, $directory.'/book.pdf');
+        app(MediaLibrary::class)->sync($this->owner);
+        $this->assertFileDoesNotExist($directory.'/book.pdf');
+        $this->assertSame(fileinode($target), fileinode($this->root.'/.multisuite-private/'.$entry->upload_id.'.blob'));
+        app(MediaLibrary::class)->sync($this->owner);
+        $this->assertFileExists($target);
+    }
+
     public function test_ordinary_folders_stay_encrypted_and_out_of_the_services(): void
     {
         $account = $this->account($this->owner, 'reading');

@@ -1,0 +1,12 @@
+# Environment overrides existing app/.env until explicitly reactivated with READING_AUTO=1.
+x-disabled: &disabled
+  PORTAL_READING_ENABLED: "false"
+  KAVITA_PROVISIONING_ENABLED: "false"
+  KAVITA_AUTOLOGIN_ENABLED: "false"
+services:
+  app:
+    environment: *disabled
+  worker:
+    environment: *disabled
+  scheduler:
+    environment: *disabled

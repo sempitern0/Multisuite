@@ -25,6 +25,10 @@ class ServiceTiles
         /** @var array<string, array<string, mixed>> $services */
         $services = config('portal.services', []);
         foreach ($services as $id => $service) {
+            if ((! empty($service['admin_only']) && ! in_array($user->role, ['owner', 'admin'], true))
+                || (! empty($service['hidden_when_disabled']) && empty($service['enabled']))) {
+                continue;
+            }
             $managed = (bool) config('provisioning.'.$id.'.enabled');
             // Managed services outside the invitation are not shown at all.
             if ($access !== null && $managed && ! in_array($id, $access, true)) {

@@ -12,6 +12,20 @@ class DashboardTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_komga_pilot_is_visible_and_accessible_only_to_administrators(): void
+    {
+        config(['portal.services.komga.enabled' => true, 'portal.services.komga.url' => 'http://127.0.0.1:25600']);
+        $user = User::factory()->create(['role' => 'member']);
+        $this->actingAs($user)->get('/services/komga')->assertForbidden();
+        $this->assertNotContains('komga', array_column(\App\Support\ServiceTiles::forUser($user), 'id'));
+        $user->role = 'admin';
+        $user->save();
+        $this->get('/services/komga')->assertRedirect('http://127.0.0.1:25600');
+        $this->assertContains('komga', array_column(\App\Support\ServiceTiles::forUser($user), 'id'));
+        config(['portal.services.komga.enabled' => false]);
+        $this->get('/services/komga')->assertNotFound();
+    }
+
     public function test_guests_are_redirected_to_the_login_page(): void
     {
         $response = $this->get(route('dashboard'));

@@ -5,6 +5,16 @@ return [
     'music_autologin' => env('NAVIDROME_AUTOLOGIN_ENABLED', false),
     'music_session_bridge' => env('NAVIDROME_SESSION_BRIDGE_ENABLED', false),
     'services' => [
+        'komga' => [
+            'name' => 'Lectura · Komga',
+            'icon' => 'book',
+            'description' => 'Prueba de lectura de EPUB, PDF y cómics.',
+            'category' => 'Leer',
+            'admin_only' => true,
+            'hidden_when_disabled' => true,
+            'enabled' => env('PORTAL_KOMGA_ENABLED', false),
+            'url' => env('PORTAL_KOMGA_URL', ''),
+        ],
         'music' => [
             'name' => 'Música',
             'icon' => 'music',
@@ -14,7 +24,8 @@ return [
             'url' => env('PORTAL_MUSIC_URL', ''),
         ],
         'reading' => [
-            'name' => 'Lectura',
+            'name' => 'Lectura · Kavita',
+            'hidden_when_disabled' => true,
             'icon' => 'book',
             'description' => 'Novelas, cómics, manga y documentación técnica en Kavita.',
             'category' => 'Leer',

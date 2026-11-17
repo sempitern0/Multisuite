@@ -17,6 +17,7 @@ class ServiceController extends Controller
         abort_unless(is_array($entry) && ($entry['enabled'] ?? false), 404);
 
         $user = Auth::user();
+        abort_if(($entry['admin_only'] ?? false) && ! in_array($user?->role, ['owner', 'admin'], true), 403);
         if ($user !== null && $user->service_access !== null && config('provisioning.'.$service.'.enabled')) {
             abort_unless(in_array($service, $user->service_access, true), 403);
             if (! ServiceAccount::where('user_id', $user->id)->where('service', $service)->where('status', 'ready')->exists()) {
