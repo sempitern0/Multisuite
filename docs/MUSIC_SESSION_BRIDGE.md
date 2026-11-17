@@ -29,3 +29,9 @@ Si falla el acceso automático, la transición Nocturne muestra el motivo dispon
 - En producción usa un hostname HTTPS exclusivo para Música, publica solo el gateway y enruta también `/_multisuite/*` en la raíz. Conserva la red privada entre el gateway y el portal, los alias de Compose y la URL interna de aprovisionamiento. Las cookies se comparten entre puertos de un mismo host.
 
 En el menú de Navidrome, «← Multisuite» vuelve al panel. Ctrl+clic permite mantener la reproducción en la pestaña musical. Kavita incluye el mismo enlace en el menú y en los controles del lector mediante el gateway del despliegue integrado.
+
+## Acceso web a Kavita
+
+El gateway de Lectura usa el login nativo de Kavita. Al identificarse con contraseña en Multisuite, el portal solicita una sesión nativa para la cuenta de Lectura preparada. Contrasta el correo sintético, el usuario y los roles, descarta las claves API y conserva los tokens cifrados dentro de la sesión Laravel. La tarjeta entrega un pase de un solo uso durante 60 segundos por POST desde el origen del portal. El canje vuelve a comprobar el acceso y abre la biblioteca en el origen de Kavita. Los fallos de conexión durante el login de Lectura permiten seguir usando el portal.
+
+Para probar, ejecutar `make up`, entrar de nuevo con contraseña en Multisuite y pulsar Lectura. Repetir con otro usuario en el mismo navegador. Con una sesión anterior a la actualización, un acceso solo con passkey o una cuenta pendiente en el momento del login, el gateway ofrece el acceso nativo. La sesión que emite Kavita mantiene su caducidad y cierre propios. El despliegue integrado admite `KAVITA_AUTOLOGIN_ENABLED=false` en el entorno raíz.

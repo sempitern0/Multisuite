@@ -3,6 +3,7 @@
 services:
   app:
     environment:
+      KAVITA_AUTOLOGIN_ENABLED: "${KAVITA_AUTOLOGIN_ENABLED:-true}"
       PORTAL_READING_ENABLED: "true"
       PORTAL_READING_URL: "${PORTAL_READING_URL:-http://127.0.0.1:5000}"
       KAVITA_PROVISIONING_ENABLED: "true"

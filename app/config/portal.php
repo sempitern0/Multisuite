@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'reading_autologin' => env('KAVITA_AUTOLOGIN_ENABLED', false),
     'music_autologin' => env('NAVIDROME_AUTOLOGIN_ENABLED', false),
     'music_session_bridge' => env('NAVIDROME_SESSION_BRIDGE_ENABLED', false),
     'services' => [

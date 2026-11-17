@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\ServiceAccount;
 use App\Services\MusicSessionBridge;
+use App\Services\ReadingSession;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 
 class ServiceController extends Controller
 {
-    public function __invoke(string $service): RedirectResponse
+    public function __invoke(string $service): RedirectResponse|Response
     {
         $entry = config('portal.services', [])[$service] ?? null;
         abort_unless(is_array($entry) && ($entry['enabled'] ?? false), 404);
@@ -31,6 +33,15 @@ class ServiceController extends Controller
             && in_array($parts['scheme'] ?? '', ['http', 'https'], true)
             && ! isset($parts['user']) && ! isset($parts['pass'])
             && ! preg_match('/[\x00-\x20\x7f]/', $url), 404);
+
+        if ($service === 'reading' && config('portal.reading_autologin') && config('provisioning.reading.enabled')
+            && $user !== null && $user->service_access !== null) {
+            abort_if(app()->isProduction() && $parts['scheme'] !== 'https', 404);
+            $origin = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
+
+            return response()->view('reading-launch', ['action' => $origin.'/_multisuite/launch', 'ticket' => app(ReadingSession::class)->issue($user)])
+                ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'origin');
+        }
 
         if ($service === 'music' && config('portal.music_session_bridge')
             && config('provisioning.music.enabled') && $user?->service_access !== null) {
