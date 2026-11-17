@@ -95,8 +95,13 @@ http {
         assert proxied.headers.get("Content-Security-Policy") is None
         assert request(url+"/who", headers={"X-Multisuite-Music-User": "ignored"}).read() == b"identity=;cookie=;jwt="
         managed = {"Cookie": "ms_music=fixture", "X-ND-Authorization": "unused", "X-Multisuite-Music-User": "ignored"}
+        rendered = json.loads(docker("compose", "--env-file", str(root / "music.env.example"),
+                                     "-f", str(root / "compose.music.yaml"), "-f",
+                                     str(root / "deploy/compose.music-accounts.example.yaml"), "config", "--format", "json"))
+        logout_url = rendered["services"]["navidrome"]["environment"]["ND_EXTAUTH_LOGOUTURL"]
         gateway_ip = docker("inspect", "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", prefix+"-gateway")
         docker("run", "-d", "--name", prefix+"-nav", "--network", prefix, "--network-alias", "navidrome-sso",
+               "-e", "ND_EXTAUTH_LOGOUTURL="+logout_url,
                "-e", "ND_EXTAUTH_USERHEADER=X-Multisuite-Music-User",
                "-e", "ND_EXTAUTH_TRUSTEDSOURCES="+gateway_ip+"/32",
                "-p", "127.0.0.1::4533", "navidrome/navidrome:0.64.2")

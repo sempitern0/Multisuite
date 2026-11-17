@@ -8,7 +8,7 @@ services:
       music-auth:
         aliases: [navidrome-sso]
     environment:
-      ND_EXTAUTH_LOGOUTURL: /_multisuite/logout
+      ND_EXTAUTH_LOGOUTURL: "${MUSIC_PUBLIC_ORIGIN:-http://127.0.0.1:${NAVIDROME_PORT:-4533}}/_multisuite/logout"
       ND_EXTAUTH_USERHEADER: X-Multisuite-Music-User
       ND_EXTAUTH_TRUSTEDSOURCES: "${MUSIC_AUTH_GATEWAY_IP:-172.30.253.6}/32"
       ND_ENABLEUSEREDITING: 'false'
