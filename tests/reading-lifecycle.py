@@ -48,3 +48,17 @@ with tempfile.TemporaryDirectory(prefix="multisuite-reading-") as directory:
     # Real disks (NAS_DEV=0): no development media mount.
     assert all("media.dev" not in c for c in run("up", "NAS_DEV=0"))
 print("reading lifecycle: ok")
+
+# Both browser scripts must be available without mounting inside a read-only bind.
+overlay = (root / "deploy/compose.reading-accounts.example.yaml").read_text()
+mounts = {}
+for line in overlay.splitlines():
+    if line.strip().startswith("- ./"):
+        source, destination, mode = line.strip()[2:].split(":")
+        mounts[Path(destination)] = root / source
+        assert mode == "ro"
+for destination in mounts:
+    assert not any(parent in mounts for parent in destination.parents), destination
+for script in ("enter.js", "return.js"):
+    destination = Path("/usr/share/nginx/html") / script
+    assert mounts[destination].is_file(), script
