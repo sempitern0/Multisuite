@@ -17,7 +17,7 @@ services:
     volumes:
       - ./docker/reading-proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./docker/reading-proxy/enter.js:/usr/share/nginx/html/enter.js:ro
-      - ./docker/music-proxy/public:/usr/share/nginx/html:ro
+      - ./docker/music-proxy/public/return.js:/usr/share/nginx/html/return.js:ro
     security_opt: [no-new-privileges:true]
     user: "101:101"
     cap_drop: [ALL]
