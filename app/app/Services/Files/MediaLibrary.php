@@ -55,6 +55,7 @@ class MediaLibrary
             $this->sync($user);
         } catch (Throwable $exception) {
             // Retried by portal:media-sync; never break the request that triggered it.
+            \App\Jobs\SyncMediaLibrary::dispatch($userId)->delay(now()->addSeconds(30));
             Log::warning('media-sync failed', ['user' => $userId, 'error' => $exception::class]);
         }
     }
@@ -65,6 +66,7 @@ class MediaLibrary
         return Cache::lock('media-sync:'.$user->id, 120)->block(30, function () use ($user): int {
             $this->folders->ensure($user);
             $linked = 0;
+            $failed = false;
             foreach (Folder::where('user_id', $user->id)->whereNotNull('media_link')->get() as $root) {
                 $definition = ConnectedFolders::definition((string) $root->media_link);
                 $account = ServiceAccount::where('user_id', $user->id)->where('service', $definition['service'])->first();
@@ -82,10 +84,15 @@ class MediaLibrary
                         try {
                             $provisioner->ensurePersonalLibrary($account, $definition['section'], $definition['library']);
                         } catch (RuntimeException $exception) {
+                            $failed = true;
                             Log::warning('personal library not ready', ['user' => $user->id, 'service' => $definition['service'], 'reason' => $exception->getMessage()]);
                         }
                     }
                 }
+            }
+
+            if ($failed) {
+                throw new RuntimeException('La sincronización de bibliotecas necesita un reintento.');
             }
 
             return $linked;

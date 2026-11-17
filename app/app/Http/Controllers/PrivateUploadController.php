@@ -45,10 +45,12 @@ class PrivateUploadController extends Controller
         abort_unless($request->header('Content-Type') === 'application/octet-stream', 415);
         $offset = $request->query('offset', '0');
         abort_unless(is_string($offset) && preg_match('/^\d{1,15}$/D', $offset) === 1, 400);
+        $chunkSha256 = $request->header('X-Chunk-SHA256');
+        abort_unless($chunkSha256 === null || preg_match('/^[a-f0-9]{64}$/D', $chunkSha256) === 1, 400);
         $input = $request->getContent(true);
         abort_unless(is_resource($input), 400);
         try {
-            $upload = $uploads->receive($request->user(), $key, $input, (int) $offset);
+            $upload = $uploads->receive($request->user(), $key, $input, (int) $offset, $chunkSha256);
         } catch (UploadOffsetMismatch $mismatch) {
             return response()->json(['state' => 'pending', 'received' => $mismatch->received], 409);
         } catch (UnsafeImageMetadata) {
@@ -61,7 +63,7 @@ class PrivateUploadController extends Controller
             fclose($input);
         }
 
-        return response()->json(['id' => $upload->id, 'state' => $upload->state]);
+        return response()->json(['id' => $upload->id, 'state' => $upload->state, 'received' => $uploads->received($request->user(), $key)]);
     }
 
     public function destroy(Request $request, string $key, PrivateUploads $uploads): JsonResponse

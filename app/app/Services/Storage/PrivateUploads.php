@@ -60,7 +60,7 @@ class PrivateUploads
      *
      * @param  resource  $input
      */
-    public function receive(User $user, string $key, $input, int $offset = 0): PrivateUpload
+    public function receive(User $user, string $key, $input, int $offset = 0, ?string $chunkSha256 = null): PrivateUpload
     {
         if (! config('nas.uploads_enabled')) {
             throw new RuntimeException('Subidas deshabilitadas.');
@@ -68,7 +68,7 @@ class PrivateUploads
 
         // A database lock serializes chunks, writers and cleanup, including across hosts.
         // Do not retry this transaction: the input stream cannot be replayed.
-        return DB::transaction(function () use ($user, $key, $input, $offset): PrivateUpload {
+        return DB::transaction(function () use ($user, $key, $input, $offset, $chunkSha256): PrivateUpload {
             [$upload, $reservation, $base] = $this->locked($user, $key);
             if ($upload->state === 'ready') {
                 return $upload;
@@ -85,6 +85,9 @@ class PrivateUploads
                 throw new UploadOffsetMismatch($received);
             }
             $data = $this->readChunk($input, $reservation->bytes - $received);
+            if ($chunkSha256 !== null && ! hash_equals($chunkSha256, hash('sha256', $data))) {
+                throw new RuntimeException('El fragmento recibido no coincide con el enviado.');
+            }
             $last = $received + strlen($data) === $reservation->bytes;
 
             if ($received === 0) {

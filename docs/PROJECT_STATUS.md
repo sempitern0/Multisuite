@@ -34,3 +34,5 @@ Decisiones vigentes: Mis archivos es del portal (excepción acotada en AGENTS.md
 - Hardware real del servidor (discos, capacidad): desconocido; pedirlo al preparar el despliegue.
 
 Los archivos sueltos de las carpetas conectadas Libros y Cómics se publican en subdirectorios estables por archivo para que Kavita los escanee. La siguiente ejecución de `portal:media-sync` migra los enlaces existentes. Regresión cubierta en ConnectedFoldersTest; ejecución PHP y QA real pendientes en este entorno.
+
+La subida desde HTTPS compara SHA-256 por fragmento y continúa desde los bytes confirmados por el servidor. Los fallos de sincronización inmediata se reintentan en cola (30/120/300 segundos, deduplicados por persona); se conserva el repaso programado. Lectura parcial de EPUB reportada en el piloto: pendiente de reproducir con un archivo afectado. Prueba de integridad añadida; ejecución PHP pendiente.

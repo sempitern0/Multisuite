@@ -152,7 +152,7 @@ class KavitaAccounts implements PersonalLibraries, ServiceProvisioner
             if (! in_array($library['id'], $libraries, true)) {
                 $this->update($client, $remote, (string) $remote['username'], null, [...$libraries, (int) $library['id']]);
             }
-            $client->post('/api/Library/scan?'.http_build_query(['libraryId' => $library['id'], 'force' => 'false']));
+            $this->check($client->post('/api/Library/scan?'.http_build_query(['libraryId' => $library['id'], 'force' => 'false'])));
         });
     }
 
