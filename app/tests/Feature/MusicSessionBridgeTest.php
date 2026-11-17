@@ -5,9 +5,10 @@ namespace Tests\Feature;
 use App\Models\ServiceAccount;
 use App\Models\User;
 use App\Services\MusicSessionBridge;
-use App\Services\NavidromeAccounts;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -79,7 +80,11 @@ class MusicSessionBridgeTest extends TestCase
     {
         config(['portal.music_autologin' => true]);
         [$user, $account] = $this->account();
-        $this->mock(NavidromeAccounts::class)->shouldReceive('verifyForLogin')->once();
+        config(['provisioning.music.url' => 'http://navidrome:4533/music']);
+        Http::preventStrayRequests();
+        Http::fake(['localhost/music/api/user/'.$account->remote_id => Http::response([
+            'id' => $account->remote_id, 'userName' => $account->username, 'isAdmin' => false,
+        ])]);
         $session = session()->driver();
         $session->put(Auth::guard('web')->getName(), $user->id);
         $session->save();
@@ -94,6 +99,9 @@ class MusicSessionBridgeTest extends TestCase
         $ticket = $fragment['ticket'];
         $exchange = $this->postJson('/api/music/session/verify', ['ticket' => $ticket], ['X-Music-Browser' => $nonce])
             ->assertOk()->assertJsonPath('autologin', true);
+        Http::assertSentCount(1);
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'GET'
+            && $request->hasHeader('X-Music-Listener', $account->username));
         $cookie = $exchange->getCookie('ms_music', false);
         $this->assertTrue($cookie->isHttpOnly());
         $this->assertSame('strict', $cookie->getSameSite());

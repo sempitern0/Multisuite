@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { authenticationKeys, reconcile, validateDestination, launch } from '../docker/music-proxy/public/session.mjs';
+import { authenticationKeys, reconcile, validateDestination, launch, openManual } from '../docker/music-proxy/public/session.mjs';
 
 const identity = { id: 'remote-b', username: 'bruce', destination: 'http://localhost:4533/music/app/#/album' };
 function storage(values = {}) {
@@ -102,5 +102,24 @@ test('blocked music cookie prevents opening the previous listener', async () => 
   await assert.rejects(launch(b, async url => url.endsWith('/authorize')
     ? { ok: false }
     : { ok: true, json: async () => ({ ...identity, autologin: true }) }));
+  assert.ok(!b.events.some(e => e[0] === 'navigate'));
+});
+
+test('manual fallback clears both credentials and queue before opening native login', async () => {
+  const b = browser(storage({ token: 'old', state: 'old queue', locale: 'es' }));
+  const paths = [];
+  await openManual(b, async (path, options) => {
+    paths.push([path, options.method ?? 'GET']);
+    return { ok: true };
+  });
+  assert.deepEqual(paths, [['/_multisuite/manual', 'POST'], ['/_multisuite/native-ready', 'GET']]);
+  assert.equal(b.localStorage.getItem('token'), null);
+  assert.equal(b.localStorage.getItem('state'), null);
+  assert.equal(b.localStorage.getItem('locale'), 'es');
+  assert.deepEqual(b.events.at(-1), ['navigate', '/#/login']);
+});
+test('manual fallback stops if the previous gateway cookie is still active', async () => {
+  const b = browser();
+  await assert.rejects(openManual(b, async path => ({ ok: path.endsWith('/manual') })));
   assert.ok(!b.events.some(e => e[0] === 'navigate'));
 });

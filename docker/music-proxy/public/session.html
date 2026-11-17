@@ -3,15 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Abrir Música · Multisuite</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0d100e">
+  <title>Música · Multisuite</title>
   <link rel="stylesheet" href="/_multisuite/session.css">
   <script type="module" src="/_multisuite/session.mjs"></script>
 </head>
 <body>
-  <main>
-    <h1>Abriendo Música</h1>
-    <p id="status" role="status">Comprobando tu sesión…</p>
-    <noscript>Activa JavaScript y vuelve a abrir Música desde Multisuite.</noscript>
+  <main aria-labelledby="title">
+    <header><span class="mark" aria-hidden="true">♫</span> Multisuite</header>
+    <section aria-live="polite" aria-atomic="true">
+      <h1 id="title">Abriendo Música</h1>
+      <p id="status">Comprobando tu cuenta de Navidrome…</p>
+    </section>
+    <div class="progress" aria-hidden="true"></div>
+    <nav aria-label="Opciones de acceso">
+      <button id="manual" hidden>Iniciar sesión en Navidrome</button>
+      <a href="/_multisuite/portal">Volver a Multisuite</a>
+    </nav>
+    <noscript>Activa JavaScript para abrir tu biblioteca.</noscript>
   </main>
 </body>
 </html>

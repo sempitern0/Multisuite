@@ -18,6 +18,10 @@ El resultado es una cookie opaca de sesión, HttpOnly, SameSite=Strict, limitada
 
 La autorización usa la caché compartida y el almacén de sesiones del servidor de Laravel (la configuración del proyecto usa base de datos). Navidrome confía solo en la IP /32 del gateway en la red dedicada. El puerto interno 4533 queda sin publicar. Gestiona las altas, renombrados y bajas de las cuentas vinculadas desde Multisuite. Las pestañas de un mismo origen comparten la cuenta activa: para utilizar A y B simultáneamente usa perfiles de navegador separados.
 
+La comprobación remota usa la lectura del propio usuario mediante un socket Unix privado entre Laravel y el gateway. Make prepara su volumen Docker también en Windows. Navidrome comprueba que ese usuario puede leer el UUID solicitado y Laravel contrasta nombre y rol. Las credenciales administrativas se reservan para el aprovisionamiento. En despliegues personalizados monta el socket en ambos contenedores según los overlays de ejemplo.
+
+Si falla el acceso automático, la transición Nocturne muestra el motivo disponible y abre el formulario nativo después de limpiar las credenciales y la cola del navegador. Si la cookie anterior sigue activa, se detiene y ofrece reintentar. Se puede volver al portal durante la transición.
+
 ## Configuración
 
 - El overlay integrado activa `NAVIDROME_AUTOLOGIN_ENABLED`. Para conservar únicamente la limpieza de sesión anterior, configura esa variable a `false` en el archivo de entorno raíz, ejecuta `make up` y limpia la caché de configuración. Para usar un Navidrome externo sin gateway desactiva también `NAVIDROME_SESSION_BRIDGE_ENABLED`.

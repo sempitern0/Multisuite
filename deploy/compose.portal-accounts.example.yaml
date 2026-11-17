@@ -1,6 +1,8 @@
 # Applied automatically by Make when music.env exists; preserves host overrides.
 services:
   app:
+    volumes:
+      - music-identity:/run/music-identity:ro
     environment:
       NAVIDROME_AUTOLOGIN_ENABLED: "${NAVIDROME_AUTOLOGIN_ENABLED:-true}"
       NAVIDROME_SESSION_BRIDGE_ENABLED: "${NAVIDROME_SESSION_BRIDGE_ENABLED:-true}"
@@ -20,3 +22,8 @@ networks:
   accounts:
     external: true
     name: multisuite-accounts
+
+volumes:
+  music-identity:
+    external: true
+    name: multisuite-music-identity

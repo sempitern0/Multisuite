@@ -24,6 +24,9 @@ def request(url, data=None, headers=None):
 with tempfile.TemporaryDirectory() as directory:
     fixture = Path(directory)
     fixture.chmod(0o755)
+    socket_dir = fixture / "socket"
+    socket_dir.mkdir()
+    socket_dir.chmod(0o777)
     (fixture / "media.bin").write_bytes(b"0123456789")
     (fixture / "nginx.conf").write_text("""
 events {}
@@ -59,6 +62,8 @@ http {
                "--user", "101:101", "--read-only", "--tmpfs", "/tmp", "--cap-drop", "ALL",
                "--security-opt", "no-new-privileges:true", "-p", "127.0.0.1::8080",
                "-v", str(root / "docker/music-proxy/nginx.conf")+":/etc/nginx/nginx.conf:ro",
+               "-v", str(socket_dir)+":/run/music-identity",
+               "-v", str(root / "docker/music-proxy/identity.conf")+":/etc/nginx/music-private/identity.conf:ro",
                "-v", str(root / "docker/music-proxy/public")+":/usr/share/nginx/html:ro",
                "--entrypoint", "nginx", image, "-g", "daemon off;")
         port = docker("port", prefix+"-gateway", "8080/tcp").split(":")[-1]
@@ -112,6 +117,15 @@ http {
                     "password": "disposable-listener-password", "isAdmin": False}
         assert request(nav+"/api/user", json.dumps(listener).encode(),
                        {**post, "X-ND-Authorization": "Bearer "+operator["token"]}).status < 300
+        lookup = ["curl", "--silent", "--show-error", "--unix-socket", str(socket_dir/"lookup.sock"),
+                  "-H", "X-Music-Listener: test-listener"]
+        remote = json.loads(subprocess.check_output([*lookup, "--fail", "http://localhost/api/user/"+listener_id]))
+        assert (remote["id"], remote["userName"], remote["isAdmin"]) == (listener_id, "test-listener", False)
+        assert subprocess.check_output([*lookup, "-o", "/dev/null", "-w", "%{http_code}", "http://localhost/auth/login"]) == b"404"
+        assert request(url+"/_multisuite/native-ready", headers=managed).status == 409
+        assert request(url+"/_multisuite/native-ready").status == 204
+        reset = request(url+"/_multisuite/manual", b"", headers=managed)
+        assert reset.status == 204 and any("ms_music=;" in c for c in reset.headers.get_all("Set-Cookie"))
         page = request(url+"/app/", headers=managed).read().decode()
         config_text = re.split(r"window\.__APP_CONFIG__\s*=\s*", page, maxsplit=1)[1]
         app_config = json.loads(json.JSONDecoder().raw_decode(config_text)[0])

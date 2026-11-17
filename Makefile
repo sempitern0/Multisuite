@@ -333,3 +333,6 @@ accounts-network:
 ifeq ($(SERVICES_AUTO),1)
 	@$(ACCOUNTS_NETWORK)
 endif
+ifeq ($(MUSIC_AUTO),1)
+	@docker volume create multisuite-music-identity
+endif
