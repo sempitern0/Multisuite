@@ -123,3 +123,44 @@ test('manual fallback stops if the previous gateway cookie is still active', asy
   await assert.rejects(openManual(b, async path => ({ ok: path.endsWith('/manual') })));
   assert.ok(!b.events.some(e => e[0] === 'navigate'));
 });
+
+async function enterReading(account, destination = 'https://reading.test/library') {
+  const { readFile } = await import('node:fs/promises');
+  const { runInNewContext } = await import('node:vm');
+  const source = await readFile(new URL('../docker/reading-proxy/enter.js', import.meta.url), 'utf8');
+  const values = new Map([['kavita-user', 'previous-session'], ['kavita-lastlogin', 'previous'], ['theme', 'dark']]);
+  const dataset = { user: JSON.stringify(account), destination };
+  let opened;
+  runInNewContext(source, {
+    URL, document: { body: { dataset, removeAttribute() { delete dataset.user; } } },
+    location: { origin: 'https://reading.test', replace(url) { opened = url; } },
+    localStorage: {
+      setItem(key, value) { values.set(key, value); },
+      removeItem(key) { values.delete(key); },
+    },
+  });
+  assert.equal(dataset.user, undefined);
+  return { values, opened };
+}
+
+test('Kavita opens the linked reader and replaces the previous account on a shared browser', async () => {
+  const reader = { username: 'bea', token: 'fixture' };
+  const { values, opened } = await enterReading(reader);
+  assert.deepEqual(JSON.parse(values.get('kavita-user')), reader);
+  assert.equal(values.get('kavita-lastlogin'), 'bea');
+  assert.equal(values.get('theme'), 'dark');
+  assert.equal(opened, 'https://reading.test/library');
+});
+
+test('Kavita manual login starts without the previous reader identity', async () => {
+  const { values, opened } = await enterReading(null);
+  assert.equal(values.has('kavita-user'), false);
+  assert.equal(values.has('kavita-lastlogin'), false);
+  assert.equal(opened, 'https://reading.test/library');
+});
+
+test('Kavita refuses foreign destinations before touching the local session', async () => {
+  const { values, opened } = await enterReading({ username: 'bea' }, 'https://other.test/library');
+  assert.equal(opened, undefined);
+  assert.equal(values.get('kavita-user'), 'previous-session');
+});
