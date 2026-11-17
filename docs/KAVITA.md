@@ -36,7 +36,7 @@ Contrato revisado en el código de v0.9.1.4 (`Kavita.Server/Controllers/AccountC
 - Bibliotecas montadas en solo lectura (también `/personal`, que escribe el portal); configuración, base de datos y portadas en el volumen Docker `kavita-config`. La imagen de Kavita se ejecuta como root y su carpeta de configuración pertenece a otro usuario: conserva solo `CHOWN`, `DAC_OVERRIDE` y `FOWNER` (el resto de capacidades se quitan) y `no-new-privileges`. Las bibliotecas siguen siendo de solo lectura.
 - Las sesiones ya abiertas en Kavita siguen hasta que caducan aunque se desactive la cuenta (igual que Música; ROADMAP P03).
 - Metadatos externos, scrobbling y recomendaciones requieren la suscripción Kavita+: no se usan. La coincidencia de metadatos queda desactivada en las bibliotecas creadas.
-- Copia de seguridad del volumen `kavita-config`: pendiente de añadir a `make nas-backup` (ROADMAP). Los libros son archivos normales del host y entran en la copia del operador.
+- Copia de seguridad del volumen `kavita-config`: con `reading.env` presente, `make nas-backup` guarda la configuración, base de datos y portadas con la etiqueta `kavita`. Si está en marcha, Kavita se detiene durante esa instantánea y se reanuda al terminar. La restauración a un directorio vacío deja el volumen en `source/kavita`. Para recuperar solo Lectura, selecciona el ID de su instantánea mediante `SNAPSHOT`. Los libros son archivos normales del host y entran en la copia del operador.
 
 ## QA pendiente con Docker real
 - [ ] `cp reading.env.example reading.env` y `make up`: Kavita arranca, la tarjeta Lectura aparece y las cuatro bibliotecas existen.

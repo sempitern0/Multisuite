@@ -20,6 +20,7 @@ rehearsal=multisuite-restore-rehearsal
 step=preflight
 started=''
 music_stopped=0
+kavita_to_restart=
 locked=0
 
 die() { echo "nas-backup: $*" >&2; exit 1; }
@@ -47,6 +48,9 @@ cleanup() {
     trap - EXIT HUP INT TERM
     if [ "$music_stopped" = 1 ]; then
         music start navidrome >/dev/null 2>&1 || echo "nas-backup: Navidrome no volvió a arrancar; ejecuta make music-up." >&2
+    fi
+    if [ -n "$kavita_to_restart" ]; then
+        "$DOCKER" start "$kavita_to_restart" >/dev/null || echo "nas-backup: ejecuta make reading-up para reanudar Kavita." >&2
     fi
     rm -rf "$staging"
     [ "$step" != database ] || "$DOCKER" compose exec -T postgres rm -f /tmp/portal.dump >/dev/null 2>&1 || true
@@ -165,6 +169,29 @@ run)
         fi
     fi
 
+    if [ -f reading.env ]; then
+        step=kavita
+        container=$("$DOCKER" compose --env-file reading.env -f compose.reading.yaml ps -aq kavita)
+        [ -n "$container" ] || die "falta el contenedor de Kavita; comprueba make reading-status."
+        volume=$("$DOCKER" inspect --format '{{range .Mounts}}{{if and (eq .Destination "/kavita/config") (eq .Type "volume")}}{{.Name}}{{end}}{{end}}' "$container")
+        case "$volume" in ''|*[!a-zA-Z0-9_.-]*) die "no se encontró el volumen de configuración de Kavita." ;; esac
+        state=$("$DOCKER" inspect --format '{{.State.Status}}' "$container")
+        case "$state" in
+            running)
+                kavita_to_restart=$container
+                "$DOCKER" stop "$container" >/dev/null
+                ;;
+            exited|created) ;;
+            *) die "Kavita en estado $state; vuelve a intentar la copia cuando esté estable." ;;
+        esac
+        extra_mounts="-v $volume:/source/kavita:ro"
+        restic backup --tag kavita /source/kavita
+        if [ -n "$kavita_to_restart" ]; then
+            "$DOCKER" start "$container" >/dev/null
+            kavita_to_restart=''
+        fi
+    fi
+
     step=retention
     extra_mounts=''
     daily=$(setting BACKUP_KEEP_DAILY backup.env); weekly=$(setting BACKUP_KEEP_WEEKLY backup.env); monthly=$(setting BACKUP_KEEP_MONTHLY backup.env)
@@ -222,6 +249,9 @@ restore)
         restic restore "$SNAPSHOT" --target /restore
     else
         restic restore latest --tag portal --target /restore
+        if [ -f reading.env ]; then
+            restic restore latest --tag kavita --target /restore
+        fi
         restic restore latest --tag navidrome --target /restore || echo "nas-backup: no hay copia de Navidrome." >&2
     fi
     echo "Restaurado en $target/source. Pasos para volver a ponerlo en servicio: docs/STORAGE.md (Restaurar)."

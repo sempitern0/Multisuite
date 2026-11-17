@@ -29,6 +29,10 @@ case "$*" in
   *"cat config"*) exit "${{REPO_MISSING:-0}}" ;;
   *"compose cp "*) for last; do :; done; printf dump > "$last" ;;
   *"ps -q --status running navidrome"*) echo abc123 ;;
+  *"ps -aq kavita"*) echo kavita-id ;;
+  *".Mounts"*) echo custom_kavita-config ;;
+  *".State.Status"*) echo "${{KAVITA_STATE:-running}}" ;;
+  *"backup --tag kavita"*) exit "${{KAVITA_EXIT:-0}}" ;;
   *" check "*) exit "${{CHECK_EXIT:-0}}" ;;
 esac
 """)
@@ -91,6 +95,18 @@ case "$path" in {external}*) [ "${{SAME_DISK:-0}}" = 1 ] && echo /dev/sdb2 || ec
     (target / "old").unlink()
     result, calls = run("restore", TARGET=str(target))
     assert result.returncode == 0 and sum("restore latest" in call for call in calls) == 2, result.stderr
+
+    (work / "reading.env").touch()
+    result, calls = run(KAVITA_EXIT="1")
+    assert result.returncode and status()["step"] == "kavita"
+    assert "stop kavita-id" in calls and "start kavita-id" in calls
+    backup = next(i for i, call in enumerate(calls) if "backup --tag kavita" in call)
+    assert "custom_kavita-config:/source/kavita:ro" in calls[backup]
+    assert calls.index("stop kavita-id") < backup < calls.index("start kavita-id")
+    result, calls = run(KAVITA_STATE="exited")
+    assert result.returncode == 0 and "start kavita-id" not in calls and "stop kavita-id" not in calls
+    result, calls = run("restore", TARGET=str(target))
+    assert result.returncode == 0 and any("restore latest --tag kavita" in call for call in calls)
 
     result, calls = run("verify", FILES="0")
     assert result.returncode == 0, result.stderr
