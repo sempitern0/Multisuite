@@ -132,6 +132,7 @@ http {
         reset = request(url+"/_multisuite/manual", b"", headers=managed)
         assert reset.status == 204 and any("ms_music=;" in c for c in reset.headers.get_all("Set-Cookie"))
         page = request(url+"/app/", headers=managed).read().decode()
+        assert 'src="/_multisuite/return.js"' in page
         config_text = re.split(r"window\.__APP_CONFIG__\s*=\s*", page, maxsplit=1)[1]
         app_config = json.loads(json.JSONDecoder().raw_decode(config_text)[0])
         assert app_config["auth"]["id"] == listener_id

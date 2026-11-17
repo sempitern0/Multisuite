@@ -27,3 +27,5 @@ Si falla el acceso automático, la transición Nocturne muestra el motivo dispon
 - El overlay integrado activa `NAVIDROME_AUTOLOGIN_ENABLED`. Para conservar únicamente la limpieza de sesión anterior, configura esa variable a `false` en el archivo de entorno raíz, ejecuta `make up` y limpia la caché de configuración. Para usar un Navidrome externo sin gateway desactiva también `NAVIDROME_SESSION_BRIDGE_ENABLED`.
 - Solo si existe un conflicto de redes, ajusta `MUSIC_AUTH_SUBNET` y `MUSIC_AUTH_GATEWAY_IP` en `music.env` a una subred libre y una IP de host dentro de ella.
 - En producción usa un hostname HTTPS exclusivo para Música, publica solo el gateway y enruta también `/_multisuite/*` en la raíz. Conserva la red privada entre el gateway y el portal, los alias de Compose y la URL interna de aprovisionamiento. Las cookies se comparten entre puertos de un mismo host.
+
+En el menú de Navidrome, «← Multisuite» vuelve al panel. Ctrl+clic permite mantener la reproducción en la pestaña musical. Kavita incluye el mismo enlace en el menú y en los controles del lector mediante el gateway del despliegue integrado.
