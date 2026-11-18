@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ServiceAccount;
+use App\Services\KomgaSession;
 use App\Services\MusicSessionBridge;
 use App\Services\ReadingSession;
 use Illuminate\Http\RedirectResponse;
@@ -34,6 +35,16 @@ class ServiceController extends Controller
             && in_array($parts['scheme'] ?? '', ['http', 'https'], true)
             && ! isset($parts['user']) && ! isset($parts['pass'])
             && ! preg_match('/[\x00-\x20\x7f]/', $url), 404);
+
+        if ($service === 'komga' && $user !== null) {
+            abort_if(app()->isProduction() && $parts['scheme'] !== 'https', 404);
+            $origin = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
+
+            return response()->view('komga-launch', [
+                'action' => $origin.'/_multisuite/launch',
+                'ticket' => app(KomgaSession::class)->issue($user),
+            ])->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'origin');
+        }
 
         if ($service === 'reading' && config('portal.reading_autologin') && config('provisioning.reading.enabled')
             && $user !== null && $user->service_access !== null) {

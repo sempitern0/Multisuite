@@ -1,4 +1,5 @@
 x-komga: &komga
+  KOMGA_INTERNAL_URL: "${KOMGA_INTERNAL_URL:-http://komga-gateway:8080}"
   PORTAL_KOMGA_ENABLED: "true"
   PORTAL_KOMGA_URL: "${PORTAL_KOMGA_URL:-http://127.0.0.1:25600}"
 services:

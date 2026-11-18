@@ -1,6 +1,7 @@
 """Real Komga smoke test with generated EPUB content and disposable Docker volumes."""
 import base64
 import hashlib
+from http.cookies import SimpleCookie
 import json
 import os
 from pathlib import Path
@@ -46,6 +47,7 @@ with tempfile.TemporaryDirectory(prefix="komga-ci-") as directory:
             raise AssertionError("Anonymous revision access must be rejected")
         except urllib.error.HTTPError as error:
             assert error.code in (401, 403), error.code
+            assert error.headers.get("WWW-Authenticate") is None, "Browser login dialog must be suppressed"
         email, password = "pilot@example.test", uuid.uuid4().hex
         auth = "Basic " + base64.b64encode((email + ":" + password).encode()).decode()
 
@@ -58,6 +60,18 @@ with tempfile.TemporaryDirectory(prefix="komga-ci-") as directory:
                 return response.read()
 
         request("/api/v1/claim", {}, {"X-Komga-Email": email, "X-Komga-Password": password})
+        # Real native cookie hand-off: the second request must work without Basic auth.
+        login = urllib.request.Request(url + "/api/v1/users/me", headers={"Authorization": auth})
+        with urllib.request.urlopen(login) as response:
+            cookies = SimpleCookie()
+            for header in response.headers.get_all("Set-Cookie", []):
+                cookies.load(header)
+        assert "KOMGA-SESSION" in cookies, "Native login did not issue a reusable session"
+        session = cookies["KOMGA-SESSION"].value
+        native = urllib.request.Request(url + "/api/v1/users/me",
+            headers={"Cookie": "KOMGA-SESSION=" + session})
+        with urllib.request.urlopen(native) as response:
+            assert json.loads(response.read())["email"] == email
         library = json.loads(request("/api/v1/libraries", {"name": "Pilot", "root": "/data", "scanOnStartup": True}))
         request("/api/v1/libraries/" + library["id"] + "/scan", {})
         found = None

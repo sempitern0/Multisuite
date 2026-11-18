@@ -21,7 +21,7 @@ class DashboardTest extends TestCase
         $this->assertNotContains('komga', array_column(ServiceTiles::forUser($user), 'id'));
         $user->role = 'admin';
         $user->save();
-        $this->get('/services/komga')->assertRedirect('http://127.0.0.1:25600');
+        $this->get('/services/komga')->assertOk()->assertViewIs('komga-launch');
         $this->assertContains('komga', array_column(ServiceTiles::forUser($user), 'id'));
         config(['portal.services.komga.enabled' => false]);
         $this->get('/services/komga')->assertNotFound();

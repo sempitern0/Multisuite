@@ -6,6 +6,7 @@ services:
     restart: unless-stopped
     environment:
       TZ: Europe/Madrid
+      SERVER_SERVLET_SESSION_TIMEOUT: "${SESSION_LIFETIME:-120}m"
       JAVA_TOOL_OPTIONS: "-Xmx512m"
     volumes:
       - komga-config:/config

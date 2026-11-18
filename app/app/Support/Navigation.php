@@ -58,6 +58,20 @@ class Navigation
             }
         }
 
+        $services = [];
+        foreach (ServiceTiles::forUser($user) as $tile) {
+            if ($tile['href'] === null) {
+                continue;
+            }
+            $services[] = [
+                'label' => $tile['name'], 'icon' => $tile['icon'], 'href' => $tile['href'],
+                'active' => false, 'spa' => false,
+            ];
+        }
+        if ($services !== []) {
+            array_splice($groups, 1, 0, [['label' => 'Aplicaciones', 'items' => $services]]);
+        }
+
         return [
             'home' => route('dashboard'),
             'groups' => $groups,

@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\LoginResponse;
 use App\Models\User;
+use App\Services\KomgaSession;
 use App\Services\ReadingSession;
 use App\Services\ServiceAccounts;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -74,6 +75,7 @@ class FortifyServiceProvider extends ServiceProvider
             app(ServiceAccounts::class)->resume($user, $password);
 
             app(ReadingSession::class)->prepare($user, $password);
+            app(KomgaSession::class)->prepare($user, $password);
 
             return $user;
         });

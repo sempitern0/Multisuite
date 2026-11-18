@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'komga_internal_url' => env('KOMGA_INTERNAL_URL', 'http://komga-gateway:8080'),
     'reading_autologin' => env('KAVITA_AUTOLOGIN_ENABLED', false),
     'music_autologin' => env('NAVIDROME_AUTOLOGIN_ENABLED', false),
     'music_session_bridge' => env('NAVIDROME_SESSION_BRIDGE_ENABLED', false),
