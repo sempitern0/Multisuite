@@ -2,6 +2,7 @@
 
 namespace App\Services\Files;
 
+use App\Jobs\SyncMediaLibrary;
 use App\Models\Folder;
 use App\Models\PrivateUpload;
 use App\Models\ServiceAccount;
@@ -55,7 +56,14 @@ class MediaLibrary
             $this->sync($user);
         } catch (Throwable $exception) {
             // Retried by portal:media-sync; never break the request that triggered it.
-            \App\Jobs\SyncMediaLibrary::dispatch($userId)->delay(now()->addSeconds(30));
+            // A synchronous queue cannot delay and would throw into the HTTP response.
+            if (config('queue.default') !== 'sync') {
+                try {
+                    SyncMediaLibrary::dispatch($userId)->delay(now()->addSeconds(30));
+                } catch (Throwable $queueException) {
+                    Log::warning('media-sync retry unavailable', ['error' => $queueException::class]);
+                }
+            }
             Log::warning('media-sync failed', ['user' => $userId, 'error' => $exception::class]);
         }
     }
@@ -78,6 +86,9 @@ class MediaLibrary
                 $entitled = $this->accounts->entitled($user, $definition['service']);
                 $desired = $entitled ? $this->desired($user, $root) : [];
                 $linked += $this->apply($directory, $desired);
+                if ($definition['service'] === 'reading') {
+                    $this->readingRevision($directory, $desired);
+                }
                 if ($entitled && $account->status === 'ready' && config('provisioning.'.$definition['service'].'.enabled')) {
                     $provisioner = $this->provisioners->for($definition['service']);
                     if ($provisioner instanceof PersonalLibraries) {
@@ -97,6 +108,30 @@ class MediaLibrary
 
             return $linked;
         });
+    }
+
+    /**
+     * Publish an opaque revision only when the source mapping changes.
+     * State lives outside libraries; neither paths nor personal data leave the NAS.
+     *
+     * @param  array<string, string>  $desired
+     */
+    private function readingRevision(string $directory, array $desired): void
+    {
+        ksort($desired);
+        $root = dirname($directory, 2);
+        $state = $root.'/.multisuite-state-'.hash('sha256', $directory);
+        $digest = hash('sha256', serialize($desired));
+        if (is_file($state) && file_get_contents($state) === $digest) {
+            return;
+        }
+        $temporary = $root.'/.multisuite-revision-'.bin2hex(random_bytes(8));
+        if (file_put_contents($temporary, bin2hex(random_bytes(16))) === false
+            || ! rename($temporary, $root.'/.multisuite-revision')
+            || file_put_contents($state, $digest, LOCK_EX) === false) {
+            @unlink($temporary);
+            throw new RuntimeException('No se puede notificar el cambio de biblioteca.');
+        }
     }
 
     /** Directory of one person's library, created on demand (0755: the service reads it). */

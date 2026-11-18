@@ -1,33 +1,70 @@
-# Komga · piloto local
+# Lectura con Komga — piloto de administrador
 
-Komga 1.30.1 se prueba como lector de EPUB, PDF y cómics. La tarjeta del portal y la ruta de acceso exigen rol owner o admin. El servicio conserva su propia cuenta y su interfaz.
+Komga 1.30.1 sustituye temporalmente a Kavita. La tarjeta se llama **Lectura**.
+Kavita permanece deshabilitado y conserva su configuración y datos.
+Este piloto es para el propietario/administrador: el volumen contiene las carpetas
+de todas las cuentas existentes. No crear usuarios familiares en Komga todavía.
 
-## Arranque y primera lectura
+## Uso
 
-1. Actualiza esta rama y ejecuta `make up`. En desarrollo inicia Komga y detiene el stack de Kavita, conservando sus volúmenes.
-2. Abre «Lectura · Komga» desde Multisuite o http://127.0.0.1:25600.
-3. En el primer acceso crea la cuenta administradora de Komga desde su pantalla inicial.
-4. En Komga crea una biblioteca llamada «Prueba de lectura» con carpeta `/data`. Activa escanear al arrancar y el escaneo periódico que prefieras.
-5. Abre un EPUB que ya hubieras subido a las carpetas conectadas de Multisuite. Comprueba principio, una sección intermedia y final, cambia la tipografía y vuelve a entrar para comprobar el progreso.
+Después de actualizar la rama, el habitual **make up** inicia Komga y su gateway.
+No se cambia el puerto (25600), la cuenta creada ni el volumen de configuración.
+Abre Lectura, selecciona el libro y lee. El botón amarillo **← Multisuite**
+aparece dentro de la barra del servicio; en móvil se compacta a la flecha.
+En el lector sigue la visibilidad de sus controles, sin cubrir las páginas.
 
-El montaje /data incluye las carpetas personales de Lectura de todos los usuarios existentes. Este piloto es exclusivamente administrativo. La cuenta administradora de Komga puede ver todo ese montaje. El acceso del portal no protege la URL directa; la protección del servicio es su autenticación y el puerto publicado solo en loopback. Mantén exclusivamente la cuenta de prueba administradora en esta fase.
+Los libros y cómics se siguen subiendo a las carpetas conectadas **Libros** y
+**Cómics** de Mis archivos. No hay que duplicarlos ni cambiar sus rutas:
+se enlazan al mismo volumen de lectura, sin segunda copia ni transformación.
 
-Los archivos ya conectados se leen desde el volumen Docker `multisuite-nas-dev`, en solo lectura. Las nuevas subidas a esas carpetas siguen publicándose automáticamente. Komga aplica su propio intervalo de escaneo. El piloto aún no solicita un escaneo inmediato a su API ni configura cuentas familiares o autologin.
+Con la sesión administrativa de Komga abierta, se prepara la biblioteca /data
+si no existe ninguna dentro de ese montaje, y se solicita un escaneo cuando
+cambia el reflejo. Las bibliotecas existentes y sus permisos no se modifican.
+Cada 15 segundos, mientras la pestaña es visible, se comprueba una revisión
+opaca; no se escanea si no hay cambios. Los fallos se reintentan, sin recargar
+ni interrumpir el libro abierto. La indexación y portadas tardan lo que necesite
+Komga; aceptar la petición de escaneo no significa que haya terminado.
 
-Instalaciones nuevas sin carpetas conectadas de Lectura requieren completar el siguiente incremento de aprovisionamiento; este piloto está preparado para evaluar el contenido existente del entorno actual.
+La sincronización de archivos no depende del navegador: las operaciones de
+Mis archivos la disparan y el scheduler reconcilia cada 15 minutos.
+El aviso inmediato a Komga sí utiliza su sesión administrativa; sin pestaña
+abierta quedan sus escaneos periódicos y la actualización al siguiente acceso.
+No se almacenan nuevas contraseñas ni se copian tokens de Komga a Multisuite.
 
-## Operación
+## Infraestructura y seguridad
 
-- `make komga-status`, `make komga-logs`, `make komga-stop`.
-- `make stop` y `make down` incluyen Komga. Sus datos viven en `multisuite-komga_komga-config`.
-- `KOMGA_PORT` y `PORTAL_KOMGA_URL` deben cambiarse conjuntamente si el puerto 25600 está ocupado.
-- Para reactivar Kavita: `make komga-stop`, después `make up READING_AUTO=1 KOMGA_AUTO=0`. Conserva estos argumentos en posteriores arranques mientras uses Kavita.
-- Este Compose usa el NAS de desarrollo. Con `NAS_DEV=0`, Komga queda desactivado automáticamente. Los discos reales y el acceso remoto requieren su configuración de producción.
+- compose.komga.yaml: Komga interno y gateway Nginx, único puerto en loopback.
+- /data es de solo lectura; /config conserva biblioteca, cuenta y progreso.
+- Gateway conectado a multisuite-accounts para el regreso al portal.
+- JavaScript y CSS solo se inyectan en la carcasa de la aplicación, no en EPUB.
+- La revisión requiere autenticación Komga y no contiene nombres ni rutas.
+- Es un piloto de desarrollo con multisuite-nas-dev; discos reales y producción
+  necesitan montajes explícitos. El acceso directo conserva la autenticación
+  nativa de Komga. El portal no convierte este gateway en SSO.
 
 ## Validación
 
-Se prueban el ciclo Make, el acceso administrativo y, en CI con Docker, el arranque del Compose, la creación de biblioteca, el análisis de un EPUB sintético largo y la descarga con SHA-256 idéntico al original. La prueba utiliza volúmenes temporales con nombres únicos y contenido generado. La interfaz visual y el EPUB del usuario requieren QA en su navegador.
+1. Abrir Lectura: nombre sin sufijo; biblioteca existente y progreso conservados.
+2. Abrir un EPUB y un cómic; mostrar controles y volver con ← Multisuite.
+3. Subir otro archivo a Libros/Cómics y volver a Lectura: aparece tras el escaneo,
+   sin comandos ni selección manual de carpetas.
+4. Probar móvil, teclado y foco; el enlace no se solapa con controles.
+5. Papelera/restauración en Mis archivos: el siguiente escaneo refleja el cambio.
+   Komga puede conservar una entrada en su papelera nativa; no borramos su historial.
+6. Un miembro de Multisuite no ve ni puede abrir la tarjeta del piloto.
 
-## Siguiente incremento
+CI prueba con un EPUB sintético: arranque, inyección, autenticación del endpoint
+de revisión, escaneo, descarga completa SHA-256 y rangos HTTP. Las pruebas JS
+cubren cambios, deduplicación, reintentos y rechazo de usuarios no administradores.
+La comprobación visual de la interfaz real sigue siendo necesaria.
 
-Aprovisionamiento con las credenciales del portal, bibliotecas privadas por persona y permisos comprobados entre dos usuarios, escaneo inmediato con reintentos y entrada automática. El progreso de Kavita permanece en su base de datos y no se ha migrado a Komga.
+## Reactivar Kavita
+
+make stop, seguido de make up KOMGA_AUTO=0 READING_AUTO=1, reutiliza reading.env
+y los datos anteriores. No usar down -v: no es necesario.
+
+## Pendiente antes de abrirlo a familiares
+
+Aprovisionamiento de cuentas, bibliotecas privadas por persona, autologin,
+revocación y vinculación segura de cuentas existentes; escaneo servidor a
+servidor sin depender de una sesión abierta; backup/restauración de Komga.

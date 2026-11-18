@@ -13,7 +13,7 @@ Pendiente de validar en el piloto: autologin musical con dos usuarios y un naveg
 
 ## Prioridad vigente desde el 17 de noviembre de 2026
 - [ ] Evaluar Komga con los libros ya subidos (KOMGA.md). Kavita deshabilitado y reactivable.
-- [ ] Tras validar su lector: aprovisionamiento, bibliotecas privadas por usuario, sincronización inmediata y autologin de Komga.
+- [ ] Tras validar su lector: aprovisionamiento, bibliotecas privadas por usuario, escaneo servidor a servidor y autologin de Komga.
 - [ ] Adaptar copia y recuperación al lector elegido.
 
 ## Orden anterior pendiente de replanificar

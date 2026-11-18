@@ -8,7 +8,7 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
-class SyncMediaLibrary implements ShouldQueue, ShouldBeUnique
+class SyncMediaLibrary implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -23,7 +23,9 @@ class SyncMediaLibrary implements ShouldQueue, ShouldBeUnique
         return (string) $this->userId;
     }
 
-    /** @return list<int> */
+    /**
+     * @return list<int>
+     */
     public function backoff(): array
     {
         return [30, 120, 300];

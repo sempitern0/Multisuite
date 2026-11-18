@@ -29,22 +29,30 @@ with tempfile.TemporaryDirectory(prefix="komga-ci-") as directory:
         epub.writestr("text.xhtml", '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Test</title></head><body>' + '<p>Texto de prueba de lectura.</p>' * 10000 + '<p id="end">FINAL DEL CONTENIDO</p></body></html>')
         epub.writestr("nav.xhtml", '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Índice</title></head><body><nav epub:type="toc"><ol><li><a href="text.xhtml">Texto</a></li></ol></nav></body></html>')
     override = work / "override.yaml"
-    override.write_text("volumes:\n  nas:\n    name: " + nas + "\n")
+    override.write_text("volumes:\n  nas:\n    name: " + nas + "\nnetworks:\n  accounts:\n    name: " + project + "-accounts\n")
     compose = ["compose", "-p", project, "-f", str(root / "compose.komga.yaml"), "-f", str(override)]
     try:
         docker("volume", "create", nas)
+        docker("network", "create", project + "-accounts")
         docker("run", "--rm", "--entrypoint", "sh", "-v", nas + ":/nas",
                "-v", str(work) + ":/fixture:ro", "gotson/komga:1.30.1", "-ec",
                "mkdir -p /nas/.multisuite-media/reading/reader/books/sample && cp /fixture/sample.epub /nas/.multisuite-media/reading/reader/books/sample/")
         docker(*compose, "up", "-d", "--wait", "--wait-timeout", "180")
         url = "http://127.0.0.1:" + os.environ.get("KOMGA_PORT", "25600")
+        with urllib.request.urlopen(url) as response:
+            assert b'/_multisuite/reading.mjs' in response.read(), "Missing shell integration"
+        try:
+            urllib.request.urlopen(url + "/_multisuite/revision")
+            raise AssertionError("Anonymous revision access must be rejected")
+        except urllib.error.HTTPError as error:
+            assert error.code in (401, 403), error.code
         email, password = "pilot@example.test", uuid.uuid4().hex
         auth = "Basic " + base64.b64encode((email + ":" + password).encode()).decode()
 
         def request(path, data=None, headers=None):
             payload = None if data is None else json.dumps(data).encode()
             req = urllib.request.Request(url + path, data=payload, headers={
-                "Authorization": auth, "Content-Type": "application/json", **(headers or {})
+                **({} if path == "/api/v1/claim" else {"Authorization": auth}), "Content-Type": "application/json", **(headers or {})
             })
             with urllib.request.urlopen(req, timeout=15) as response:
                 return response.read()
@@ -62,7 +70,13 @@ with tempfile.TemporaryDirectory(prefix="komga-ci-") as directory:
         assert found, "Komga did not analyze the generated EPUB."
         downloaded = request("/api/v1/books/" + found["id"] + "/file")
         assert hashlib.sha256(downloaded).digest() == hashlib.sha256(book.read_bytes()).digest()
+        req = urllib.request.Request(url + "/api/v1/books/" + found["id"] + "/file",
+            headers={"Authorization": auth, "Range": "bytes=0-99"})
+        with urllib.request.urlopen(req) as response:
+            assert response.status == 206
+            assert response.read() == book.read_bytes()[:100]
         print("Komga scanned and served the complete generated EPUB.")
     finally:
         subprocess.run(["docker", *compose, "down", "-v"], check=False)
         subprocess.run(["docker", "volume", "rm", nas], check=False)
+        subprocess.run(["docker", "network", "rm", project + "-accounts"], check=False)

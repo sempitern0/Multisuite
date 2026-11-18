@@ -42,7 +42,6 @@ MUSIC_DC := docker compose --env-file music.env -f compose.music.yaml
 READING_AUTO ?= 0
 READING_DC := docker compose --env-file reading.env -f compose.reading.yaml
 # Any integrated service attaches the portal to the shared accounts network.
-SERVICES_AUTO := $(if $(filter 1,$(MUSIC_AUTO) $(READING_AUTO)),1,0)
 # Real disks prepared by `make nas-apply` (compose.nas.yaml, local) replace the
 # development NAS volume (deploy/compose.nas-dev.yaml). NAS_DEV=0 also opts out.
 NAS_REAL := $(wildcard compose.nas.yaml)
@@ -50,6 +49,7 @@ NAS_DEV ?= $(if $(NAS_REAL),0,1)
 # Local administrator pilot. Production opts in after configuring its own mounts.
 KOMGA_AUTO ?= $(NAS_DEV)
 KOMGA_DC := docker compose -f compose.komga.yaml
+SERVICES_AUTO := $(if $(filter 1,$(MUSIC_AUTO) $(READING_AUTO) $(KOMGA_AUTO)),1,0)
 DC_FILES := -f compose.yaml $(if $(wildcard compose.override.yaml),-f compose.override.yaml)
 ifeq ($(SERVICES_AUTO),1)
 # Keep host-generated overrides; append service connectivity without rewriting them.

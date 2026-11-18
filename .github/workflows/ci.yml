@@ -50,7 +50,7 @@ jobs:
         run: python3 tests/komga-smoke.py
       - name: Test music session bridge and gateway
         run: |
-          node --test tests/music-session.test.mjs
+          node --test tests/music-session.test.mjs tests/komga-sync.test.mjs
           python3 tests/music-proxy.py
       - name: Validate POSIX scripts
         run: |

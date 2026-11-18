@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ServiceAccount;
 use App\Models\User;
+use App\Support\ServiceTiles;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -17,11 +18,11 @@ class DashboardTest extends TestCase
         config(['portal.services.komga.enabled' => true, 'portal.services.komga.url' => 'http://127.0.0.1:25600']);
         $user = User::factory()->create(['role' => 'member']);
         $this->actingAs($user)->get('/services/komga')->assertForbidden();
-        $this->assertNotContains('komga', array_column(\App\Support\ServiceTiles::forUser($user), 'id'));
+        $this->assertNotContains('komga', array_column(ServiceTiles::forUser($user), 'id'));
         $user->role = 'admin';
         $user->save();
         $this->get('/services/komga')->assertRedirect('http://127.0.0.1:25600');
-        $this->assertContains('komga', array_column(\App\Support\ServiceTiles::forUser($user), 'id'));
+        $this->assertContains('komga', array_column(ServiceTiles::forUser($user), 'id'));
         config(['portal.services.komga.enabled' => false]);
         $this->get('/services/komga')->assertNotFound();
     }

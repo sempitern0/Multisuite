@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory(prefix="multisuite-music-") as directory:
     env.pop("MAKEFLAGS", None)
     def run(target, *options, fail=False):
         log.write_text("")
-        result = subprocess.run(["make", target, "HOST_PREPARE=true", "PREFLIGHT_SCRIPT=true", "STATUS_SCRIPT=true", "HTTP_CHECK=true", *options], cwd=work, env=env, capture_output=True, text=True)
+        result = subprocess.run(["make", target, "KOMGA_AUTO=0", "HOST_PREPARE=true", "PREFLIGHT_SCRIPT=true", "STATUS_SCRIPT=true", "HTTP_CHECK=true", *options], cwd=work, env=env, capture_output=True, text=True)
         assert (result.returncode != 0) == fail, result.stdout + result.stderr
         return log.read_text().splitlines()
     assert all("compose.music.yaml" not in call for call in run("up"))
