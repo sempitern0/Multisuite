@@ -6,7 +6,7 @@ export function createSync({ request, revision, report, storage }) {
         if (busy) return;
         busy = true;
         try {
-            const user = await request('/api/v1/users/me');
+            const user = await request('/api/v2/users/me');
             if (!user.roles?.includes('ADMIN')) return;
             const current = await revision();
             if (current === lastRevision) return;

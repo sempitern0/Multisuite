@@ -61,16 +61,28 @@ with tempfile.TemporaryDirectory(prefix="komga-ci-") as directory:
 
         request("/api/v1/claim", {}, {"X-Komga-Email": email, "X-Komga-Password": password})
         # Real native cookie hand-off: the second request must work without Basic auth.
-        login = urllib.request.Request(url + "/api/v1/users/me", headers={"Authorization": auth})
+        login = urllib.request.Request(url + "/api/v2/users/me", headers={"Authorization": auth})
         with urllib.request.urlopen(login) as response:
             cookies = SimpleCookie()
             for header in response.headers.get_all("Set-Cookie", []):
                 cookies.load(header)
         assert "KOMGA-SESSION" in cookies, "Native login did not issue a reusable session"
         session = cookies["KOMGA-SESSION"].value
-        native = urllib.request.Request(url + "/api/v1/users/me",
-            headers={"Cookie": "KOMGA-SESSION=" + session})
+        native = urllib.request.Request(url + "/api/v2/users/me",
+            headers={"Cookie": "KOMGA-SESSION=" + session, "Authorization": "Basic invalid", "Sec-Fetch-Mode": "cors"})
         with urllib.request.urlopen(native) as response:
+            assert json.loads(response.read())["email"] == email
+        browser = urllib.request.Request(url + "/api/v2/users/me",
+            headers={"Authorization": auth, "Sec-Fetch-Mode": "cors"})
+        try:
+            urllib.request.urlopen(browser)
+            raise AssertionError("Cached browser Basic credentials must not restore another session")
+        except urllib.error.HTTPError as error:
+            assert error.code == 401
+            assert error.headers.get("WWW-Authenticate") is None
+        manual = urllib.request.Request(url + "/api/v2/users/me?remember-me=false",
+            headers={"Authorization": auth, "Sec-Fetch-Mode": "cors"})
+        with urllib.request.urlopen(manual) as response:
             assert json.loads(response.read())["email"] == email
         library = json.loads(request("/api/v1/libraries", {"name": "Pilot", "root": "/data", "scanOnStartup": True}))
         request("/api/v1/libraries/" + library["id"] + "/scan", {})

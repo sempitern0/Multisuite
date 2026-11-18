@@ -19,7 +19,6 @@ Route::get('music/portal', fn () => redirect()->away(rtrim((string) config('app.
 Route::get('music/session/authorize', [MusicSessionController::class, 'authorize']);
 Route::post('music/session/verify', MusicSessionController::class)->middleware('throttle:120,1');
 
-
 // This response is served through the Komga gateway, so cookies belong to its origin.
 Route::post('komga/session', function (Request $request, KomgaSession $bridge) {
     $session = $bridge->exchange((string) $request->input('ticket'), (string) $request->header('Origin'));
@@ -27,7 +26,7 @@ Route::post('komga/session', function (Request $request, KomgaSession $bridge) {
     $response = response('', 303)->header('Location', $session === null ? '/login?multisuite=manual' : '/')
         ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
     $response->headers->setCookie(Cookie::create('KOMGA-SESSION', $session, $session === null ? 1 : 0)
-        ->withSecure($secure)->withHttpOnly(true)->withSameSite('lax'));
+        ->withSecure($secure)->withHttpOnly(true)->withSameSite('lax')->withRaw(true));
     $response->headers->setCookie(Cookie::create('komga-remember-me', null, 1)
         ->withSecure($secure)->withHttpOnly(true)->withSameSite('lax'));
 

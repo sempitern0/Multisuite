@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\KomgaSession;
 use App\Support\Navigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -14,7 +15,7 @@ class KomgaSessionTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const COOKIE = 'nativeKomgaSession1234567890';
+    private const COOKIE = 'bmF0aXZlLWtvbWdhLXNlc3Npb24=';
 
     protected function setUp(): void
     {
@@ -32,7 +33,9 @@ class KomgaSessionTest extends TestCase
 
     private function native(User $user): void
     {
-        Http::fake(['*/api/v1/users/me' => Http::response([
+        Http::swap(new Factory);
+        Http::preventStrayRequests();
+        Http::fake(['*/api/v2/users/me' => Http::response([
             'id' => 'native-id', 'email' => $user->email, 'roles' => ['ADMIN', 'USER'],
         ], 200, ['Set-Cookie' => 'KOMGA-SESSION='.self::COOKIE.'; Path=/; HttpOnly'])]);
     }
@@ -56,6 +59,7 @@ class KomgaSessionTest extends TestCase
         $cookies = collect($response->headers->getCookies())->keyBy(fn ($cookie) => $cookie->getName());
         $this->assertSame(self::COOKIE, $cookies['KOMGA-SESSION']->getValue());
         $this->assertTrue($cookies['KOMGA-SESSION']->isHttpOnly());
+        $this->assertStringContainsString('KOMGA-SESSION='.self::COOKIE.';', (string) $cookies['KOMGA-SESSION']);
         $this->assertLessThan(time(), $cookies['komga-remember-me']->getExpiresTime());
         $this->post('/api/komga/session', ['ticket' => $ticket], ['Origin' => $origin])->assertForbidden();
     }
@@ -81,9 +85,9 @@ class KomgaSessionTest extends TestCase
         $this->native($user);
         app(KomgaSession::class)->prepare($user, 'password');
         $ticket = $this->launch($user);
-        $user->update(['role' => 'member']);
+        $user->forceFill(['role' => 'member'])->save();
         $this->post('/api/komga/session', ['ticket' => $ticket], ['Origin' => rtrim((string) config('app.url'), '/')])->assertForbidden();
-        $user->update(['role' => 'owner']);
+        $user->forceFill(['role' => 'owner'])->save();
         $ticket = $this->launch($user);
         session()->invalidate();
         $this->post('/api/komga/session', ['ticket' => $ticket], ['Origin' => rtrim((string) config('app.url'), '/')])->assertForbidden();
@@ -134,7 +138,7 @@ class KomgaSessionTest extends TestCase
         $this->assertNotNull($komga);
         $this->assertFalse($komga['spa']);
         $this->assertSame('Lectura', $komga['label']);
-        $user->update(['role' => 'member']);
+        $user->forceFill(['role' => 'member'])->save();
         $links = collect(Navigation::for($user)['groups'])->flatMap(fn ($group) => $group['items']);
         $this->assertNull($links->firstWhere('href', route('services.open', 'komga')));
         $this->get('/services/komga')->assertForbidden();

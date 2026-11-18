@@ -30,7 +30,7 @@ final class KomgaSession
         try {
             // Komga identifies accounts by email, even when Multisuite accepts a username.
             $response = Http::acceptJson()->withoutRedirecting()->connectTimeout(2)->timeout(4)
-                ->withBasicAuth($user->email, $password)->get($this->url().'/api/v1/users/me');
+                ->withBasicAuth($user->email, $password)->get($this->url().'/api/v2/users/me');
             if (! $response->successful() || ! $this->matches($user, $response->json())) {
                 return;
             }
@@ -39,7 +39,7 @@ final class KomgaSession
                 return;
             }
             session()->put('komga.login', Crypt::encrypt([
-                'user' => $user->id, 'password_hash' => hash('sha256', $user->password),
+                'user' => $user->id, 'password_hash' => hash('sha256', (string) $user->password),
                 'cookie' => $cookie,
             ]));
         } catch (ConnectionException|RuntimeException) {
@@ -62,7 +62,7 @@ final class KomgaSession
     /** Returns only a verified native session cookie, never a password. */
     public function exchange(string $ticket, string $origin): ?string
     {
-        abort_unless(preg_match('/^[a-zA-Z0-9]{64}$/D', $ticket), 403);
+        abort_unless(preg_match('/^[a-zA-Z0-9]{64}$/D', $ticket) === 1, 403);
         $key = 'komga-launch:'.hash('sha256', $ticket);
         $value = Cache::get($key);
         abort_unless(is_string($value), 403);
@@ -74,13 +74,13 @@ final class KomgaSession
         abort_unless($user && $user->hasVerifiedEmail() && self::allowed($user), 403);
         $login = $pass['login'] ? Crypt::decrypt($pass['login']) : null;
         if (! $login || $login['user'] !== $user->id
-            || ! hash_equals($login['password_hash'], hash('sha256', $user->password))) {
+            || ! hash_equals($login['password_hash'], hash('sha256', (string) $user->password))) {
             return null;
         }
         try {
             $response = Http::acceptJson()->withoutRedirecting()->connectTimeout(2)->timeout(4)
                 ->withHeaders(['Cookie' => 'KOMGA-SESSION='.$login['cookie']])
-                ->get($this->url().'/api/v1/users/me');
+                ->get($this->url().'/api/v2/users/me');
             if ($response->successful() && $this->matches($user, $response->json())) {
                 return $this->sessionCookie($response->toPsrResponse()->getHeader('Set-Cookie')) ?? $login['cookie'];
             }
@@ -103,7 +103,7 @@ final class KomgaSession
             && is_array($dto['roles'] ?? null) && in_array('ADMIN', $dto['roles'], true);
     }
 
-    /** @param list<string> $headers */
+    /** @param array<string> $headers */
     private function sessionCookie(array $headers): ?string
     {
         foreach ($headers as $header) {
