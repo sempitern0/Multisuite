@@ -33,7 +33,11 @@ final class KomgaSession
         }
         try {
             if (! KomgaAccounts::connected()) {
-                return;
+                if ($user->role !== 'owner' || ! $user->hasVerifiedEmail() || ! app(ServiceAccounts::class)->entitled($user, 'komga')) {
+                    return;
+                }
+                // Fresh installs and an existing administrator with the same credentials need no setup form.
+                app(KomgaAccounts::class)->connect($user, $user->email, $password);
             }
             app(ServiceAccounts::class)->resume($user, $password);
             $user->refresh();

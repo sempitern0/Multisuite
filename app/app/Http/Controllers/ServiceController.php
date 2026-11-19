@@ -22,10 +22,10 @@ class ServiceController extends Controller
         $user = Auth::user();
         abort_if(($entry['admin_only'] ?? false) && ! in_array($user?->role, ['owner', 'admin'], true), 403);
         if ($service === 'komga' && $user !== null) {
-            if (! KomgaAccounts::connected()) {
-                return redirect()->route($user->role === 'owner' ? 'komga.connect' : 'dashboard');
-            }
             abort_unless(app(ServiceAccounts::class)->entitled($user, 'komga'), 403);
+            if (! KomgaAccounts::connected()) {
+                return redirect()->route($user->role === 'owner' ? 'komga.connect' : 'komga.confirm');
+            }
             if (! KomgaSession::allowed($user) || ! session()->has('komga.login')) {
                 return redirect()->route('komga.confirm');
             }

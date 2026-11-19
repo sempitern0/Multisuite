@@ -49,6 +49,9 @@ class Navigation
         foreach (self::GROUPS as $group) {
             $items = [];
             foreach ($group['items'] as $item) {
+                if ($item['route'] === 'komga.connect' && ! config('portal.services.komga.enabled')) {
+                    continue;
+                }
                 if ($item['gate'] !== null && Gate::forUser($user)->denies($item['gate'])) {
                     continue;
                 }

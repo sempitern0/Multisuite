@@ -4,7 +4,9 @@ Komga 1.30.1 conserva catálogo, lector, progreso y cuentas nativas. Kavita perm
 
 ## Conexión inicial
 
-El propietario abre **Administración → Conexión de Lectura** e introduce el correo y contraseña del administrador existente de Komga. Si Komga está vacío, se crea esa primera cuenta. Se verifica la identidad nativa y se guarda una clave API cifrada con APP_KEY; nunca se conserva la contraseña administrativa. Esta prueba de titularidad no puede deducirse del inicio de sesión en Multisuite.
+Al entrar el propietario con contraseña, se intenta conectar automáticamente usando sus credenciales: funciona con una instalación vacía o una cuenta administradora nativa con el mismo correo y contraseña. Si la cuenta anterior de Komga tiene otros datos, se necesita autorizarla una vez.
+
+En ese caso, el propietario abre **Administración → Conexión de Lectura** e introduce el correo y contraseña del administrador existente de Komga. Si Komga está vacío, se crea esa primera cuenta. Se verifica la identidad nativa y se guarda una clave API cifrada con APP_KEY; nunca se conserva la contraseña administrativa. Esta prueba de titularidad no puede deducirse del inicio de sesión en Multisuite.
 
 Después confirma su contraseña actual de Multisuite para vincular su acceso. La cuenta nativa administradora vinculada mantiene privilegios administrativos. El propietario puede ver todas las bibliotecas, como administrador del NAS.
 

@@ -48,4 +48,4 @@ No ejecutar `make setup`/`reset-project` sobre la app existente: el starter ya e
 
 ## Prueba local de Komga
 
-En esta rama, `make up` inicia Komga y deja Kavita desactivado. Consulta [KOMGA.md](docs/KOMGA.md) para crear la biblioteca de prueba y reactivar Kavita. El piloto de Komga está disponible solo para administradores.
+En esta rama, `make up` inicia Komga y deja Kavita desactivado. El propietario conecta Lectura una vez desde Administración; después se crean cuentas y bibliotecas privadas para los usuarios y las invitaciones. Consulta [KOMGA.md](docs/KOMGA.md).

@@ -13,16 +13,16 @@ class DashboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_komga_pilot_is_visible_and_accessible_only_to_administrators(): void
+    public function test_komga_is_available_to_members_and_requires_a_connection_before_launch(): void
     {
-        config(['portal.services.komga.enabled' => true, 'portal.services.komga.url' => 'http://127.0.0.1:25600']);
-        $user = User::factory()->create(['role' => 'member']);
-        $this->actingAs($user)->get('/services/komga')->assertForbidden();
-        $this->assertNotContains('komga', array_column(ServiceTiles::forUser($user), 'id'));
-        $user->role = 'admin';
-        $user->save();
-        $this->get('/services/komga')->assertOk()->assertViewIs('komga-launch');
+        config(['portal.services.komga.enabled' => true, 'provisioning.komga.enabled' => true,
+            'portal.services.komga.url' => 'http://127.0.0.1:25600']);
+        $user = User::factory()->create(['role' => 'member', 'service_access' => ['komga']]);
+        $this->actingAs($user)->get('/services/komga')->assertRedirect(route('komga.confirm'));
         $this->assertContains('komga', array_column(ServiceTiles::forUser($user), 'id'));
+        $user->role = 'owner';
+        $user->save();
+        $this->get('/services/komga')->assertRedirect(route('komga.connect'));
         config(['portal.services.komga.enabled' => false]);
         $this->get('/services/komga')->assertNotFound();
     }

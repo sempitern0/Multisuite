@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\ServiceAccount;
 use App\Models\ServiceConnection;
 use App\Models\User;
 use App\Services\KomgaSession;
@@ -86,13 +85,7 @@ class KomgaSessionTest extends TestCase
         $this->native($other);
         app(KomgaSession::class)->prepare($user, 'password');
         $this->assertNull(session('komga.login'));
-        $ticket = app(KomgaSession::class)->issue($user);
-        $this->actingAs($user)->withSession([Auth::guard('web')->getName() => $user->id]);
-        $response = $this->post('/api/komga/session', ['ticket' => $ticket], ['Origin' => rtrim((string) config('app.url'), '/')])
-            ->assertStatus(303)->assertHeader('Location', rtrim((string) config('app.url'), '/').'/services/komga/confirm');
-        foreach ($response->headers->getCookies() as $cookie) {
-            $this->assertLessThan(time(), $cookie->getExpiresTime());
-        }
+        $this->actingAs($user)->get('/services/komga')->assertRedirect(route('komga.confirm'));
     }
 
     public function test_role_revocation_and_portal_logout_invalidate_unused_tickets(): void

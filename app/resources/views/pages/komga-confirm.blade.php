@@ -41,10 +41,14 @@ new #[Title('Abrir Lectura')] class extends Component {
     <x-ui::page-header :back="route('dashboard')" back-label="Servicios" title="Abrir Lectura" description="Confirma tu contraseña de Multisuite para preparar o renovar el acceso a tus libros. No necesitas crear otra cuenta." />
     <x-ui::container>
         <x-ui::panel>
+            @if (! \App\Services\KomgaAccounts::connected())
+                <p>El propietario debe conectar Lectura desde Administración una sola vez. Tu cuenta se preparará automáticamente después.</p>
+            @else
             <x-ui::form wire:submit="open">
                 <x-ui::password name="password" label="Contraseña actual" wire:model="password" required autocomplete="current-password" />
                 <x-ui::button type="submit">Abrir Lectura</x-ui::button>
             </x-ui::form>
+            @endif
         </x-ui::panel>
     </x-ui::container>
 </div>

@@ -116,7 +116,7 @@ final class KomgaAccounts implements PersonalLibraries, ServiceProvisioner
                     throw new RuntimeException('conflict');
                 }
                 $email = $user->email;
-                $sameEmail = collect($this->check($this->client()->get('/api/v2/users'))->json())
+                $sameEmail = collect((array) $this->check($this->client()->get('/api/v2/users'))->json())
                     ->first(fn ($row) => strcasecmp((string) $row['email'], $email) === 0);
                 if ($sameEmail !== null) {
                     // Never reset or adopt a native account merely because its email matches.
@@ -237,7 +237,7 @@ final class KomgaAccounts implements PersonalLibraries, ServiceProvisioner
     {
         $root = '/data/'.($account->media_id ?? $account->remote_id).'/'.$section;
         $libraries = $this->check($this->client()->get('/api/v1/libraries'))->json();
-        $library = collect($libraries)->first(fn ($row) => rtrim((string) $row['root'], '/') === $root);
+        $library = collect((array) $libraries)->first(fn ($row) => rtrim((string) $row['root'], '/') === $root);
         if ($library === null) {
             $library = $this->check($this->client()->post('/api/v1/libraries', [
                 'name' => $label.' · '.substr($account->remote_id, 0, 8), 'root' => $root,
@@ -275,6 +275,12 @@ final class KomgaAccounts implements PersonalLibraries, ServiceProvisioner
             'roles' => ['FILE_DOWNLOAD', 'PAGE_STREAMING'],
             'sharedLibraries' => ['all' => false, 'libraryIds' => $ids],
         ]));
+        $verified = $this->find($account) ?? throw new RuntimeException('unavailable');
+        $actual = $verified['sharedLibrariesIds'];
+        sort($actual);
+        if ($verified['sharedAllLibraries'] !== false || $actual !== $ids || in_array('ADMIN', $verified['roles'], true)) {
+            throw new RuntimeException('unavailable');
+        }
     }
 
     private function check(Response $response): Response

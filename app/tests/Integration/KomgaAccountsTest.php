@@ -2,6 +2,7 @@
 
 namespace Tests\Integration;
 
+use App\Models\Invitation;
 use App\Models\ServiceAccount;
 use App\Models\User;
 use App\Services\Files\MediaLibrary;
@@ -10,6 +11,8 @@ use App\Services\KomgaSession;
 use App\Services\ServiceAccounts;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Tests\Concerns\PreparesMediaRoot;
 use Tests\TestCase;
 
@@ -29,21 +32,42 @@ class KomgaAccountsTest extends TestCase
             'portal.komga_internal_url' => $url, 'portal.services.komga.url' => $url]);
         $this->prepareMediaRoot($root);
         $existing = User::factory()->create(['email' => 'existing@example.com', 'password' => 'existing-password']);
-        $owner = User::factory()->create(['role' => 'owner', 'email' => 'operator@example.com']);
+        $owner = User::factory()->create(['role' => 'owner', 'email' => 'operator@example.com', 'password' => 'operator-password']);
         $komga = app(KomgaAccounts::class);
-        $komga->connect($owner, $owner->email, 'operator-password');
+        app(KomgaSession::class)->prepare($owner, 'operator-password');
+        $this->assertTrue(KomgaAccounts::connected());
+        $this->assertNotNull(session('komga.login'));
         $accounts = app(ServiceAccounts::class);
         $legacy = ServiceAccount::where('user_id', $existing->id)->where('service', 'komga')->firstOrFail();
         $this->assertSame(ServiceAccounts::AWAITING_PASSWORD, $legacy->status);
         app(KomgaSession::class)->prepare($existing, 'existing-password');
         $this->assertNotNull(session('komga.login'));
         $this->assertSame('ready', $legacy->fresh()->status);
-        $new = User::factory()->create(['email' => 'invited@example.com', 'service_access' => ['komga']]);
-        $accounts->enroll($new, ['komga'], 'invited-password');
-        $accounts->syncUser($new);
+        $token = Str::random(64);
+        $invitation = new Invitation;
+        $invitation->email = 'invited@example.com';
+        $invitation->role = 'member';
+        $invitation->invited_by = $owner->id;
+        $invitation->services = ['komga'];
+        $invitation->token_hash = hash('sha256', $token);
+        $invitation->expires_at = now()->addHour();
+        $invitation->save();
+        $this->post(URL::temporarySignedRoute('invitation.accept', now()->addHour(), ['token' => $token]), [
+            'name' => 'Invited Reader', 'username' => 'invited',
+            'password' => 'invited-password', 'password_confirmation' => 'invited-password',
+        ])->assertRedirect(route('dashboard'));
+        $new = User::where('email', 'invited@example.com')->firstOrFail();
+        $this->assertNotNull(session('komga.login'));
         $account = ServiceAccount::where('user_id', $new->id)->where('service', 'komga')->firstOrFail();
         $this->assertSame('ready', $account->status);
         $this->assertNull($account->pending_password);
+        $ticket = $this->get(route('services.open', 'komga'))->assertOk()->viewData('ticket');
+        $launch = $this->post('/api/komga/session', ['ticket' => $ticket], ['Origin' => rtrim((string) config('app.url'), '/')])
+            ->assertStatus(303)->assertHeader('Location', '/');
+        $cookie = collect($launch->headers->getCookies())->first(fn ($cookie) => $cookie->getName() === 'KOMGA-SESSION');
+        $this->assertNotNull($cookie);
+        $this->assertSame($account->external_id, Http::withHeaders(['Cookie' => 'KOMGA-SESSION='.$cookie->getValue()])
+            ->get($url.'/api/v2/users/me')->json('id'));
         app(KomgaSession::class)->prepare($new, 'invited-password');
         $this->assertNotNull(session('komga.login'));
         $native = Http::withBasicAuth($new->email, 'invited-password')->get($url.'/api/v2/users/me');
