@@ -30,6 +30,6 @@ Las bibliotecas globales preexistentes del piloto se conservan para el administr
 
 ## Validación
 
-Pruebas de sesión y permisos en `KomgaSessionTest` y `KomgaProvisioningTest`; integración contra Komga real en `Integration/KomgaAccountsTest` (CI). Cubren dos cuentas, reserva de usuarios anteriores, biblioteca privada, misma contraseña, cambio de contraseña, bloqueo y eliminación. El smoke de infraestructura verifica gateway, cookie nativa y EPUB.
+Pruebas de sesión y permisos en `KomgaSessionTest` y `KomgaProvisioningTest`; integración contra Komga real en `Integration/KomgaAccountsTest` (CI). Cubren invitación real, dos cuentas, reserva de usuarios anteriores, biblioteca privada, cookie nativa, EPUB íntegro, denegación de descarga ajena, cambio de contraseña, bloqueo y eliminación. Una sincronización atrasada revalida el acceso bajo bloqueo para no deshacer una revocación. El smoke de infraestructura verifica gateway, cookie nativa y EPUB.
 
 QA local: conectar una vez como propietario, aceptar una invitación con Lectura, subir un EPUB en Libros y abrir Lectura. Debe entrar sin segundo formulario. Repetir con otra cuenta: no debe ver los libros de la primera. Revisar regreso a Multisuite en ordenador y móvil.

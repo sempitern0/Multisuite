@@ -162,10 +162,19 @@ final class KomgaAccounts implements PersonalLibraries, ServiceProvisioner
             if (! in_array($section, ['libros', 'comics'], true)) {
                 throw new RuntimeException('configuration');
             }
-            $this->library($account, $section, $label);
-            $this->permissions($account);
-            $account->save();
-            $this->check($this->client()->post('/api/v1/libraries/'.$account->library_ids[$section].'/scan'));
+            DB::transaction(function () use ($account, $section, $label): void {
+                // Serialize against suspension/revocation: a stale media job must never restore access.
+                $locked = ServiceAccount::whereKey($account->id)->lockForUpdate()->first();
+                $user = $locked === null ? null : User::find($locked->user_id);
+                if ($locked === null || $locked->status !== 'ready' || $user === null
+                    || ! app(ServiceAccounts::class)->entitled($user, 'komga')) {
+                    return;
+                }
+                $this->library($locked, $section, $label);
+                $this->permissions($locked);
+                $locked->save();
+                $this->check($this->client()->post('/api/v1/libraries/'.$locked->library_ids[$section].'/scan'));
+            });
         });
     }
 

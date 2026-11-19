@@ -49,6 +49,18 @@ class KomgaProvisioningTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_stale_media_job_cannot_restore_a_revoked_account(): void
+    {
+        $user = User::factory()->create(['service_access' => ['komga']]);
+        $account = app(ServiceAccounts::class)->reserve($user, 'komga');
+        $account->status = 'ready';
+        $account->save();
+        ServiceAccount::whereKey($account->id)->update(['status' => ServiceAccounts::LOCKED]);
+        app(KomgaAccounts::class)->ensurePersonalLibrary($account, 'libros', 'Mis libros');
+        Http::assertNothingSent();
+        $this->assertSame(ServiceAccounts::LOCKED, $account->fresh()->status);
+    }
+
     public function test_email_collision_does_not_reset_or_take_over_an_existing_account(): void
     {
         $connection = new ServiceConnection;

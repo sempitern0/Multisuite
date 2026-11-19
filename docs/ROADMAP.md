@@ -72,6 +72,5 @@ Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúm
 - [ ] Discos reales: `make nas-discover`/`nas-apply`, disco lleno o retirado, y una copia real con `make nas-backup`.
 
 ## Lectura · validación PR #41
-- [ ] Validar en CI aprovisionamiento Komga, aislamiento entre dos miembros y cookie nativa.
 - [ ] QA del usuario: conexión inicial desde panel, invitación, cuenta anterior, subida y lectura sin segundo login.
 - [ ] Publicación administrativa de contenido global: pendiente, sin conceder bibliotecas globales del piloto a miembros.
