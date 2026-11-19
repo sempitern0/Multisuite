@@ -126,5 +126,4 @@ class KomgaAccountsTest extends TestCase
 
         return $body;
     }
-
 }

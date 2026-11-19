@@ -81,6 +81,27 @@ class KomgaProvisioningTest extends TestCase
         Http::assertNotSent(fn ($request) => $request->method() !== 'GET');
     }
 
+    public function test_native_privilege_drift_is_rejected_before_changing_a_password(): void
+    {
+        $user = User::factory()->create(['role' => 'member', 'service_access' => ['komga']]);
+        $connection = new ServiceConnection;
+        $connection->service = 'komga';
+        $connection->operator_id = 'operator';
+        $connection->secret = 'secret-key';
+        $connection->save();
+        app(ServiceAccounts::class)->enroll($user, ['komga'], 'chosen-password');
+        $account = ServiceAccount::where('user_id', $user->id)->where('service', 'komga')->sole();
+        $account->external_id = 'promoted-member';
+        $account->remote_email = $user->email;
+        $account->save();
+        Http::fake(['*/api/v2/users' => Http::response([
+            ['id' => 'promoted-member', 'email' => $user->email, 'roles' => ['ADMIN', 'USER']],
+        ])]);
+        app(ServiceAccounts::class)->syncUser($user);
+        $this->assertSame('conflict', $account->fresh()->status);
+        Http::assertNotSent(fn ($request) => $request->method() !== 'GET');
+    }
+
     public function test_members_cannot_authorise_the_administrative_connection(): void
     {
         $user = User::factory()->create(['role' => 'member']);

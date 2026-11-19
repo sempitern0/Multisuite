@@ -240,6 +240,12 @@ final class KomgaAccounts implements PersonalLibraries, ServiceProvisioner
         if ($remote['id'] !== $account->external_id || $remote['email'] !== $account->remote_email) {
             throw new RuntimeException('conflict');
         }
+        // Check privilege drift before any password or library mutation, not only before login.
+        if (in_array('ADMIN', $remote['roles'], true)
+            && (User::find($account->user_id)?->role !== 'owner'
+                || ServiceConnection::find('komga')?->operator_id !== $account->external_id)) {
+            throw new RuntimeException('conflict');
+        }
     }
 
     private function library(ServiceAccount $account, string $section, string $label): void
@@ -264,12 +270,7 @@ final class KomgaAccounts implements PersonalLibraries, ServiceProvisioner
         $remote = $this->find($account) ?? throw new RuntimeException('unavailable');
         $this->assertIdentity($account, $remote);
         if (in_array('ADMIN', $remote['roles'], true)) {
-            // Only the owner can explicitly link an existing administrator during connection.
-            $owner = User::findOrFail($account->user_id);
-            if ($owner->role !== 'owner' || ServiceConnection::find('komga')?->operator_id !== $account->external_id) {
-                throw new RuntimeException('conflict');
-            }
-
+            // assertIdentity already verified the explicitly connected owner.
             return;
         }
         $ids = array_values($account->library_ids ?? []);
