@@ -1,36 +1,19 @@
 # Estado de Multisuite
 
-Instantánea del 18 de noviembre de 2026.
+Instantánea del 19 de noviembre de 2026.
 
 ## Integrado en main
 
-Portal privado Laravel/Livewire con personas, invitaciones, cuentas de servicio, Mis archivos, cuotas, almacenamiento y auditoría. Navidrome y Kavita disponen de acceso integrado. El usuario validó ambos autologins. PR #38 fusionada con la corrección del montaje de lectura en Docker Desktop.
+Portal Laravel/Livewire con personas, invitaciones, cuentas de servicio, Mis archivos, cuotas, almacenamiento y auditoría. Navidrome y Kavita disponen de acceso integrado validado por el usuario. PR #38 fusionada.
 
-## En revisión · piloto de Komga
+## En revisión · PR #41
 
-Decisión del usuario: deshabilitar Kavita y evaluar Komga. PR #39 (backup de Kavita) y #40 (sincronización) cerradas sin fusionar. Sus ramas conservan el trabajo.
+Komga 1.30.1 sustituye al lector activo, preservando Kavita deshabilitado y sus datos. La rama incluye subida por fragmentos y espejo de carpetas recuperados de #40, enlaces de servicios en el menú y regreso a Multisuite desde el lector.
 
-La rama de Komga incorpora los cambios de subida y sincronización de #40: organización de archivos sueltos, comprobación SHA-256 por fragmento desde HTTPS, offset confirmado y reintentos de sincronización. Se añade Komga 1.30.1 para administradores, sobre los archivos de Lectura existentes. Make inicia el piloto y detiene Kavita; sus datos se conservan para reactivarlo.
+El incremento actual incorpora conexión administrativa desde el panel, aprovisionamiento de miembros, bibliotecas privadas, reutilización de carpetas existentes, escaneo desde el servidor y pase de sesión nativa. Los usuarios anteriores se activan al entrar con contraseña; las invitaciones nuevas al aceptarse. Sin recuperación de hashes ni credenciales en el navegador.
 
-La tarjeta se llama Lectura y los servicios disponibles también aparecen en el menú. Gateway con regreso en navegación nativa y escaneo
-por cambios desde la sesión administrativa de Komga. Los archivos continúan
-en las carpetas conectadas existentes, con una revisión opaca para evitar
-escaneos repetidos. No se alteran EPUB, bibliotecas existentes ni progreso.
-
-Validado localmente: lógica JS de sincronización y ciclo Make simulado.
-PHP y Docker no están disponibles en el entorno del agente; pruebas reales
-en CI pendientes para este incremento. El usuario validó el lector del piloto,
-no este último gateway ni el flujo visual de regreso.
-
-## Límites del piloto
-
-Cuenta Komga propia, solo administrador, con acceso automático para cuentas existentes con el mismo correo y contraseña. Tras actualizar se necesita iniciar sesión en Multisuite una vez para preparar el puente. El montaje contiene archivos
-personales de todas las cuentas existentes. El escaneo inmediato depende
-de abrir Komga con su sesión administrativa; el espejo NAS se sincroniza
-desde Multisuite independientemente del navegador. Ver KOMGA.md.
+Validado localmente: sintaxis JS, ciclo Make simulado y diff. PHP/Docker no están disponibles en este entorno; la batería de aplicación e integración real se valida en CI antes de dar el incremento por terminado. El usuario validó el lector del piloto, pero reportó errores de autenticación; este nuevo flujo aún requiere su QA visual tras pasar CI.
 
 ## Próximos pasos
 
-Validar regreso y actualización de libros/cómics en el entorno del usuario.
-Después integrar aprovisionamiento familiar, bibliotecas privadas, passkeys y escaneo desde el servidor.
-El backup de Kavita y su ensayo siguen preservados en la rama cerrada.
+Completar validación del flujo de Lectura con dos personas y dispositivos. La publicación de contenido global por el administrador, passkeys y operación de producción siguen pendientes. PR #39 y #40 cerradas sin fusionar; ramas preservadas.

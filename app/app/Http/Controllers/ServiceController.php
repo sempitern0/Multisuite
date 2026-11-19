@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\ServiceAccount;
+use App\Services\KomgaAccounts;
 use App\Services\KomgaSession;
 use App\Services\MusicSessionBridge;
 use App\Services\ReadingSession;
+use App\Services\ServiceAccounts;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +21,15 @@ class ServiceController extends Controller
 
         $user = Auth::user();
         abort_if(($entry['admin_only'] ?? false) && ! in_array($user?->role, ['owner', 'admin'], true), 403);
+        if ($service === 'komga' && $user !== null) {
+            if (! KomgaAccounts::connected()) {
+                return redirect()->route($user->role === 'owner' ? 'komga.connect' : 'dashboard');
+            }
+            abort_unless(app(ServiceAccounts::class)->entitled($user, 'komga'), 403);
+            if (! KomgaSession::allowed($user) || ! session()->has('komga.login')) {
+                return redirect()->route('komga.confirm');
+            }
+        }
         if ($user !== null && $user->service_access !== null && config('provisioning.'.$service.'.enabled')) {
             abort_unless(in_array($service, $user->service_access, true), 403);
             if (! ServiceAccount::where('user_id', $user->id)->where('service', $service)->where('status', 'ready')->exists()) {

@@ -11,7 +11,6 @@ return [
             'icon' => 'book',
             'description' => 'Tus libros y cómics, listos para leer.',
             'category' => 'Leer',
-            'admin_only' => true,
             'hidden_when_disabled' => true,
             'enabled' => env('PORTAL_KOMGA_ENABLED', false),
             'url' => env('PORTAL_KOMGA_URL', ''),

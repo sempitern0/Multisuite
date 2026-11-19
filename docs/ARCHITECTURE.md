@@ -89,3 +89,7 @@ Motor: PostgreSQL 17 en desarrollo y producción; SQLite en los tests (CI ejecut
 - `make test` (PHPUnit; `CMD="--filter=…"`), `make lint`/Pint, PHPStan nivel 7 (`app/phpstan.neon`), build con `make npm CMD="run build"`.
 - CI: `.github/workflows/application.yml` (app, Navidrome real, PostgreSQL), `ci.yml` (infraestructura Linux/Windows), `library-isolation.yml` (S01).
 - El entorno de un agente puede no tener PHP/Docker: indicarlo y delegar la ejecución en CI, sin inventar resultados.
+
+## Lectura con Komga
+
+`KomgaAccounts` implementa aprovisionamiento y bibliotecas privadas. `ServiceConnection` guarda una clave API cifrada, autorizada por el propietario en `pages::admin.komga-connection`. `KomgaSession` entrega la cookie nativa mediante pase breve; `pages::komga-confirm` renueva sesiones. El espejo reutiliza el espacio `reading` mediante `ServiceAccount.media_id`. Ver [KOMGA.md](KOMGA.md).

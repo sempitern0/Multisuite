@@ -83,6 +83,18 @@ jobs:
         run: |
           php artisan test tests/Integration/StorageConcurrencyTest.php
           php artisan test tests/Integration/QueryPlanTest.php
+      - name: Komga account integration
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: |
+          mkdir -p /tmp/nas-ci-komga/.multisuite-media/reading
+          trap 'docker logs komga-ci; docker rm -f komga-ci >/dev/null 2>&1' EXIT
+          docker run -d --name komga-ci -p 127.0.0.1:25600:25600 \
+            -v /tmp/nas-ci-komga/.multisuite-media/reading:/data:ro gotson/komga:1.30.1
+          for attempt in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:25600/api/v1/claim >/dev/null; then break; fi
+            sleep 1
+          done
+          KOMGA_TEST_URL=http://127.0.0.1:25600 MEDIA_TEST_ROOT=/tmp/nas-ci-komga php artisan test tests/Integration/KomgaAccountsTest.php
       - name: Navidrome account integration
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: |

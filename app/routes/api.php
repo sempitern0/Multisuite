@@ -23,7 +23,7 @@ Route::post('music/session/verify', MusicSessionController::class)->middleware('
 Route::post('komga/session', function (Request $request, KomgaSession $bridge) {
     $session = $bridge->exchange((string) $request->input('ticket'), (string) $request->header('Origin'));
     $secure = parse_url((string) config('portal.services.komga.url'), PHP_URL_SCHEME) === 'https';
-    $response = response('', 303)->header('Location', $session === null ? '/login?multisuite=manual' : '/')
+    $response = response('', 303)->header('Location', $session === null ? rtrim((string) config('app.url'), '/').'/services/komga/confirm' : '/')
         ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
     $response->headers->setCookie(Cookie::create('KOMGA-SESSION', $session, $session === null ? 1 : 0)
         ->withSecure($secure)->withHttpOnly(true)->withSameSite('lax')->withRaw(true));

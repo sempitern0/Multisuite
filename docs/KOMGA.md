@@ -1,88 +1,33 @@
-# Lectura con Komga — piloto de administrador
+# Lectura con Komga
 
-Komga 1.30.1 sustituye temporalmente a Kavita. La tarjeta se llama **Lectura**.
-Kavita permanece deshabilitado y conserva su configuración y datos.
-Este piloto es para el propietario/administrador: el volumen contiene las carpetas
-de todas las cuentas existentes. No crear usuarios familiares en Komga todavía.
+Komga 1.30.1 conserva catálogo, lector, progreso y cuentas nativas. Kavita permanece deshabilitado y conserva sus datos para reactivarlo. `make up` aplica el overlay de Lectura, habilita aprovisionamiento y arranca el gateway; no editar variables para el entorno local.
 
-## Uso
+## Conexión inicial
 
-Después de actualizar la rama, el habitual **make up** inicia Komga y su gateway.
-No se cambia el puerto (25600), la cuenta creada ni el volumen de configuración.
-La cuenta administrativa existente en Komga debe tener el mismo correo y
-contraseña que tu cuenta de Multisuite. Komga usa el correo aunque en el portal
-entres con tu nombre de usuario. Al instalar este incremento, cierra y vuelve
-a iniciar la sesión de Multisuite una vez para preparar el acceso automático.
+El propietario abre **Administración → Conexión de Lectura** e introduce el correo y contraseña del administrador existente de Komga. Si Komga está vacío, se crea esa primera cuenta. Se verifica la identidad nativa y se guarda una clave API cifrada con APP_KEY; nunca se conserva la contraseña administrativa. Esta prueba de titularidad no puede deducirse del inicio de sesión en Multisuite.
 
-Abre Lectura desde su tarjeta o desde Aplicaciones en el menú, selecciona
-el libro y lee. El botón amarillo **← Multisuite**
-aparece dentro de la barra del servicio; en móvil se compacta a la flecha.
-En el lector sigue la visibilidad de sus controles, sin cubrir las páginas.
+Después confirma su contraseña actual de Multisuite para vincular su acceso. La cuenta nativa administradora vinculada mantiene privilegios administrativos. El propietario puede ver todas las bibliotecas, como administrador del NAS.
 
-Los libros y cómics se siguen subiendo a las carpetas conectadas **Libros** y
-**Cómics** de Mis archivos. No hay que duplicarlos ni cambiar sus rutas:
-se enlazan al mismo volumen de lectura, sin segunda copia ni transformación.
+Los usuarios anteriores quedan reservados automáticamente y se activan cuando vuelven a entrar con contraseña. No se pueden recuperar contraseñas desde los hashes de Laravel. Las nuevas invitaciones preparan la cuenta usando la contraseña elegida al aceptarlas; el alta administrativa lo hace al establecer la contraseña personal. Una invitación pendiente de Kavita pasa a Komga cuando Kavita está deshabilitado. Las revocaciones de Lectura se conservan.
 
-Con la sesión administrativa de Komga abierta, se prepara la biblioteca /data
-si no existe ninguna dentro de ese montaje, y se solicita un escaneo cuando
-cambia el reflejo. Las bibliotecas existentes y sus permisos no se modifican.
-Cada 15 segundos, mientras la pestaña es visible, se comprueba una revisión
-opaca; no se escanea si no hay cambios. Los fallos se reintentan, sin recargar
-ni interrumpir el libro abierto. La indexación y portadas tardan lo que necesite
-Komga; aceptar la petición de escaneo no significa que haya terminado.
+## Sesión y permisos
 
-La sincronización de archivos no depende del navegador: las operaciones de
-Mis archivos la disparan y el scheduler reconcilia cada 15 minutos.
-El aviso inmediato a Komga sí utiliza su sesión administrativa; sin pestaña
-abierta quedan sus escaneos periódicos y la actualización al siguiente acceso.
-El login del portal verifica las credenciales con Komga y guarda únicamente
-su cookie de sesión cifrada en la sesión del portal. La contraseña no se conserva.
-Un pase de un minuto y un solo uso transfiere esa cookie al gateway después de
-revalidar identidad, rol, contraseña vigente y sesión activa del portal.
-Se elimina la cookie Recordarme previa para evitar entrar como otra persona.
-La sesión nativa usa el mismo tiempo de inactividad configurado para el portal.
+El servidor crea cuentas nativas sin rol ADMIN, inicialmente sin acceso a bibliotecas. Prepara Libros y Cómics personales y concede solo esos identificadores. La identidad externa queda fijada por ID y correo: un cambio de nombre de usuario del portal no la altera. Una coincidencia de correo nativo no permite apropiarse de la cuenta: se exige prueba de contraseña y nunca se adopta silenciosamente un administrador.
 
-El desafío HTTP Basic se oculta en el gateway: los clientes siguen recibiendo
-401, pero el navegador no abre un segundo diálogo. Si no hay sesión preparada
-(por ejemplo, entrada con passkey), ha caducado o las credenciales no coinciden,
-se abre el formulario nativo de Komga. Este incremento no crea cuentas Komga
-ni vincula cuentas con otro correo; ambas operaciones siguen pendientes.
+El login del portal prepara una cookie nativa cifrada en su sesión. El pase de entrada dura un minuto, se consume una vez y verifica sesión activa del portal, acceso vigente e identidad nativa. El navegador recibe la cookie HttpOnly del gateway sin recibir contraseñas. Si caduca, una pantalla con el diseño del portal permite renovar usando la contraseña actual de Multisuite.
 
-## Infraestructura y seguridad
+Al revocar un miembro se vacían sus bibliotecas y permisos y se sustituye su contraseña. Los datos se conservan. La cuenta administradora que autoriza la conexión no se elimina ni bloquea automáticamente: exige cambiar primero la integración.
 
-- compose.komga.yaml: Komga interno y gateway Nginx, único puerto en loopback.
-- /data es de solo lectura; /config conserva biblioteca, cuenta y progreso.
-- Gateway conectado a multisuite-accounts para el regreso al portal.
-- JavaScript y CSS solo se inyectan en la carcasa de la aplicación, no en EPUB.
-- La revisión requiere autenticación Komga y no contiene nombres ni rutas.
-- Es un piloto de desarrollo con multisuite-nas-dev; discos reales y producción
-  necesitan montajes explícitos. El acceso directo conserva la autenticación
-  nativa de Komga. El puente de sesión no es un proveedor OIDC ni revoca automáticamente las sesiones de otros dispositivos.
+## Archivos y sincronización
+
+Las carpetas Libros/Cómics de Mis archivos conservan sus nombres e identidad. Komga lee `/data/{identidad-media}/{libros|comics}` del montaje existente `.multisuite-media/reading`; se reutiliza el UUID de la cuenta Kavita cuando existe. No se copian ni convierten los originales.
+
+Subidas y cambios desencadenan el espejo y escaneo desde el servidor, con reintentos y reconciliación periódica. El navegador solo añade el enlace de regreso. No crea bibliotecas globales ni necesita una sesión administradora para sincronizar.
+
+Las bibliotecas globales preexistentes del piloto se conservan para el administrador y no se conceden a miembros. La publicación de contenido global desde Multisuite es un incremento separado.
 
 ## Validación
 
-1. Entrar de nuevo en Multisuite con contraseña y abrir Lectura: nombre sin sufijo; biblioteca existente y progreso conservados.
-2. Abrir un EPUB y un cómic; mostrar controles y volver con ← Multisuite.
-3. Subir otro archivo a Libros/Cómics y volver a Lectura: aparece tras el escaneo,
-   sin comandos ni selección manual de carpetas.
-4. Probar móvil, teclado y foco; el enlace no se solapa con controles.
-5. Papelera/restauración en Mis archivos: el siguiente escaneo refleja el cambio.
-   Komga puede conservar una entrada en su papelera nativa; no borramos su historial.
-6. Probar un pase reutilizado/caducado y una cuenta suspendida: no se transfiere sesión.
-7. Un miembro de Multisuite no ve ni puede abrir la tarjeta del piloto.
+Pruebas de sesión y permisos en `KomgaSessionTest` y `KomgaProvisioningTest`; integración contra Komga real en `Integration/KomgaAccountsTest` (CI). Cubren dos cuentas, reserva de usuarios anteriores, biblioteca privada, misma contraseña, cambio de contraseña, bloqueo y eliminación. El smoke de infraestructura verifica gateway, cookie nativa y EPUB.
 
-CI prueba con un EPUB sintético: arranque, inyección, autenticación del endpoint
-de revisión, escaneo, descarga completa SHA-256 y rangos HTTP. Las pruebas JS
-cubren cambios, deduplicación, reintentos y rechazo de usuarios no administradores.
-La comprobación visual de la interfaz real sigue siendo necesaria.
-
-## Reactivar Kavita
-
-make stop, seguido de make up KOMGA_AUTO=0 READING_AUTO=1, reutiliza reading.env
-y los datos anteriores. No usar down -v: no es necesario.
-
-## Pendiente antes de abrirlo a familiares
-
-Aprovisionamiento de cuentas, bibliotecas privadas por persona, acceso automático con passkeys,
-revocación y vinculación segura de cuentas existentes; escaneo servidor a
-servidor sin depender de una sesión abierta; backup/restauración de Komga.
+QA local: conectar una vez como propietario, aceptar una invitación con Lectura, subir un EPUB en Libros y abrir Lectura. Debe entrar sin segundo formulario. Repetir con otra cuenta: no debe ver los libros de la primera. Revisar regreso a Multisuite en ordenador y móvil.

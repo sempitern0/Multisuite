@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\ServiceAccount;
+use App\Models\ServiceConnection;
 use App\Models\User;
 use App\Services\KomgaSession;
+use App\Services\ServiceAccounts;
 use App\Support\Navigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory;
@@ -20,15 +23,27 @@ class KomgaSessionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['portal.services.komga.enabled' => true,
+        config(['portal.services.komga.enabled' => true, 'provisioning.komga.enabled' => true,
             'portal.services.komga.url' => 'http://localhost:25600',
             'portal.komga_internal_url' => 'http://komga-gateway:8080']);
         Http::preventStrayRequests();
+        $connection = new ServiceConnection;
+        $connection->service = 'komga';
+        $connection->secret = 'test-api-key';
+        $connection->operator_id = 'native-id';
+        $connection->save();
     }
 
     private function operator(): User
     {
-        return User::factory()->create(['role' => 'owner']);
+        $user = User::factory()->create(['role' => 'owner']);
+        $account = app(ServiceAccounts::class)->reserve($user, 'komga');
+        $account->external_id = 'native-id';
+        $account->remote_email = $user->email;
+        $account->status = 'ready';
+        $account->save();
+
+        return $user;
     }
 
     private function native(User $user): void
@@ -71,9 +86,10 @@ class KomgaSessionTest extends TestCase
         $this->native($other);
         app(KomgaSession::class)->prepare($user, 'password');
         $this->assertNull(session('komga.login'));
-        $ticket = $this->launch($user);
+        $ticket = app(KomgaSession::class)->issue($user);
+        $this->actingAs($user)->withSession([Auth::guard('web')->getName() => $user->id]);
         $response = $this->post('/api/komga/session', ['ticket' => $ticket], ['Origin' => rtrim((string) config('app.url'), '/')])
-            ->assertStatus(303)->assertHeader('Location', '/login?multisuite=manual');
+            ->assertStatus(303)->assertHeader('Location', rtrim((string) config('app.url'), '/').'/services/komga/confirm');
         foreach ($response->headers->getCookies() as $cookie) {
             $this->assertLessThan(time(), $cookie->getExpiresTime());
         }
@@ -85,9 +101,9 @@ class KomgaSessionTest extends TestCase
         $this->native($user);
         app(KomgaSession::class)->prepare($user, 'password');
         $ticket = $this->launch($user);
-        $user->forceFill(['role' => 'member'])->save();
+        $user->forceFill(['service_access' => []])->save();
         $this->post('/api/komga/session', ['ticket' => $ticket], ['Origin' => rtrim((string) config('app.url'), '/')])->assertForbidden();
-        $user->forceFill(['role' => 'owner'])->save();
+        $user->forceFill(['service_access' => ['komga']])->save();
         $ticket = $this->launch($user);
         session()->invalidate();
         $this->post('/api/komga/session', ['ticket' => $ticket], ['Origin' => rtrim((string) config('app.url'), '/')])->assertForbidden();
@@ -106,7 +122,7 @@ class KomgaSessionTest extends TestCase
         $ticket = $this->launch($user);
         $this->native(User::factory()->create(['role' => 'owner']));
         $this->post('/api/komga/session', ['ticket' => $ticket], ['Origin' => $origin])
-            ->assertStatus(303)->assertHeader('Location', '/login?multisuite=manual');
+            ->assertStatus(303)->assertHeader('Location', rtrim((string) config('app.url'), '/').'/services/komga/confirm');
     }
 
     public function test_outage_does_not_break_portal_login_or_keep_a_stale_session(): void
@@ -126,7 +142,7 @@ class KomgaSessionTest extends TestCase
         $ticket = $this->launch($user);
         $user->update(['password' => 'new-password']);
         $this->post('/api/komga/session', ['ticket' => $ticket], ['Origin' => rtrim((string) config('app.url'), '/')])
-            ->assertStatus(303)->assertHeader('Location', '/login?multisuite=manual');
+            ->assertStatus(303)->assertHeader('Location', rtrim((string) config('app.url'), '/').'/services/komga/confirm');
     }
 
     public function test_service_links_share_tile_permissions_and_use_full_navigation(): void
@@ -138,7 +154,7 @@ class KomgaSessionTest extends TestCase
         $this->assertNotNull($komga);
         $this->assertFalse($komga['spa']);
         $this->assertSame('Lectura', $komga['label']);
-        $user->forceFill(['role' => 'member'])->save();
+        $user->forceFill(['service_access' => []])->save();
         $links = collect(Navigation::for($user)['groups'])->flatMap(fn ($group) => $group['items']);
         $this->assertNull($links->firstWhere('href', route('services.open', 'komga')));
         $this->get('/services/komga')->assertForbidden();

@@ -24,6 +24,7 @@ class Navigation
             ['route' => 'files.index', 'label' => 'Mis archivos', 'icon' => 'folder', 'gate' => null, 'active' => ['files.*']],
         ]],
         ['group' => 'Administración', 'items' => [
+            ['route' => 'komga.connect', 'label' => 'Conexión de Lectura', 'icon' => 'book', 'gate' => 'manage-storage-pools', 'active' => ['komga.connect']],
             ['route' => 'users.index', 'label' => 'Personas', 'icon' => 'users', 'gate' => 'manage-invitations', 'active' => ['users.*']],
             ['route' => 'invitations.index', 'label' => 'Invitaciones', 'icon' => 'invite', 'gate' => 'manage-invitations', 'active' => ['invitations.*']],
             ['route' => 'storage.index', 'label' => 'Almacenamiento', 'icon' => 'storage', 'gate' => 'view-storage', 'active' => ['storage.*']],

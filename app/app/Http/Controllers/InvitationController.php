@@ -7,6 +7,7 @@ use App\Concerns\ProfileValidationRules;
 use App\Concerns\UsernameValidationRules;
 use App\Models\Invitation;
 use App\Models\User;
+use App\Services\KomgaSession;
 use App\Services\ServiceAccounts;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,18 +52,19 @@ class InvitationController extends Controller
             $user->email = $invitation->email;
             $user->password = $data['password'];
             $user->role = $invitation->role;
-            $user->service_access = $invitation->services ?? [];
+            $user->service_access = app(ServiceAccounts::class)->currentServices($invitation->services ?? []);
             $user->services_revoked = app(ServiceAccounts::class)->notGranted($user->service_access);
             // Possession of the link delivered to this mailbox proves email access.
             $user->email_verified_at = now();
             $user->save();
-            app(ServiceAccounts::class)->enroll($user, $invitation->services ?? [], $data['password']);
+            app(ServiceAccounts::class)->enroll($user, $user->service_access, $data['password']);
 
             return $user;
         });
         app(ServiceAccounts::class)->syncUser($user);
         Auth::login($user);
         $request->session()->regenerate();
+        app(KomgaSession::class)->prepare($user, $data['password']);
 
         return redirect()->route('dashboard');
     }

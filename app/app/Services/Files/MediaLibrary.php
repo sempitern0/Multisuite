@@ -138,7 +138,9 @@ class MediaLibrary
     public function directory(string $service, ServiceAccount $account, ?string $section): string
     {
         [$private] = $this->uploads->privateArea();
-        $path = dirname($private).'/.multisuite-media/'.$service.'/'.strtolower($account->remote_id).($section === null ? '' : '/'.$section);
+        $identity = $service === 'komga' ? ($account->media_id ?? $account->remote_id) : $account->remote_id;
+        $namespace = $service === 'komga' ? 'reading' : $service;
+        $path = dirname($private).'/.multisuite-media/'.$namespace.'/'.strtolower($identity).($section === null ? '' : '/'.$section);
         if (! is_dir($path) && ! mkdir($path, 0755, true) && ! is_dir($path)) {
             throw new RuntimeException('No se puede preparar la carpeta del servicio.');
         }

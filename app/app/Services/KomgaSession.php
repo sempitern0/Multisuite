@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ServiceAccount;
 use App\Models\User;
 use App\Services\Provisioning\ServiceUrl;
 use Illuminate\Http\Client\ConnectionException;
@@ -17,20 +18,37 @@ final class KomgaSession
     public static function allowed(User $user): bool
     {
         return (bool) config('portal.services.komga.enabled')
-            && in_array($user->role, ['owner', 'admin'], true)
-            && ! $user->isSuspended() && ! $user->must_change_password;
+            && config('provisioning.komga.enabled')
+            && app(ServiceAccounts::class)->entitled($user, 'komga')
+            && ! $user->must_change_password
+            && ServiceAccount::where('user_id', $user->id)->where('service', 'komga')->where('status', 'ready')->exists();
     }
 
     public function prepare(User $user, #[\SensitiveParameter] string $password): void
     {
         session()->forget('komga.login');
-        if (! self::allowed($user)) {
+        if (! config('portal.services.komga.enabled') || ! config('provisioning.komga.enabled')
+            || $user->isSuspended() || $user->must_change_password) {
             return;
         }
         try {
+            if (! KomgaAccounts::connected()) {
+                return;
+            }
+            app(ServiceAccounts::class)->resume($user, $password);
+            $user->refresh();
+            $account = ServiceAccount::where('user_id', $user->id)->where('service', 'komga')->first();
+            if ($account === null || ! app(ServiceAccounts::class)->entitled($user, 'komga')) {
+                return;
+            }
+            app(ServiceAccounts::class)->synchronize($account->id);
+            $account->refresh();
+            if (! self::allowed($user)) {
+                return;
+            }
             // Komga identifies accounts by email, even when Multisuite accepts a username.
             $response = Http::acceptJson()->withoutRedirecting()->connectTimeout(2)->timeout(4)
-                ->withBasicAuth($user->email, $password)->get($this->url().'/api/v2/users/me');
+                ->withBasicAuth((string) $account->remote_email, $password)->get($this->url().'/api/v2/users/me');
             if (! $response->successful() || ! $this->matches($user, $response->json())) {
                 return;
             }
@@ -98,9 +116,13 @@ final class KomgaSession
 
     private function matches(User $user, mixed $dto): bool
     {
-        // This pilot mounts everyone's reading files: only native administrators may enter.
-        return is_array($dto) && ($dto['email'] ?? null) === $user->email
-            && is_array($dto['roles'] ?? null) && in_array('ADMIN', $dto['roles'], true);
+        $account = ServiceAccount::where('user_id', $user->id)->where('service', 'komga')->first();
+
+        return $account !== null && is_array($dto)
+            && ($dto['id'] ?? null) === $account->external_id
+            && ($dto['email'] ?? null) === $account->remote_email
+            && is_array($dto['roles'] ?? null)
+            && ($user->role === 'owner' || ! in_array('ADMIN', $dto['roles'], true));
     }
 
     /** @param array<string> $headers */

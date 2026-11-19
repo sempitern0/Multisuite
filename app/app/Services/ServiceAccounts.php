@@ -48,6 +48,19 @@ class ServiceAccounts
             && ($user->service_access === null || in_array($service, $user->service_access, true));
     }
 
+    /**
+     * @param  list<string>  $services
+     * @return list<string>
+     */
+    public function currentServices(array $services): array
+    {
+        if (in_array('komga', $this->available(), true) && ! config('portal.services.reading.enabled')) {
+            $services = array_map(fn (string $service): string => $service === 'reading' ? 'komga' : $service, $services);
+        }
+
+        return array_values(array_unique($services));
+    }
+
     /** @param list<string> $services */
     public function enroll(User $user, array $services, #[\SensitiveParameter] string $password): void
     {
@@ -105,9 +118,8 @@ class ServiceAccounts
                 return false;
             }
             // Services added to the portal since the person last signed in join now.
-            if ($this->grantNewServices($locked)) {
-                $this->awaitPassword($locked);
-            }
+            $this->grantNewServices($locked);
+            $this->awaitPassword($locked);
             $accounts = ServiceAccount::where('user_id', $locked->id)
                 ->whereIn('status', [self::AWAITING_PASSWORD, 'expired'])->lockForUpdate()->get()
                 ->filter(fn (ServiceAccount $account): bool => $this->entitled($locked, $account->service));
@@ -135,7 +147,11 @@ class ServiceAccounts
         if ($locked->service_access === null || $locked->suspended_at !== null) {
             return false;
         }
-        $new = array_values(array_diff($this->available(), $locked->service_access, $locked->services_revoked ?? []));
+        $revoked = $locked->services_revoked ?? [];
+        if (in_array('reading', $revoked, true)) {
+            $revoked[] = 'komga';
+        }
+        $new = array_values(array_diff($this->available(), $locked->service_access, $revoked));
         if ($new === []) {
             return false;
         }
@@ -211,6 +227,9 @@ class ServiceAccounts
         $account->service = $service;
         $account->remote_id = (string) Str::uuid();
         $account->username = $user->username ?? $user->email;
+        if ($service === 'komga') {
+            $account->media_id = ServiceAccount::where('user_id', $user->id)->where('service', 'reading')->value('remote_id') ?? $account->remote_id;
+        }
 
         return $account;
     }

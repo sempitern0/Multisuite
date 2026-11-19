@@ -38,7 +38,10 @@ class ServiceTiles
             $name = (string) ($service['name'] ?? $id);
             $tile = ['id' => (string) $id, 'name' => $name, 'icon' => (string) ($service['icon'] ?? 'grid'), 'href' => null, 'username' => $account?->username];
 
-            if ($access !== null && $managed && $account?->status !== 'ready') {
+            if ($id === 'komga' && $managed && ! empty($service['enabled']) && $account?->status !== 'ready') {
+                $tiles[] = ['href' => route('services.open', $id)] + $tile
+                    + ['status' => 'pending', 'label' => 'Preparar Lectura', 'hint' => 'Abre Lectura para completar el acceso.'];
+            } elseif ($access !== null && $managed && $account?->status !== 'ready') {
                 $tiles[] = $tile + ['status' => 'pending', 'label' => 'Cuenta pendiente de preparación', 'hint' => match ($account?->status) {
                     'expired', ServiceAccounts::AWAITING_PASSWORD => 'Sal y vuelve a entrar con tu contraseña para activarla.',
                     'pending', null => 'Se está preparando. Vuelve en unos minutos.',

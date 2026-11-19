@@ -70,3 +70,8 @@ Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúm
 - [ ] Mis archivos en el navegador real: subida grande con corte de red, vídeo MP4 y MOV, explorador en móvil.
 - [ ] Puente de sesión de Música con dos personas (MUSIC_SESSION_BRIDGE.md § QA) y checklist de Navidrome con Docker real (NAVIDROME.md).
 - [ ] Discos reales: `make nas-discover`/`nas-apply`, disco lleno o retirado, y una copia real con `make nas-backup`.
+
+## Lectura · validación PR #41
+- [ ] Validar en CI aprovisionamiento Komga, aislamiento entre dos miembros y cookie nativa.
+- [ ] QA del usuario: conexión inicial desde panel, invitación, cuenta anterior, subida y lectura sin segundo login.
+- [ ] Publicación administrativa de contenido global: pendiente, sin conceder bibliotecas globales del piloto a miembros.

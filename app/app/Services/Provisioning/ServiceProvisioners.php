@@ -3,6 +3,7 @@
 namespace App\Services\Provisioning;
 
 use App\Services\KavitaAccounts;
+use App\Services\KomgaAccounts;
 use App\Services\NavidromeAccounts;
 use RuntimeException;
 
@@ -13,6 +14,7 @@ class ServiceProvisioners
     private const ADAPTERS = [
         'music' => NavidromeAccounts::class,
         'reading' => KavitaAccounts::class,
+        'komga' => KomgaAccounts::class,
     ];
 
     public function supports(string $service): bool

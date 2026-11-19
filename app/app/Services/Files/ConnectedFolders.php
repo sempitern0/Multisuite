@@ -35,13 +35,19 @@ class ConnectedFolders
     /** @return array{service: string, name: string, section: string|null, icon: string, library: string, mimes: list<string>} */
     public static function definition(string $connection): array
     {
-        return self::CONNECTIONS[$connection];
+        $definition = self::CONNECTIONS[$connection];
+        if ($definition['service'] === 'reading' && config('portal.services.komga.enabled') && config('provisioning.komga.enabled')) {
+            $definition['service'] = 'komga';
+        }
+
+        return $definition;
     }
 
     /** Creates the folders for the services the person may use now. Idempotent; never renames or moves existing ones. */
     public function ensure(User $user): void
     {
-        foreach (self::CONNECTIONS as $connection => $definition) {
+        foreach (array_keys(self::CONNECTIONS) as $connection) {
+            $definition = self::definition($connection);
             if (! in_array($definition['service'], $this->accounts->available(), true) || ! $this->accounts->entitled($user, $definition['service'])) {
                 continue;
             }
