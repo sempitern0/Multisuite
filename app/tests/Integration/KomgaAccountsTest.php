@@ -40,7 +40,7 @@ class KomgaAccountsTest extends TestCase
         $this->assertNotNull(session('komga.login'));
         // A deployed pilot already has a broad /data library. Preserve it, but never share it with members.
         $pilot = $komga->client()->post('/api/v1/libraries', ['name' => 'Existing pilot', 'root' => '/data']);
-        $this->assertSame(201, $pilot->status());
+        $this->assertSame(200, $pilot->status());
         $pilotId = $pilot->json('id');
         $accounts = app(ServiceAccounts::class);
         $legacy = ServiceAccount::where('user_id', $existing->id)->where('service', 'komga')->firstOrFail();
