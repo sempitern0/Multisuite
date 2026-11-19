@@ -250,9 +250,10 @@ final class KomgaAccounts implements PersonalLibraries, ServiceProvisioner
 
     private function library(ServiceAccount $account, string $section, string $label): void
     {
-        $root = '/data/'.($account->media_id ?? $account->remote_id).'/'.$section;
+        $relative = ($account->media_id ?? $account->remote_id).'/'.$section;
+        $root = '/personal/'.$relative;
         $libraries = $this->check($this->client()->get('/api/v1/libraries'))->json();
-        $library = collect((array) $libraries)->first(fn ($row) => rtrim((string) $row['root'], '/') === $root);
+        $library = collect((array) $libraries)->first(fn ($row) => in_array(rtrim((string) $row['root'], '/'), [$root, '/data/'.$relative], true));
         if ($library === null) {
             $library = $this->check($this->client()->post('/api/v1/libraries', [
                 'name' => $label.' · '.substr($account->remote_id, 0, 8), 'root' => $root,

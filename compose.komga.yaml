@@ -1,4 +1,4 @@
-# Administrator-only local reading pilot, independent of Kavita's database.
+# Reading service with private accounts, independent of Kavita's database.
 name: multisuite-komga
 services:
   komga:
@@ -13,6 +13,14 @@ services:
       - type: volume
         source: nas
         target: /data
+        read_only: true
+        volume:
+          subpath: .multisuite-media/reading
+      # Separate namespace avoids nesting private libraries under the pilot's /data library.
+      # Both mounts reference the same files; the old library and reading progress stay intact.
+      - type: volume
+        source: nas
+        target: /personal
         read_only: true
         volume:
           subpath: .multisuite-media/reading

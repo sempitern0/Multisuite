@@ -22,9 +22,11 @@ Al revocar un miembro se vacían sus bibliotecas y permisos y se sustituye su co
 
 ## Archivos y sincronización
 
-Las carpetas Libros/Cómics de Mis archivos conservan sus nombres e identidad. Komga lee `/data/{identidad-media}/{libros|comics}` del montaje existente `.multisuite-media/reading`; se reutiliza el UUID de la cuenta Kavita cuando existe. No se copian ni convierten los originales.
+Las carpetas Libros/Cómics de Mis archivos conservan sus nombres e identidad. Komga lee `/personal/{identidad-media}/{libros|comics}` del montaje existente `.multisuite-media/reading`; se reutiliza el UUID de la cuenta Kavita cuando existe. No se copian ni convierten los originales.
 
 Subidas y cambios desencadenan el espejo y escaneo desde el servidor, con reintentos y reconciliación periódica. El navegador solo añade el enlace de regreso. No crea bibliotecas globales ni necesita una sesión administradora para sincronizar.
+
+El montaje `/personal` referencia los mismos archivos que `/data`, sin duplicarlos. Evita la prohibición de Komga de anidar bibliotecas dentro de la raíz global del piloto. Las bibliotecas personales anteriores con una ruta exacta en `/data` se reutilizan para conservar su progreso.
 
 Las bibliotecas globales preexistentes del piloto se conservan para el administrador y no se conceden a miembros. La publicación de contenido global desde Multisuite es un incremento separado.
 

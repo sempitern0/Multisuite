@@ -38,6 +38,10 @@ class KomgaAccountsTest extends TestCase
         app(KomgaSession::class)->prepare($owner, 'operator-password');
         $this->assertTrue(KomgaAccounts::connected());
         $this->assertNotNull(session('komga.login'));
+        // A deployed pilot already has a broad /data library. Preserve it, but never share it with members.
+        $pilot = $komga->client()->post('/api/v1/libraries', ['name' => 'Existing pilot', 'root' => '/data']);
+        $this->assertSame(201, $pilot->status());
+        $pilotId = $pilot->json('id');
         $accounts = app(ServiceAccounts::class);
         $legacy = ServiceAccount::where('user_id', $existing->id)->where('service', 'komga')->firstOrFail();
         $this->assertSame(ServiceAccounts::AWAITING_PASSWORD, $legacy->status);
@@ -78,6 +82,8 @@ class KomgaAccountsTest extends TestCase
         $libraries = Http::withBasicAuth($new->email, 'invited-password')->get($url.'/api/v1/libraries')->json();
         $this->assertCount(2, $libraries);
         $this->assertEqualsCanonicalizing(array_values($account->library_ids), array_column($libraries, 'id'));
+        $this->assertNotContains($pilotId, array_column($libraries, 'id'));
+        $this->assertSame($pilotId, $komga->client()->get('/api/v1/libraries/'.$pilotId)->json('id'));
         $this->assertEmpty(array_intersect(array_values($legacy->fresh()->library_ids), array_column($libraries, 'id')));
         $epub = $this->epub();
         $this->storeConnected($new, 'books', 'manual.epub', $epub);
