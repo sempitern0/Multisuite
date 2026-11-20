@@ -1,6 +1,6 @@
 # Estado de Multisuite
 
-Instantánea del 20 de noviembre de 2026.
+Instantánea del 20 de noviembre de 2026 (PR #41 y PR MCP-00 en revisión).
 
 ## Integrado en main
 
@@ -14,6 +14,10 @@ El incremento actual incorpora conexión administrativa desde el panel, aprovisi
 
 Validado en CI: formato, análisis estático, pruebas de aplicación, integración PostgreSQL y flujo real Komga con conexión del propietario, invitación, dos miembros y cookie nativa. La batería incluye además protección frente a sincronizaciones atrasadas tras revocar acceso y verificación de integridad del EPUB privado. Consultar el estado del último commit en PR #41 antes de fusionar. El usuario reportó confusión y un error genérico al conectar Lectura. El formulario ahora usa por defecto su cuenta de Multisuite, detecta el estado nativo y diferencia las causas del error; CI cubre también el gateway y la reconexión de una instalación inicializada. El nuevo formulario requiere QA visual.
 
+## En revisión · MCP-00 (rama `feat/mcp-00-rfc`, apilada sobre #41)
+
+RFC del asistente y del puente MCP ([MCP.md](MCP.md)): configuración solo del propietario, herramientas sobre los servicios del dominio con los permisos de quien las usa, `laravel/ai` para el chat con uno o varios modelos y `laravel/mcp` para clientes externos tras la red privada. Solo documentación; esperando las decisiones D1–D4 del usuario.
+
 ## Próximos pasos
 
-Completar validación del flujo de Lectura con dos personas y dispositivos. La publicación de contenido global por el administrador, passkeys y operación de producción siguen pendientes. PR #39 y #40 cerradas sin fusionar; ramas preservadas.
+Completar validación del flujo de Lectura con dos personas y dispositivos. Después, MCP-01 (núcleo del asistente). La publicación de contenido global por el administrador, passkeys y operación de producción siguen pendientes. PR #39 y #40 cerradas sin fusionar; ramas preservadas.
