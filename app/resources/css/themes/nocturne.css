@@ -62,7 +62,7 @@
     .ui-brand { display: flex; gap: 12px; align-items: center; padding: 0 11px; min-width: 0; }
     .ui-brandmark { width: 36px; height: 36px; display: grid; place-items: center; background: var(--ui-accent); color: var(--ui-accent-ink); border-radius: 12px; transform: rotate(-6deg); }
     .ui-brandmark svg { width: 20px; height: 20px; }
-    .ui-brandtext { display: block; font-size: 17px; font-weight: 800; letter-spacing: -.04em; line-height: 1.1; }
+    .ui-brandtext { color: var(--ui-text); background-color: var(--ui-bg-2); display: block; font-size: 17px; font-weight: 800; letter-spacing: -.04em; line-height: 1.1; }
     .ui-brandsub { font-size: 10px; letter-spacing: .16em; color: var(--ui-muted); font-weight: 700; text-transform: uppercase; }
     .ui-nav-title { font-size: 10px; color: var(--ui-muted); letter-spacing: .18em; font-weight: 800; padding: 15px 13px 6px; text-transform: uppercase; }
     .ui-nav-item { display: flex; gap: 11px; align-items: center; width: 100%; color: var(--ui-sub); padding: 10px 12px; border-radius: var(--ui-radius-control); font-size: 13px; font-weight: 600; background: transparent; border: 0; text-align: left;  }

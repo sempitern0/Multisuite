@@ -8,7 +8,7 @@ async function measure() {
     const browser = await puppeteer.launch({executablePath: '/usr/bin/google-chrome', timeout:90000, args: ['--no-sandbox']});
     fs.mkdirSync(out, {recursive: true});
     const rows = [];
-    const critical = [];
+    const accessibilityFailures = [];
     try {
         const page = await browser.newPage();
         for (const [slug, route] of Object.entries({login:'/login', dashboard:'/dashboard', files:'/files', preferences:'/settings/preferences'})) {
@@ -32,7 +32,7 @@ async function measure() {
                         await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});
                         const findings = await page.evaluate(async () => (await axe.run()).violations.map(({id,impact,nodes})=>({id,impact,targets:nodes.map(n=>n.target)})));
                         fs.writeFileSync(out+'/'+slug+'-'+scheme+'-axe.json', JSON.stringify(findings,null,2));
-                        critical.push(...findings.filter(v=>v.impact==='critical'));
+                        accessibilityFailures.push(...findings.filter(v=>v.impact==='critical' || v.id==='color-contrast'));
                     }
                     await page.screenshot({path: out + '/' + [slug,width,scheme].join('-') + '.png'});
                 }
@@ -97,7 +97,7 @@ async function measure() {
                 }
             }
         }
-        if (critical.length && process.env.DESIGN_REVISION === 'candidate') throw Error('Critical axe findings: '+JSON.stringify(critical));
+        if (accessibilityFailures.length && process.env.DESIGN_REVISION === 'candidate') throw Error('Contrast or critical axe findings: '+JSON.stringify(accessibilityFailures));
     } finally { await browser.close(); }
 }
 measure().catch(error=>{console.error(error);process.exitCode=1;});
