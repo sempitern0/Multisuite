@@ -39,6 +39,40 @@ final class KomgaAccounts implements PersonalLibraries, ServiceProvisioner
         return $this->http()->withHeaders(['X-API-Key' => $connection->secret]);
     }
 
+    /** Read-only setup information; no credentials or identities are disclosed. */
+    public function setupState(): string
+    {
+        try {
+            $response = $this->http()->get('/api/v1/claim');
+            $claimed = $response->json('isClaimed');
+            if (! $response->successful() || ! is_bool($claimed)) {
+                return 'unavailable';
+            }
+
+            return $claimed ? (self::connected() ? 'connected' : 'existing') : 'empty';
+        } catch (ConnectionException|RuntimeException) {
+            return 'unavailable';
+        }
+    }
+
+    private function connectionResponse(Response $response, string $stage): Response
+    {
+        if ($response->status() === 429) {
+            throw new RuntimeException('rate_limited');
+        }
+        if (! $response->successful()) {
+            throw new RuntimeException(match (true) {
+                $stage === 'login' && $response->status() === 401 => 'credentials',
+                $stage === 'login' && $response->status() === 403 => 'not_admin',
+                $stage === 'key' && in_array($response->status(), [401, 403], true) => 'api_key_denied',
+                $stage === 'claim' && $response->status() === 400 => 'claim_rejected',
+                default => 'unavailable',
+            });
+        }
+
+        return $response;
+    }
+
     /** Authorise the integration once, proving possession of the existing native administrator. */
     public function connect(User $owner, string $email, #[\SensitiveParameter] string $password): void
     {
@@ -46,17 +80,20 @@ final class KomgaAccounts implements PersonalLibraries, ServiceProvisioner
         Cache::lock('komga-connection', 60)->block(10, function () use ($owner, $email, $password): void {
             $this->guard(function () use ($owner, $email, $password): void {
                 $http = $this->http();
-                $claim = $this->check($http->get('/api/v1/claim'))->json('isClaimed');
+                $claim = $this->connectionResponse($http->get('/api/v1/claim'), 'status')->json('isClaimed');
+                if (! is_bool($claim)) {
+                    throw new RuntimeException('invalid_response');
+                }
                 if ($claim === false) {
-                    $this->check($this->http()->withHeaders(['X-Komga-Email' => $email, 'X-Komga-Password' => $password])
-                        ->post('/api/v1/claim'));
+                    $this->connectionResponse($this->http()->withHeaders(['X-Komga-Email' => $email, 'X-Komga-Password' => $password])
+                        ->post('/api/v1/claim'), 'claim');
                 }
-                $native = $this->check($this->http()->withBasicAuth($email, $password)->get('/api/v2/users/me'))->json();
+                $native = $this->connectionResponse($this->http()->withBasicAuth($email, $password)->get('/api/v2/users/me'), 'login')->json();
                 if (! is_array($native) || ! in_array('ADMIN', $native['roles'] ?? [], true)) {
-                    throw new RuntimeException('configuration');
+                    throw new RuntimeException('not_admin');
                 }
-                $key = $this->check($this->http()->withBasicAuth($email, $password)
-                    ->post('/api/v2/users/me/api-keys', ['comment' => 'Multisuite '.Str::uuid()]))->json('key');
+                $key = $this->connectionResponse($this->http()->withBasicAuth($email, $password)
+                    ->post('/api/v2/users/me/api-keys', ['comment' => 'Multisuite '.Str::uuid()]), 'key')->json('key');
                 if (! is_string($key) || $key === '') {
                     throw new RuntimeException('unavailable');
                 }

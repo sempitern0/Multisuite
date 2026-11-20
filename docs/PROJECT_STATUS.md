@@ -1,6 +1,6 @@
 # Estado de Multisuite
 
-Instantánea del 19 de noviembre de 2026.
+Instantánea del 20 de noviembre de 2026.
 
 ## Integrado en main
 
@@ -12,7 +12,7 @@ Komga 1.30.1 sustituye al lector activo, preservando Kavita deshabilitado y sus 
 
 El incremento actual incorpora conexión administrativa desde el panel, aprovisionamiento de miembros, bibliotecas privadas, reutilización de carpetas existentes, escaneo desde el servidor y pase de sesión nativa. Los usuarios anteriores se activan al entrar con contraseña; las invitaciones nuevas al aceptarse. Sin recuperación de hashes ni credenciales en el navegador.
 
-Validado en CI: formato, análisis estático, pruebas de aplicación, integración PostgreSQL y flujo real Komga con conexión del propietario, invitación, dos miembros y cookie nativa. La batería incluye además protección frente a sincronizaciones atrasadas tras revocar acceso y verificación de integridad del EPUB privado. Consultar el estado del último commit en PR #41 antes de fusionar. El usuario validó el lector del piloto; el nuevo flujo requiere su QA visual.
+Validado en CI: formato, análisis estático, pruebas de aplicación, integración PostgreSQL y flujo real Komga con conexión del propietario, invitación, dos miembros y cookie nativa. La batería incluye además protección frente a sincronizaciones atrasadas tras revocar acceso y verificación de integridad del EPUB privado. Consultar el estado del último commit en PR #41 antes de fusionar. El usuario reportó confusión y un error genérico al conectar Lectura. El formulario ahora usa por defecto su cuenta de Multisuite, detecta el estado nativo y diferencia las causas del error; CI cubre también el gateway y la reconexión de una instalación inicializada. El nuevo formulario requiere QA visual.
 
 ## Próximos pasos
 

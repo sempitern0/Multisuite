@@ -35,8 +35,13 @@ class KomgaAccountsTest extends TestCase
         $existing = User::factory()->create(['email' => 'existing@example.com', 'password' => 'existing-password']);
         $owner = User::factory()->create(['role' => 'owner', 'email' => 'operator@example.com', 'password' => 'operator-password']);
         $komga = app(KomgaAccounts::class);
+        $this->assertSame('empty', $komga->setupState());
         app(KomgaSession::class)->prepare($owner, 'operator-password');
         $this->assertTrue(KomgaAccounts::connected());
+        $this->assertSame('connected', $komga->setupState());
+        // Re-authorise an already claimed service through the same gateway used in development.
+        $komga->connect($owner, $owner->email, 'operator-password');
+        app(KomgaSession::class)->prepare($owner, 'operator-password');
         $this->assertNotNull(session('komga.login'));
         // A deployed pilot already has a broad /data library. Preserve it, but never share it with members.
         $pilot = $komga->client()->post('/api/v1/libraries', ['name' => 'Existing pilot', 'root' => '/data']);

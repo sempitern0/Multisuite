@@ -11,6 +11,7 @@ use App\Services\ServiceAccounts;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
+use RuntimeException;
 use Tests\TestCase;
 
 class KomgaProvisioningTest extends TestCase
@@ -99,6 +100,55 @@ class KomgaProvisioningTest extends TestCase
         ])]);
         app(ServiceAccounts::class)->syncUser($user);
         $this->assertSame('conflict', $account->fresh()->status);
+        Http::assertNotSent(fn ($request) => $request->method() !== 'GET');
+    }
+
+    public function test_setup_uses_the_verified_portal_password_and_never_creates_an_arbitrary_account(): void
+    {
+        $owner = User::factory()->create(['role' => 'owner']);
+        Http::fake(['*/api/v1/claim' => Http::response(['isClaimed' => false])]);
+        Livewire::actingAs($owner)->test('pages::admin.komga-connection')
+            ->assertSee('Komga está vacío')->assertSee($owner->email)
+            ->set('email', 'someone-else@example.com')->set('password', 'not-the-portal-password')
+            ->call('connect')->assertHasErrors(['password' => 'current_password'])
+            ->assertSet('password', '');
+        Http::assertNotSent(fn ($request) => $request->method() !== 'GET');
+    }
+
+    public function test_existing_server_rejects_wrong_credentials_with_an_actionable_message(): void
+    {
+        $owner = User::factory()->create(['role' => 'owner']);
+        Http::fake([
+            '*/api/v1/claim' => Http::response(['isClaimed' => true]),
+            '*/api/v2/users/me' => Http::response([], 401),
+        ]);
+        Livewire::actingAs($owner)->test('pages::admin.komga-connection')
+            ->assertSee('Komga ya está inicializado')
+            ->set('password', 'password')->call('connect')->assertHasErrors('password')
+            ->assertSee('Komga ya tiene una cuenta y no acepta estos datos')->assertSet('password', '');
+        Http::assertNotSent(fn ($request) => $request->method() !== 'GET');
+    }
+
+    public function test_unreachable_server_is_not_reported_as_a_password_error(): void
+    {
+        $owner = User::factory()->create(['role' => 'owner']);
+        Http::fake(['*' => Http::failedConnection()]);
+        Livewire::actingAs($owner)->test('pages::admin.komga-connection')
+            ->assertSee('Multisuite no puede consultar Komga')
+            ->assertDontSee('Contraseña actual de Multisuite');
+    }
+
+    public function test_claim_requires_a_boolean_status_before_any_account_is_created(): void
+    {
+        $owner = User::factory()->create(['role' => 'owner']);
+        Http::fake(['*/api/v1/claim' => Http::response(['unexpected' => true])]);
+        $this->assertSame('unavailable', app(KomgaAccounts::class)->setupState());
+        try {
+            app(KomgaAccounts::class)->connect($owner, $owner->email, 'password');
+            $this->fail('Malformed claim status must fail closed.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('invalid_response', $exception->getMessage());
+        }
         Http::assertNotSent(fn ($request) => $request->method() !== 'GET');
     }
 
