@@ -97,7 +97,7 @@ new #[Title('Asistente')] class extends Component {
     <x-ui::stack gap="md">
         <x-ui::notice tone="info">
             El asistente actúa siempre como la persona que lo usa: solo ve sus propios archivos y servicios, también en tu caso.
-            Las conversaciones llegarán en la próxima versión; los proveedores de IA y sus claves los configura quien gestiona el servidor, no esta página.
+            En la próxima versión podrás añadir aquí los proveedores de IA con sus claves y conversar con el asistente.
         </x-ui::notice>
 
         <x-ui::panel>
