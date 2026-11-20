@@ -39,6 +39,9 @@ async function measure() {
             }
             if (slug === 'dashboard' && process.env.DESIGN_REVISION === 'candidate') {
                 await page.setViewport({width:360,height:860});
+                // Start the keyboard journey on a fresh mobile navigation, independent of Lighthouse tabs.
+                await page.goto(base+route, {waitUntil:'networkidle2'});
+                page.on('pageerror', error=>console.error('Browser error', error.message));
                 const trigger = '[aria-controls="portal-nav"]';
                 await page.bringToFront();
                 await page.waitForSelector(trigger, {visible:true});
@@ -46,7 +49,10 @@ async function measure() {
                 await page.focus(trigger);
                 await page.waitForFunction(sel=>document.activeElement===document.querySelector(sel),{},trigger);
                 await page.keyboard.press('Enter');
-                await page.waitForFunction(()=>document.querySelector('#portal-nav').contains(document.activeElement));
+                await page.waitForFunction(()=>document.querySelector('#portal-nav').contains(document.activeElement)).catch(async error => {
+                    console.error(await page.evaluate(()=>({ expanded:document.querySelector('[aria-controls="portal-nav"]').getAttribute('aria-expanded'), focus:document.activeElement.outerHTML.slice(0,400), width:innerWidth, sidebar:getComputedStyle(document.querySelector('#portal-nav')).visibility })));
+                    throw error;
+                });
                 for (let step=0;step<12;step++) {
                     await page.keyboard.press('Tab');
                     if (!await page.evaluate(()=>document.querySelector('#portal-nav').contains(document.activeElement))) throw Error('Mobile focus escaped');
