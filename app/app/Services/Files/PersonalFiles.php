@@ -107,6 +107,39 @@ class PersonalFiles
     }
 
     /**
+     * Paged, owner-scoped listing for the assistant (docs/MCP.md): one folder's contents,
+     * or files and folders matching a name anywhere in the person's tree. Folders come
+     * on the first page only (at most 200); files in name order, $perPage at a time.
+     *
+     * @return array{folders: Collection<int, Folder>, files: Collection<int, UserFile>, more: bool}
+     */
+    public function page(User $user, ?Folder $folder, string $search, int $page, int $perPage = 50): array
+    {
+        $search = trim($search);
+        $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], mb_strtolower($search)).'%';
+        $page = max(1, $page);
+
+        $files = $this->visible($user);
+        $folders = Folder::where('user_id', $user->id);
+        if ($search === '') {
+            $files->where('user_files.folder_id', $folder?->id);
+            $folders->where('parent_id', $folder?->id);
+        } else {
+            $files->whereRaw("lower(user_files.name) like ? escape '\\'", [$like]);
+            $folders->whereRaw("lower(name) like ? escape '\\'", [$like]);
+        }
+        $files = $files->orderBy('user_files.name')->orderBy('user_files.id')
+            ->offset(($page - 1) * $perPage)->limit($perPage + 1)
+            ->get(['user_files.*', 'private_uploads.mime as mime', 'storage_reservations.actual_bytes as size']);
+
+        return [
+            'folders' => $page === 1 ? $folders->orderBy('name')->orderBy('id')->limit(200)->get() : new Collection,
+            'files' => $files->take($perPage)->values(),
+            'more' => $files->count() > $perPage,
+        ];
+    }
+
+    /**
      * "Carpeta / Subcarpeta" for every folder of a person (search results show where each item is).
      *
      * @return array<int, string>

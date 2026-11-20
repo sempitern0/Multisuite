@@ -27,10 +27,17 @@ class AdminAudit
         'user.avatar_removed' => 'Foto de perfil retirada',
     ];
 
+    /** @var array<string, string> */
+    public const ASSISTANT_ACTIONS = [
+        'assistant.updated' => 'Asistente configurado',
+        'assistant.member_added' => 'Acceso al asistente concedido',
+        'assistant.member_removed' => 'Acceso al asistente retirado',
+    ];
+
     /** @return array<string, string> */
     public static function actionLabels(): array
     {
-        $labels = [...self::USER_ACTIONS, ...self::STORAGE_ACTIONS];
+        $labels = [...self::USER_ACTIONS, ...self::STORAGE_ACTIONS, ...self::ASSISTANT_ACTIONS];
         foreach (ServiceAuditAction::cases() as $action) {
             $labels[$action->value] = $action->label();
         }
@@ -111,6 +118,27 @@ class AdminAudit
             'role' => $subject->role,
             'previous_role' => $previousRole,
         ];
+        $event->created_at = now();
+        $event->save();
+    }
+
+    /** Assistant configuration (docs/MCP.md). Settings changes record the owner as subject; no details are stored. */
+    public function recordAssistant(User $actor, User $subject, string $action): void
+    {
+        if (! array_key_exists($action, self::ASSISTANT_ACTIONS)) {
+            throw new LogicException('Unknown assistant audit action.');
+        }
+        if ($actor->id < 1 || $subject->id < 1) {
+            throw new LogicException('Audit requires persisted user identifiers.');
+        }
+
+        $event = new AdminAuditEvent;
+        $event->actor_id = $actor->id;
+        $event->actor_name = $actor->name;
+        $event->subject_id = $subject->id;
+        $event->subject_name = $subject->name;
+        $event->action = $action;
+        $event->details = [];
         $event->created_at = now();
         $event->save();
     }

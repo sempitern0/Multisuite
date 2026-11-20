@@ -55,6 +55,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('view-storage', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
         // Disks and the default are infrastructure policy: owner only.
         Gate::define('manage-storage-pools', fn (User $user): bool => $user->role === 'owner');
+        // The assistant is configured only by the owner (decision 2026-11-20, docs/MCP.md).
+        Gate::define('manage-assistant', fn (User $user): bool => $user->role === 'owner');
         // Owner manages everyone (including self); admins only members, as in UserPolicy.
         Gate::define('manage-storage-quota', fn (User $actor, User $target): bool => $actor->role === 'owner'
             || ($actor->role === 'admin' && $actor->id !== $target->id && $target->role === 'member'));

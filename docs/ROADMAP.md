@@ -15,8 +15,8 @@ Pendiente de validar en el piloto: autologin musical con dos usuarios y un naveg
 1. QA de Komga (PR #41 fusionada).
 2. **Asistente y puente MCP** ([MCP.md](MCP.md)), siguiente integración por decisión del usuario:
    - [ ] MCP-00 RFC (PR #42): decisiones D1–D4 tomadas, pendiente de fusionar.
-   - [ ] MCP-01 Núcleo: `laravel/mcp` + `laravel/ai`, configuración solo del owner, autorización, auditoría y herramientas de lectura de metadatos.
-   - [ ] MCP-02 Chat · MCP-03 Contenido · MCP-04 Escritura con aprobación.
+   - [ ] MCP-01 Núcleo (PR apilada sobre #42): `laravel/mcp`, configuración solo del owner, autorización, límite diario, registro y herramientas de lectura de metadatos. Falta revisión del usuario y `composer audit`.
+   - [ ] MCP-02 Chat con `laravel/ai` (proveedores externos desde el entorno, historial de 30 días) · MCP-03 Contenido · MCP-04 Escritura con aprobación.
    - [ ] MCP-05 Clientes externos (necesita P03) · MCP-06 Catálogos · MCP-07 Búsqueda semántica · MCP-08 Piloto.
 3. **S04b** Publicación administrativa (tras MCP-04 o cuando el usuario decida las tres cuestiones).
 

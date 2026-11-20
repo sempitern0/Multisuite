@@ -28,6 +28,7 @@ class Navigation
             ['route' => 'users.index', 'label' => 'Personas', 'icon' => 'users', 'gate' => 'manage-invitations', 'active' => ['users.*']],
             ['route' => 'invitations.index', 'label' => 'Invitaciones', 'icon' => 'invite', 'gate' => 'manage-invitations', 'active' => ['invitations.*']],
             ['route' => 'storage.index', 'label' => 'Almacenamiento', 'icon' => 'storage', 'gate' => 'view-storage', 'active' => ['storage.*']],
+            ['route' => 'assistant.settings', 'label' => 'Asistente', 'icon' => 'diamond', 'gate' => 'manage-assistant', 'active' => ['assistant.*']],
             ['route' => 'audit.index', 'label' => 'Actividad', 'icon' => 'activity', 'gate' => 'view-admin-audit', 'active' => ['audit.*']],
         ]],
     ];

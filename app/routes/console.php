@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AssistantToolCall;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -19,3 +20,5 @@ Schedule::command('portal:files-purge')->dailyAt('03:30')->withoutOverlapping();
 
 // Long ZIP builds run in the background so other schedules are not delayed.
 Schedule::command('portal:exports-run')->everyMinute()->withoutOverlapping()->runInBackground();
+// Assistant audit rows older than 90 days (docs/MCP.md).
+Schedule::command('model:prune', ['--model' => [AssistantToolCall::class]])->dailyAt('04:10')->withoutOverlapping();

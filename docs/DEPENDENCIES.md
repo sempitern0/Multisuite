@@ -86,8 +86,8 @@ Imagen `gotson/komga:1.30.1`, licencia MIT, lector mantenido de EPUB/PDF/CBZ/CBR
 
 Fuentes: https://github.com/gotson/komga/releases/tag/1.30.1 · https://github.com/gotson/komga/blob/1.30.1/LICENSE · https://komga.org/docs/installation/docker/ · https://komga.org/docs/openapi/komga-api/
 
-## D017 — Asistente y MCP: evaluación (2026-11-20, MCP-00; sin instalar)
-Propuesta para MCP-01 y MCP-05 (docs/MCP.md). Se instalan y fijan en sus PR, con lockfiles.
+## D017 — Asistente y MCP (2026-11-20, MCP-00/MCP-01)
+`laravel/mcp` v1.2.1 **instalado en MCP-01** (composer.json y lock). `laravel/ai` se instala en MCP-02 y `laravel/passport` en MCP-05, con sus lockfiles.
 | Paquete | Versión / licencia | Uso | Mantenimiento |
 | --- | --- | --- | --- |
 | `laravel/mcp` | v1.2.1 (17-nov-2026), MIT; PHP ^8.2, Illuminate ^12.41.1\|^13.0 | Servidor MCP con herramientas, recursos y prompts; revisión 2026-07-28 con respuesta a clientes 2025-11-25/2025-06-18; pruebas con `Server::actingAs` | Primera parte de Laravel; 1.0 estable el 15-sep-2026 y cinco versiones desde octubre |
@@ -95,6 +95,6 @@ Propuesta para MCP-01 y MCP-05 (docs/MCP.md). Se instalan y fijan en sus PR, con
 | `laravel/passport` | v13.12.0 (12-nov-2026), MIT; `league/oauth2-server` ^9.2 | OAuth 2.1 para clientes MCP externos (MCP-05, tras P03) | Primera parte, versiones mensuales |
 
 Descartados: `mcp/sdk` (oficial pero anterior a 1.0 y duplicaría `laravel/mcp`), paquetes MCP de terceros con poca adopción (`opgginc/laravel-mcp-server`, `php-mcp/laravel`, solo hasta la revisión 2025-03-26) y un adaptador LLM propio. Sanctum no se añade: el chat usa la sesión web y los clientes externos, OAuth.
-Pendiente al instalar: avisos de seguridad (`composer audit`), dependencias transitivas y comprobar si `laravel/ai` usa herramientas de `laravel/mcp` en el mismo proceso.
+`laravel/mcp` no añade dependencias transitivas nuevas (solo `illuminate/console`, `illuminate/support` e `illuminate/json-schema`, ya incluidos en el framework). `composer audit` no se pudo ejecutar en el entorno del agente (API de avisos bloqueada): pendiente de ejecutar con `make composer CMD="audit --locked"`. Comprobado en el código de `laravel/ai` v1.4.1 que usa las herramientas de `laravel/mcp` en el mismo proceso (`Tools/McpServerTool`).
 
 Fuentes (consultadas 2026-11-20): https://repo.packagist.org/p2/laravel/mcp.json · https://repo.packagist.org/p2/laravel/ai.json · https://repo.packagist.org/p2/laravel/passport.json · https://laravel-news.com/laravel-mcp-1-0 · https://laravel.com/blog/introducing-laravel-ai-sdk-v1 · https://laravel.com/docs/13.x/mcp · https://laravel.com/docs/13.x/ai-sdk
