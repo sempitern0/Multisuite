@@ -59,7 +59,7 @@ class FileText
             }
         }
         // Cut on a character boundary so the next slice starts cleanly.
-        $text = mb_strcut($raw, 0, strlen($raw), 'UTF-8');
+        $text = self::withoutPartialCharacter($raw);
         $next = $offset + strlen($text);
 
         return [
@@ -113,5 +113,27 @@ class FileText
         }
 
         return substr($result->output(), 0, self::MAX_PDF_TEXT_BYTES);
+    }
+
+    /** Drops an incomplete UTF-8 character at the end of a byte slice. */
+    private static function withoutPartialCharacter(string $raw): string
+    {
+        $length = strlen($raw);
+        for ($back = 1; $back <= min(4, $length); $back++) {
+            $byte = ord($raw[$length - $back]);
+            if (($byte & 0xC0) === 0x80) {
+                continue;
+            }
+            $size = match (true) {
+                $byte >= 0xF0 => 4,
+                $byte >= 0xE0 => 3,
+                $byte >= 0xC0 => 2,
+                default => 1,
+            };
+
+            return $size > $back ? substr($raw, 0, $length - $back) : $raw;
+        }
+
+        return $raw;
     }
 }

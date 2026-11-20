@@ -2,7 +2,7 @@
 
 RFC del hito MCP-00 (2026-11-20), que sustituye al *Estudio de integración MCP* del 15 de noviembre de 2026 (hecho sobre `f633d5d`, PR #35) y lo pone al día con el estado actual y las librerías estables publicadas desde entonces.
 
-**Estado:** MCP-01 y MCP-02 implementados y validados en CI (§ Implementado, PR #44). Falta la QA del usuario con un proveedor real. No hay ruta MCP pública.
+**Estado:** MCP-01, MCP-02 y MCP-03 implementados y validados en CI (§ Implementado, PR #44). Falta la QA del usuario con un proveedor real. No hay ruta MCP pública.
 
 ## Objetivo
 - Conectar uno o varios modelos de proveedores externos que puedan **consultar y actuar sobre Multisuite** como chatbot dentro del portal y, más adelante, desde clientes MCP externos (Claude, ChatGPT, clientes locales).
@@ -106,11 +106,19 @@ Prompts previstos: `organize_my_files`, `explain_storage_usage`, `summarize_docu
 - Pruebas (`tests/Feature/Mcp/AssistantChatTest`, proveedores simulados): clave cifrada, oculta y fuera de la auditoría; solo el owner gestiona proveedores; orden y pausa; prueba de conexión; conversaciones privadas (otra persona no lee, continúa ni borra); respuesta escapada al llegar; rechazos claros sin acceso, sin proveedores o sin presupuesto; fallo del proveedor sin respuesta inventada; purga a 30 días; página solo con acceso y con CSP.
 
 ### Probar con un modelo real
-1. `make up` (aplica las migraciones) y entra como owner.
+1. `make rebuild` (añade `pdftotext` a la imagen; solo hace falta para PDF), `make composer CMD="install"`, `make artisan CMD="migrate"` y entra como owner.
 2. *Administración › Ajustes del asistente*: marca «Asistente activado» y guarda.
 3. «Añadir proveedor»: por ejemplo Anthropic con una clave creada en su consola; deja el modelo recomendado y pulsa **Probar**.
 4. Abre **Asistente** en el menú y pregunta «¿Cuánto espacio me queda?» o «Busca mis PDF».
-5. Para que otra persona lo use, pulsa **Permitir** en su fila.
+5. Para que lea contenido: marca el permiso en los ajustes, pulsa «Permitir que lea mis archivos» en la página del asistente y pide «Resume el archivo …».
+6. Para que otra persona lo use, pulsa **Permitir** en su fila.
+
+## Implementado (MCP-03)
+- Herramienta `files_read_excerpt(file_id, offset)`: texto de un archivo propio y vigente (no en la papelera ni versiones antiguas), 32 KB por llamada sin partir caracteres, con `next_offset` para seguir. Formatos: texto, Markdown, CSV, JSON y PDF. Se devuelve en `untrusted_content` con un aviso, y las instrucciones del agente le prohíben seguir órdenes que aparezcan en él.
+- `Services/Files/FileText`: lee a través de `StoredBlob` (descifra si hace falta). Los PDF (hasta 25 MB, primeras 300 páginas) se convierten con `pdftotext` de poppler en un proceso aparte, con tiempo máximo de 30 s, sin shell, desde una copia temporal privada (0600) que se borra siempre. No se guarda nada del texto.
+- D3: solo funciona si el owner marca «Permitir que el asistente lea el texto de los archivos de quien lo acepte» (`assistant_settings.content_allowed`) **y** la persona lo acepta en su página del asistente (`assistant_consents`); puede retirarlo cuando quiera. Si falta cualquiera de los dos, la herramienta no se ofrece al modelo y, si se llama igualmente, responde por qué.
+- La prueba de proveedor muestra también el código HTTP que devolvió (p. ej. 503 en «saturado»); en el registro solo quedan tipo y código.
+- Pruebas (`tests/Feature/Mcp/AssistantContentTest`): permiso del owner y consentimiento; solo archivos propios (tampoco para el owner) y no en la papelera; lectura por partes sin cortar caracteres; formatos no admitidos; PDF real extraído sin dejar copia; PDF que falla como fallo; aceptar y retirar desde la página, y el agente deja de tener la herramienta.
 
 ## Datos nuevos
 - Tablas de `laravel/ai` para conversaciones (`agent_conversations`, `agent_conversation_messages`), con retención configurable y borrado por la persona.
@@ -128,7 +136,7 @@ Cada hito tiene su rama y su PR (apilada si la anterior no está fusionada), Pin
 | **MCP-00** | Este RFC, prioridad en el ROADMAP, evaluación de dependencias | Decisiones D1–D4 tomadas (2026-11-20) |
 | **MCP-01** Núcleo ✅ | `laravel/mcp`; gate `manage-assistant` y página de configuración; autorización, presupuesto y auditoría; herramientas de lectura de metadatos; servidor MCP probado con `Server::actingAs`, sin ruta pública | Las pruebas de A/B, owner sin acceso ajeno, suspensión y no-owner que no configura pasan en CI |
 | **MCP-02** Chat ✅ | `laravel/ai`; página *Asistente* con respuesta en streaming, proveedores del owner, conmutación por error, historial propio (30 días) y presupuesto | Pruebas con los *fakes* de `laravel/ai`; QA visual del usuario con un proveedor real |
-| **MCP-03** Contenido | `files_read_excerpt` (texto, Markdown y PDF con extractor aislado) y permiso de nube | Ninguna lectura supera los límites ni sale a la nube sin permiso |
+| **MCP-03** Contenido ✅ | `files_read_excerpt` (texto, Markdown y PDF con extractor aislado) y permiso de nube | Ninguna lectura supera los límites ni sale a la nube sin permiso |
 | **MCP-04** Escritura | Crear carpeta, renombrar, papelera y restaurar con aprobación en el chat | Idempotencia y auditoría probadas; rechazar no cambia nada |
 | **MCP-05** Clientes externos | Passport + `Mcp::oauthRoutes`, pantalla de consentimiento con `x-ui::`, concesiones, revocación y límites; compatibilidad 2026-07-28 y 2025-11-25 | Necesita P03 (VPN/TLS); probado con Claude y otro cliente |
 | **MCP-06** Catálogos | Búsqueda en Navidrome y Komga con permisos reales de la persona | Sin duplicar catálogos; ACL real verificada en CI |
