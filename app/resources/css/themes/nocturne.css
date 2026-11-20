@@ -541,10 +541,24 @@
     :is(button:enabled, a[href]):active { filter: brightness(.8); }
     .ui-input { font-size: 1rem; }
     /* Loading feedback: Livewire 4 marks the element that started a request with data-loading. */
-    @keyframes ui-spin { to { transform: rotate(360deg); } }
-    :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"]) { position: relative; color: transparent !important; pointer-events: none; }
-    :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"])::after { content: ""; position: absolute; width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-color: var(--ui-text) transparent var(--ui-text) transparent; animation: ui-spin .7s linear infinite; }
-    :is(.ui-btn-primary[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn-primary[type="submit"])::after { border-color: var(--ui-accent-ink) transparent var(--ui-accent-ink) transparent; }
+    :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"]) { position: relative; cursor: progress; }
+    :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"])::after {
+        content: "";
+        width: 1em;
+        height: 1em;
+        flex: none;
+        border: 2px solid currentColor;
+        border-inline-end-color: transparent;
+        border-radius: 50%;
+        animation: ui-spin .8s linear infinite;
+    }
+    .ui-btn-icon[data-loading] svg { visibility: hidden; }
+    .ui-btn-icon[data-loading]::after { position: absolute; }
+    html[data-motion="off"] :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"])::after { content: "…"; border: 0; line-height: 1; }
+    @media (prefers-reduced-motion: reduce) {
+        html[data-motion="system"] :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"])::after { content: "…"; border: 0; line-height: 1; }
+    }
+
 
     /* Toasts */
     @keyframes ui-toast-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
@@ -645,4 +659,9 @@
         html[data-motion="system"] *, html[data-motion="system"] *::before, html[data-motion="system"] *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
     }
     html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+@keyframes ui-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
