@@ -627,7 +627,7 @@
 }
 
 .ui-results { position: relative; }
-.ui-skeleton { position: absolute; inset: 0; z-index: 1; overflow: hidden; flex-direction: column; gap: .8rem; padding: 1rem; background: var(--ui-panel); pointer-events: none; }
+.ui-skeleton { display: none; position: absolute; inset: 0; z-index: 1; overflow: hidden; flex-direction: column; gap: .8rem; padding: 1rem; background: var(--ui-panel); pointer-events: none; }
 .ui-skeleton i { width: 70%; height: .65rem; border-radius: var(--ui-radius-control); background: var(--ui-panel-3); }
 .ui-skeleton i:nth-of-type(2) { width: 48%; }
 [data-scheme="light"] :is(.ui-toast, .ui-tray, .ui-tray-badge, .ui-audio-art) { background: var(--ui-panel-2); color: var(--ui-text); }

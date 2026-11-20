@@ -51,6 +51,9 @@ async function measure() {
                 await page.waitForFunction(sel=>document.activeElement===document.querySelector(sel),{},trigger);
             }
             if (slug === 'files') {
+                if (process.env.DESIGN_REVISION === 'candidate' && await page.$eval('.ui-skeleton', el => el.getClientRects().length > 0)) {
+                    throw Error('Idle loading placeholder covers file results');
+                }
                 const actions = {};
                 await page.evaluate(() => {
                     window.designTimings = [];
