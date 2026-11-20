@@ -21,7 +21,7 @@ class UpdateAssistantSettings
     public function __construct(private AdminAudit $audit) {}
 
     /** @param list<string> $tools */
-    public function handle(User $actor, bool $enabled, array $tools, int $dailyCalls, ?int $dailyTokens = null): void
+    public function handle(User $actor, bool $enabled, array $tools, int $dailyCalls, ?int $dailyTokens = null, ?bool $contentAllowed = null): void
     {
         $unknown = array_diff($tools, array_keys(AssistantAccess::TOOLS));
         if ($unknown !== []) {
@@ -35,7 +35,7 @@ class UpdateAssistantSettings
             throw ValidationException::withMessages(['dailyTokens' => 'Elige un límite de uso válido.']);
         }
 
-        DB::transaction(function () use ($actor, $enabled, $tools, $dailyCalls, $dailyTokens): void {
+        DB::transaction(function () use ($actor, $enabled, $tools, $dailyCalls, $dailyTokens, $contentAllowed): void {
             [$actor] = LockedUsers::pair($actor->id, $actor->id);
             Gate::forUser($actor)->authorize('manage-assistant');
             $settings = AssistantSetting::current();
@@ -44,6 +44,9 @@ class UpdateAssistantSettings
             $settings->daily_calls = $dailyCalls;
             if ($dailyTokens !== null) {
                 $settings->daily_tokens = $dailyTokens;
+            }
+            if ($contentAllowed !== null) {
+                $settings->content_allowed = $contentAllowed;
             }
             if (! $settings->isDirty()) {
                 return;

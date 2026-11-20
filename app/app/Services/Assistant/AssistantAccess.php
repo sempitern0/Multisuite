@@ -24,6 +24,9 @@ class AssistantAccess
         'files_search' => 'Buscar en Mis archivos por nombre',
     ];
 
+    /** Tools that send file contents to the provider: governed by `content_allowed` and each person's consent (D3). */
+    public const CONTENT_TOOLS = ['files_read_excerpt'];
+
     /** @var array<string, string> */
     public const DENIALS = [
         'guest' => 'Necesitas iniciar sesión en Multisuite.',
@@ -34,6 +37,8 @@ class AssistantAccess
         'member' => 'No tienes acceso al asistente. Pídeselo a quien administra Multisuite.',
         'tool' => 'Esta herramienta del asistente está desactivada.',
         'budget' => 'Has llegado al límite diario de consultas del asistente. Vuelve a intentarlo mañana.',
+        'content_off' => 'Quien administra Multisuite no permite que el asistente lea el contenido de los archivos.',
+        'content_consent' => 'Para leer el contenido de tus archivos, primero acéptalo en la página del asistente.',
     ];
 
     /** Reason code from DENIALS, or null when the person may use the assistant. */
@@ -59,9 +64,43 @@ class AssistantAccess
 
     public function toolEnabled(string $tool): bool
     {
-        $enabled = AssistantSetting::current()->tools;
+        $settings = AssistantSetting::current();
+        if (in_array($tool, self::CONTENT_TOOLS, true)) {
+            return $settings->content_allowed;
+        }
 
-        return array_key_exists($tool, self::TOOLS) && ($enabled === null || in_array($tool, $enabled, true));
+        return array_key_exists($tool, self::TOOLS) && ($settings->tools === null || in_array($tool, $settings->tools, true));
+    }
+
+    /** Reason from DENIALS when the assistant may not read this person's file contents. */
+    public function contentDenial(User $user): ?string
+    {
+        return match (true) {
+            ! AssistantSetting::current()->content_allowed => 'content_off',
+            ! $this->hasAcceptedContent($user) => 'content_consent',
+            default => null,
+        };
+    }
+
+    public function hasAcceptedContent(User $user): bool
+    {
+        return DB::table('assistant_consents')->where('user_id', $user->id)->exists();
+    }
+
+    /** The person's own choice: the owner allowing it is not enough (D3). */
+    public function setContentConsent(User $user, bool $accepted): void
+    {
+        if ($accepted) {
+            DB::table('assistant_consents')->insertOrIgnore(['user_id' => $user->id, 'content_accepted_at' => now()]);
+        } else {
+            DB::table('assistant_consents')->where('user_id', $user->id)->delete();
+        }
+    }
+
+    /** Whether this tool is on and, for content tools, whether this person allows it. */
+    public function toolAvailable(User $user, string $tool): bool
+    {
+        return $this->toolEnabled($tool) && (! in_array($tool, self::CONTENT_TOOLS, true) || $this->contentDenial($user) === null);
     }
 
     public function usedToday(User $user): int

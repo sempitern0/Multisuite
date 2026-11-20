@@ -3,6 +3,7 @@
 namespace App\Mcp\Servers;
 
 use App\Mcp\Tools\FilesList;
+use App\Mcp\Tools\FilesReadExcerpt;
 use App\Mcp\Tools\FilesSearch;
 use App\Mcp\Tools\IdentityMe;
 use App\Mcp\Tools\ServicesList;
@@ -28,6 +29,7 @@ class MultisuiteServer extends Server
         StorageMyUsage::class,
         FilesList::class,
         FilesSearch::class,
+        FilesReadExcerpt::class,
     ];
 
     protected array $tools = self::TOOLS;

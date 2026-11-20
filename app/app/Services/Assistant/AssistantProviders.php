@@ -3,6 +3,8 @@
 namespace App\Services\Assistant;
 
 use App\Models\AssistantProvider;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Log;
 use Laravel\Ai\AiManager;
 use Laravel\Ai\AnonymousAgent;
 use Laravel\Ai\Exceptions\InsufficientCreditsException;
@@ -57,26 +59,45 @@ class AssistantProviders
         return $chain;
     }
 
-    /** Sends a minimal request with this provider only; returns a key of TEST_RESULTS. */
-    public function test(AssistantProvider $provider): string
+    /**
+     * Sends a minimal request with this provider only. Returns a key of TEST_RESULTS and the
+     * HTTP status the provider answered with, when there is one (shown to the owner to diagnose).
+     *
+     * @return array{result: string, status: int|null}
+     */
+    public function test(AssistantProvider $provider): array
     {
         try {
             (new AnonymousAgent('Responde únicamente con la palabra OK.', [], []))
                 ->prompt('OK', provider: [$this->build($provider) => $provider->model], timeout: 20);
 
-            return 'ok';
-        } catch (InvalidApiKeyException) {
-            return 'key';
-        } catch (RateLimitedException|InsufficientCreditsException) {
-            return 'limit';
-        } catch (ProviderOverloadedException) {
-            return 'busy';
-        } catch (ProviderConnectionException) {
-            return 'connection';
-        } catch (Throwable) {
-            // The remote answer is never shown or logged: it may echo the request.
-            return 'error';
+            return ['result' => 'ok', 'status' => null];
+        } catch (Throwable $exception) {
+            $result = match (true) {
+                $exception instanceof InvalidApiKeyException => 'key',
+                $exception instanceof RateLimitedException, $exception instanceof InsufficientCreditsException => 'limit',
+                $exception instanceof ProviderOverloadedException => 'busy',
+                $exception instanceof ProviderConnectionException => 'connection',
+                default => 'error',
+            };
+            $status = self::statusOf($exception);
+            // Type and status only: the remote message may echo the request.
+            Log::info('Assistant provider test failed.', ['driver' => $provider->driver, 'result' => $result, 'status' => $status, 'exception' => $exception::class]);
+
+            return ['result' => $result, 'status' => $status];
         }
+    }
+
+    /** HTTP status behind a provider exception, looking through wrapped exceptions. */
+    public static function statusOf(Throwable $exception): ?int
+    {
+        for ($current = $exception; $current !== null; $current = $current->getPrevious()) {
+            if ($current instanceof RequestException && $current->response !== null) {
+                return $current->response->status();
+            }
+        }
+
+        return null;
     }
 
     private function build(AssistantProvider $provider): string

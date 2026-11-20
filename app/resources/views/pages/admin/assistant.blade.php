@@ -30,6 +30,8 @@ new #[Title('Asistente')] class extends Component {
 
     public int $dailyTokens = 200000;
 
+    public bool $contentAllowed = false;
+
     /** Provider form: null id = new provider. The key is cleared after every request. */
     public ?int $providerId = null;
 
@@ -62,6 +64,7 @@ new #[Title('Asistente')] class extends Component {
         $this->tools = $settings->tools ?? array_keys(AssistantAccess::TOOLS);
         $this->dailyCalls = $settings->daily_calls;
         $this->dailyTokens = $settings->daily_tokens;
+        $this->contentAllowed = $settings->content_allowed;
     }
 
     /** @return array<int, string> */
@@ -131,8 +134,8 @@ new #[Title('Asistente')] class extends Component {
     {
         $this->throttle('admin');
         Gate::authorize('manage-assistant');
-        $result = app(AssistantProviders::class)->test(AssistantProvider::findOrFail($id));
-        $this->toast(AssistantProviders::TEST_RESULTS[$result], $result === 'ok' ? 'ok' : 'bad');
+        ['result' => $result, 'status' => $status] = app(AssistantProviders::class)->test(AssistantProvider::findOrFail($id));
+        $this->toast(AssistantProviders::TEST_RESULTS[$result].($status !== null ? ' (código '.$status.' del proveedor)' : ''), $result === 'ok' ? 'ok' : 'bad');
     }
 
     public function removeProvider(int $id): void
@@ -162,7 +165,7 @@ new #[Title('Asistente')] class extends Component {
     {
         $this->throttle('admin');
         app(UpdateAssistantSettings::class)->handle(Auth::user(), $this->enabled,
-            array_values(array_map('strval', $this->tools)), (int) $this->dailyCalls, (int) $this->dailyTokens);
+            array_values(array_map('strval', $this->tools)), (int) $this->dailyCalls, (int) $this->dailyTokens, $this->contentAllowed);
         $this->toast($this->enabled ? 'Asistente activado y guardado.' : 'Ajustes guardados. El asistente está desactivado.');
     }
 
@@ -203,7 +206,7 @@ new #[Title('Asistente')] class extends Component {
     <x-ui::stack gap="md">
         <x-ui::notice tone="info">
             El asistente actúa siempre como la persona que lo usa: solo ve sus propios archivos y servicios, también en tu caso.
-            Las preguntas y los nombres de archivos que consulte se envían al proveedor de IA que elijas; el contenido de los archivos, nunca.
+            Las preguntas y los nombres de archivos que consulte se envían al proveedor de IA que elijas; el contenido de los archivos, solo si lo permites abajo y cada persona lo acepta.
             @can('use-assistant')<x-ui::link :href="route('assistant.index')">Abrir el asistente</x-ui::link>@endcan
         </x-ui::notice>
 
@@ -215,8 +218,10 @@ new #[Title('Asistente')] class extends Component {
                     @foreach (\App\Services\Assistant\AssistantAccess::TOOLS as $tool => $label)
                         <x-ui::checkbox name="tools[]" :value="$tool" wire:model="tools" :checked="in_array($tool, $tools, true)" :label="$label" />
                     @endforeach
-                    <p class="ui-help">Solo lectura de nombres, tamaños y estados. Nunca el contenido de los archivos.</p>
+                    <p class="ui-help">Solo lectura de nombres, tamaños y estados.</p>
                 </fieldset>
+                <x-ui::checkbox name="contentAllowed" wire:model="contentAllowed" :checked="$contentAllowed" label="Permitir que el asistente lea el texto de los archivos de quien lo acepte" />
+                <p class="ui-help">Texto, Markdown, CSV, JSON y PDF, por partes. Cada persona decide en su página del asistente si lo permite para sus archivos; el texto leído se envía al proveedor de IA.</p>
                 <x-ui::select name="dailyCalls" label="Consultas a Multisuite" :options="$this->limits" wire:model="dailyCalls" :value="$dailyCalls"
                     help="Cada vez que el asistente mira tus archivos, tu espacio o tus servicios cuenta una consulta." />
                 <x-ui::select name="dailyTokens" label="Uso del proveedor de IA por persona y día" :options="$this->tokenLimits" wire:model="dailyTokens" :value="$dailyTokens"

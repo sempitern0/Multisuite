@@ -108,7 +108,7 @@ class AssistantChatTest extends TestCase
     {
         AnonymousAgent::fake(['OK']);
 
-        $this->assertSame('ok', app(AssistantProviders::class)->test($this->provider()));
+        $this->assertSame(['result' => 'ok', 'status' => null], app(AssistantProviders::class)->test($this->provider()));
     }
 
     public function test_conversations_are_private_to_each_person(): void

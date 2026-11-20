@@ -2,6 +2,8 @@
 
 use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
+use App\Models\AssistantSetting;
+use App\Services\Assistant\AssistantAccess;
 use App\Services\Assistant\AssistantChat;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -45,6 +47,26 @@ new #[Title('Asistente')] class extends Component {
 
             return new Collection;
         }
+    }
+
+    /** 'off' (the owner does not allow it), 'ask' or 'on' for this person's file contents. */
+    #[Computed]
+    public function contentState(): string
+    {
+        if (! AssistantSetting::current()->content_allowed) {
+            return 'off';
+        }
+
+        return app(AssistantAccess::class)->hasAcceptedContent(Auth::user()) ? 'on' : 'ask';
+    }
+
+    public function setContent(bool $accepted): void
+    {
+        $this->throttle('assistant');
+        abort_if($accepted && ! AssistantSetting::current()->content_allowed, 403);
+        app(AssistantAccess::class)->setContentConsent(Auth::user(), $accepted);
+        unset($this->contentState);
+        $this->toast($accepted ? 'El asistente ya puede leer el texto de tus archivos cuando se lo pidas.' : 'El asistente ya no puede leer el contenido de tus archivos.');
     }
 
     public function send(): void
@@ -109,6 +131,15 @@ new #[Title('Asistente')] class extends Component {
 <div>
     <x-ui::page-header title="Asistente" description="Pregunta por tus archivos, tu espacio o tus servicios. Solo ve lo tuyo y todavía no puede cambiar nada." />
 
+    @if ($this->contentState === 'ask')
+        <x-ui::notice tone="info">
+            ¿Quieres que el asistente pueda leer el texto de tus archivos (texto, Markdown, CSV, JSON y PDF) cuando se lo pidas? Lo que lea se envía al proveedor de IA que usa Multisuite. Puedes retirarlo cuando quieras.
+            <x-ui::button size="sm" wire:click="setContent(true)">Permitir que lea mis archivos</x-ui::button>
+        </x-ui::notice>
+    @elseif ($this->contentState === 'on')
+        <p class="ui-help">El asistente puede leer el texto de tus archivos cuando se lo pidas. <x-ui::link wire:click="setContent(false)">Dejar de permitirlo</x-ui::link></p>
+    @endif
+
     <x-ui::chat-layout>
         <x-slot:aside>
             <x-ui::button icon="plus" variant="secondary" wire:click="start" block>Nueva conversación</x-ui::button>
@@ -130,7 +161,7 @@ new #[Title('Asistente')] class extends Component {
         <div class="ui-chat" aria-live="polite">
             @if ($this->messages->isEmpty())
                 <x-ui::empty-state icon="diamond" title="¿En qué te ayudo?">
-                    Por ejemplo: «¿Cuánto espacio me queda?», «Busca mis facturas de 2026» o «¿Qué servicios tengo?».
+                    Por ejemplo: «¿Cuánto espacio me queda?», «Busca mis facturas de 2026»@if ($this->contentState === 'on'), «Resume el PDF del contrato»@endif o «¿Qué servicios tengo?».
                 </x-ui::empty-state>
             @endif
             @foreach ($this->messages as $index => $turn)

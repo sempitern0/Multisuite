@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property list<string>|null $tools Enabled tool names; null means every tool.
  * @property int $daily_calls
  * @property int $daily_tokens
+ * @property bool $content_allowed Whether people may let the assistant read their files (D3).
  */
 class AssistantSetting extends Model
 {
@@ -17,11 +18,11 @@ class AssistantSetting extends Model
 
     public $incrementing = false;
 
-    protected $attributes = ['enabled' => false, 'daily_calls' => 200, 'daily_tokens' => 200000];
+    protected $attributes = ['enabled' => false, 'daily_calls' => 200, 'daily_tokens' => 200000, 'content_allowed' => false];
 
     protected function casts(): array
     {
-        return ['enabled' => 'boolean', 'tools' => 'array', 'daily_calls' => 'integer', 'daily_tokens' => 'integer'];
+        return ['enabled' => 'boolean', 'tools' => 'array', 'daily_calls' => 'integer', 'daily_tokens' => 'integer', 'content_allowed' => 'boolean'];
     }
 
     public static function current(): self
