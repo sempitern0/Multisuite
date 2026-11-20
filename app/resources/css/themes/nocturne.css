@@ -1,3 +1,5 @@
+@import './nocturne-feedback.css';
+
 /*
  * Nocturne — Multisuite visual theme (dark only).
  * Tokens + component classes used by resources/views/themes/nocturne/components.
@@ -158,7 +160,6 @@
 
     /* Buttons */
     .ui-btn { display: inline-flex; gap: 9px; align-items: center; justify-content: center; min-height: 40px; border: 1px solid transparent; border-radius: 11px; padding: 9px 15px; white-space: nowrap; font-size: 13px; font-weight: 750; transition: transform .17s ease, border-color .17s ease, background .17s ease; cursor: pointer; }
-    .ui-btn:hover { transform: translateY(-1px); }
     .ui-btn:disabled, .ui-btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; transform: none; }
     .ui-btn svg { width: 16px; height: 16px; }
     .ui-btn-primary { background: var(--ui-accent); color: var(--ui-accent-ink); }
@@ -200,7 +201,7 @@
     /* Forms */
     .ui-field { display: block; }
     .ui-label { display: block; font-size: 12px; color: #bfccba; font-weight: 650; margin-bottom: 6px; }
-    .ui-input { display: block; width: 100%; background: #111712; color: var(--ui-text); border: 1px solid #5a675b; /* 3:1 non-text contrast */ border-radius: 10px; padding: 11px 12px; min-height: 46px; }
+    .ui-input { font-size: 1rem; display: block; width: 100%; background: #111712; color: var(--ui-text); border: 1px solid #5a675b; /* 3:1 non-text contrast */ border-radius: 10px; padding: 11px 12px; min-height: 46px; }
     .ui-input::placeholder { color: #758575; }
     .ui-input[aria-invalid="true"] { border-color: #8b4b44; }
     .ui-help { font-size: 11px; color: var(--ui-muted); margin: 8px 0 0; }
@@ -538,28 +539,6 @@
     .ui-table td[data-check] { width: 1%; padding-right: 0; }
     .ui-table td[data-check] input { accent-color: var(--ui-accent); width: 16px; height: 16px; display: block; }
 
-    :is(button:enabled, a[href]):active { filter: brightness(.8); }
-    .ui-input { font-size: 1rem; }
-    /* Loading feedback: Livewire 4 marks the element that started a request with data-loading. */
-    :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"]) { position: relative; cursor: progress; }
-    :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"])::after {
-        content: "";
-        width: 1em;
-        height: 1em;
-        flex: none;
-        border: 2px solid currentColor;
-        border-inline-end-color: transparent;
-        border-radius: 50%;
-        animation: ui-spin .8s linear infinite;
-    }
-    .ui-btn-icon[data-loading] svg { visibility: hidden; }
-    .ui-btn-icon[data-loading]::after { position: absolute; }
-    html[data-motion="off"] :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"])::after { content: "…"; border: 0; line-height: 1; }
-    @media (prefers-reduced-motion: reduce) {
-        html[data-motion="system"] :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"])::after { content: "…"; border: 0; line-height: 1; }
-    }
-
-
     /* Toasts */
     @keyframes ui-toast-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
     .ui-toasts { position: fixed; right: 22px; bottom: 24px; z-index: 90; display: grid; gap: 8px; max-width: min(380px, calc(100vw - 30px)); }
@@ -630,13 +609,13 @@
         .ui-table td[data-nowrap] { white-space: normal; }
         .ui-table .ui-segments, .ui-table .ui-meter-block { min-width: 0; flex: 1; }
         .ui-toolbar-end .ui-size-picker-compact { width: 100%; }
-        .ui-sidebar { position: fixed; inset: 0 auto 0 0; width: 272px; z-index: 50; transform: translateX(-105%); transition: transform .2s ease; padding: 23px 14px 14px; }
+        .ui-sidebar { position: fixed; inset: 0 auto 0 0; width: 272px; z-index: 50; visibility: hidden; transform: translateX(-105%); transition: transform .2s ease; padding: 23px 14px 14px; }
         .ui-sidebar .ui-hide-compact { display: block; }
         .ui-sidebar-head { justify-content: flex-start; }
         .ui-brand { justify-content: flex-start; padding: 0 11px; }
         .ui-nav-item { justify-content: flex-start; }
         .ui-person { justify-content: flex-start; }
-        .ui-nav-open .ui-sidebar { transform: translateX(0); }
+        .ui-nav-open .ui-sidebar { visibility: visible; transform: translateX(0); }
         .ui-nav-open .ui-shade { display: block; position: fixed; inset: 0; z-index: 49; background: #0009; }
         .ui-menubtn { display: grid; }
         .ui-topbar { height: 57px; padding: 0 15px; }
@@ -659,9 +638,4 @@
         html[data-motion="system"] *, html[data-motion="system"] *::before, html[data-motion="system"] *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
     }
     html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-}
-
-@keyframes ui-spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
 }
