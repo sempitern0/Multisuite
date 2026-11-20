@@ -52,6 +52,13 @@ async function measure() {
             }
             if (slug === 'files') {
                 const actions = {};
+                await page.evaluate(() => {
+                    window.designTimings = [];
+                    const events = new PerformanceObserver(list => {
+                        for (const entry of list.getEntries()) if (entry.interactionId) window.designTimings.push(entry.duration);
+                    });
+                    events.observe({type:'event', durationThreshold:16, buffered:true});
+                });
                 let updates = 0;
                 const track = req => { if (req.method() === 'POST' && req.url().includes('livewire')) updates++; };
                 page.on('request', track);
@@ -63,7 +70,11 @@ async function measure() {
                     updates = 0;
                     await action();
                     await page.waitForNetworkIdle({idleTime:800});
-                    actions[name] = updates;
+                    actions[name] = {
+                        requests: updates,
+                        // A lab event-latency sample, not a population INP percentile.
+                        maxEventMs: await page.evaluate(()=>Math.max(0,...window.designTimings.splice(0))),
+                    };
                 }
                 page.off('request', track);
                 console.log('Network interactions', actions);
