@@ -40,6 +40,6 @@ class FolderCreate extends ChangeTool
         $parent = $this->files->folder($user, isset($input['parent_folder_id']) ? (int) $input['parent_folder_id'] : null);
         $folder = $this->files->createFolder($user, $parent?->id, (string) $input['name']);
 
-        return Response::structured(['done' => true, 'folder' => ['id' => $folder->id, 'name' => $folder->name], 'inside' => $parent?->name ?? 'Mis archivos']);
+        return Response::structured(['done' => true, 'folder' => ['id' => $folder->id, 'name' => $folder->name], 'inside' => $parent === null ? 'Mis archivos' : $parent->name]);
     }
 }

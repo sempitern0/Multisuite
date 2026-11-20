@@ -2,7 +2,7 @@
 
 RFC del hito MCP-00 (2026-11-20), que sustituye al *Estudio de integración MCP* del 15 de noviembre de 2026 (hecho sobre `f633d5d`, PR #35) y lo pone al día con el estado actual y las librerías estables publicadas desde entonces.
 
-**Estado:** MCP-01, MCP-02 y MCP-03 implementados y validados en CI (§ Implementado, PR #44). Falta la QA del usuario con un proveedor real. No hay ruta MCP pública.
+**Estado:** MCP-01 a MCP-04 implementados y validados en CI (§ Implementado, PR #44). Falta la QA del usuario con un proveedor real. No hay ruta MCP pública.
 
 ## Objetivo
 - Conectar uno o varios modelos de proveedores externos que puedan **consultar y actuar sobre Multisuite** como chatbot dentro del portal y, más adelante, desde clientes MCP externos (Claude, ChatGPT, clientes locales).
@@ -69,7 +69,7 @@ Nombres con guion bajo: los proveedores (Anthropic, OpenAI) no admiten puntos en
 | `storage_my_usage` | lectura | MCP-01 | cuota y uso; nunca rutas montadas |
 | `files_list` / `files_search` | lectura | MCP-01 | `PersonalFiles` con cursor opaco propio (hoy `browse` corta en 2.000) |
 | `files_read_excerpt` | lectura de contenido | MCP-03 | `PersonalFiles::readable` + `StoredBlob`; lista de tipos, máximo 32 KiB por llamada |
-| `files_folder_create`, `files_rename`, `files_trash`, `files_restore` | escritura reversible | MCP-04 | métodos homónimos de `PersonalFiles`, con aprobación |
+| `files_folder_create`, `files_rename`, `files_trash`, `files_restore` (+ `files_trash_list`, lectura) | escritura reversible | MCP-04 | métodos homónimos de `PersonalFiles`, con aprobación |
 | `music_search`, `reading_search` | lectura de catálogo | MCP-06 | adaptadores nuevos para Navidrome y Komga con credenciales de la persona, nunca las administrativas |
 | `files_purge`, cuotas, acceso a servicios, invitaciones | destructiva o administrativa | sin fecha | fuera del MVP; si llegan: owner, verificación adicional y aprobación |
 
@@ -110,8 +110,9 @@ Prompts previstos: `organize_my_files`, `explain_storage_usage`, `summarize_docu
 2. *Administración › Ajustes del asistente*: marca «Asistente activado» y guarda.
 3. «Añadir proveedor»: por ejemplo Anthropic con una clave creada en su consola; deja el modelo recomendado y pulsa **Probar**.
 4. Abre **Asistente** en el menú y pregunta «¿Cuánto espacio me queda?» o «Busca mis PDF».
-5. Para que lea contenido: marca el permiso en los ajustes, pulsa «Permitir que lea mis archivos» en la página del asistente y pide «Resume el archivo …».
-6. Para que otra persona lo use, pulsa **Permitir** en su fila.
+5. Para que cambie cosas: activa en los ajustes lo que puede cambiar y pide, por ejemplo, «Crea una carpeta Facturas 2026»; aprueba la tarjeta.
+6. Para que lea contenido: marca el permiso en los ajustes, pulsa «Permitir que lea mis archivos» en la página del asistente y pide «Resume el archivo …».
+7. Para que otra persona lo use, pulsa **Permitir** en su fila.
 
 ## Implementado (MCP-03)
 - Herramienta `files_read_excerpt(file_id, offset)`: texto de un archivo propio y vigente (no en la papelera ni versiones antiguas), 32 KB por llamada sin partir caracteres, con `next_offset` para seguir. Formatos: texto, Markdown, CSV, JSON y PDF. Se devuelve en `untrusted_content` con un aviso, y las instrucciones del agente le prohíben seguir órdenes que aparezcan en él.
@@ -119,6 +120,14 @@ Prompts previstos: `organize_my_files`, `explain_storage_usage`, `summarize_docu
 - D3: solo funciona si el owner marca «Permitir que el asistente lea el texto de los archivos de quien lo acepte» (`assistant_settings.content_allowed`) **y** la persona lo acepta en su página del asistente (`assistant_consents`); puede retirarlo cuando quiera. Si falta cualquiera de los dos, la herramienta no se ofrece al modelo y, si se llama igualmente, responde por qué.
 - La prueba de proveedor muestra también el código HTTP que devolvió (p. ej. 503 en «saturado»); en el registro solo quedan tipo y código.
 - Pruebas (`tests/Feature/Mcp/AssistantContentTest`): permiso del owner y consentimiento; solo archivos propios (tampoco para el owner) y no en la papelera; lectura por partes sin cortar caracteres; formatos no admitidos; PDF real extraído sin dejar copia; PDF que falla como fallo; aceptar y retirar desde la página, y el agente deja de tener la herramienta.
+
+## Implementado (MCP-04)
+- Herramientas de cambio: `files_folder_create`, `files_rename` (archivos), `files_trash` y `files_restore`, más `files_trash_list` (lectura) para encontrar qué restaurar. Solo cambios reversibles: nada de borrado definitivo, cuotas, permisos ni nada fuera de Mis archivos.
+- Apagadas por defecto: el owner activa cada una en *Ajustes del asistente* («Qué puede cambiar en Mis archivos»).
+- En el chat cada una va envuelta en `Ai/Tools/ApprovalRequiredTool` (aprobaciones de `laravel/ai`): el modelo propone, la conversación se pausa y aparece una tarjeta «El asistente quiere hacer este cambio» con **Sí, hazlo** / **No, déjalo**. La descripción la genera `ChangeDescriber` con los datos propios de la persona (un id ajeno se muestra como «un archivo que no existe o no es tuyo»); del modelo solo se usa el nombre nuevo. Mientras hay cambios pendientes no se puede enviar otra pregunta.
+- `AssistantChat::decide` comprueba acceso, propiedad de la conversación, presupuesto y proveedores, y continúa la conversación con la decisión. Rechazar no cambia nada y se le dice al modelo que no insista.
+- Defensa en profundidad: `Mcp/Tools/ChangeTool` solo actúa dentro de `ApprovedChange`, que abre únicamente el envoltorio del chat al ejecutar un cambio aprobado. Llamar a la herramienta por cualquier otra vía (el servidor MCP, por ejemplo) responde «Este cambio solo se hace con tu aprobación…» y no toca nada. Los clientes MCP externos tendrán su propia aprobación en MCP-05.
+- Pruebas (`tests/Feature/Mcp/AssistantChangesTest`, proveedor simulado que pide usar herramientas): apagadas por defecto y envueltas al activarlas; ninguna otra vía cambia nada; el cambio espera a la aprobación, bloquea nuevas preguntas, solo lo decide quien es dueño de la conversación y después se hace; rechazar no cambia nada; tarjetas solo con datos propios; la página muestra el cambio y sus botones.
 
 ## Datos nuevos
 - Tablas de `laravel/ai` para conversaciones (`agent_conversations`, `agent_conversation_messages`), con retención configurable y borrado por la persona.
@@ -137,7 +146,7 @@ Cada hito tiene su rama y su PR (apilada si la anterior no está fusionada), Pin
 | **MCP-01** Núcleo ✅ | `laravel/mcp`; gate `manage-assistant` y página de configuración; autorización, presupuesto y auditoría; herramientas de lectura de metadatos; servidor MCP probado con `Server::actingAs`, sin ruta pública | Las pruebas de A/B, owner sin acceso ajeno, suspensión y no-owner que no configura pasan en CI |
 | **MCP-02** Chat ✅ | `laravel/ai`; página *Asistente* con respuesta en streaming, proveedores del owner, conmutación por error, historial propio (30 días) y presupuesto | Pruebas con los *fakes* de `laravel/ai`; QA visual del usuario con un proveedor real |
 | **MCP-03** Contenido ✅ | `files_read_excerpt` (texto, Markdown y PDF con extractor aislado) y permiso de nube | Ninguna lectura supera los límites ni sale a la nube sin permiso |
-| **MCP-04** Escritura | Crear carpeta, renombrar, papelera y restaurar con aprobación en el chat | Idempotencia y auditoría probadas; rechazar no cambia nada |
+| **MCP-04** Escritura ✅ | Crear carpeta, renombrar, papelera y restaurar con aprobación en el chat | Idempotencia y auditoría probadas; rechazar no cambia nada |
 | **MCP-05** Clientes externos | Passport + `Mcp::oauthRoutes`, pantalla de consentimiento con `x-ui::`, concesiones, revocación y límites; compatibilidad 2026-07-28 y 2025-11-25 | Necesita P03 (VPN/TLS); probado con Claude y otro cliente |
 | **MCP-06** Catálogos | Búsqueda en Navidrome y Komga con permisos reales de la persona | Sin duplicar catálogos; ACL real verificada en CI |
 | **MCP-07** Búsqueda semántica | Indexado opcional por persona, embeddings del proveedor con el permiso de D3, eventos de cambio | Borrar o mandar a la papelera retira del índice; copia y restauración probadas |

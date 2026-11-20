@@ -93,16 +93,14 @@ class AssistantChat
     public function pending(User $user, string $conversationId): array
     {
         $this->assertOwns($user, $conversationId);
+        /** @var ConversationStore&ResolvesPendingApprovals $store */
         $store = app(ConversationStore::class);
-        if (! $store instanceof ResolvesPendingApprovals) {
-            return [];
-        }
 
-        return array_values(array_map(fn (PendingApproval $approval): array => [
+        return array_map(fn (PendingApproval $approval): array => [
             'id' => $approval->id,
             'tool' => $approval->tool,
             'description' => $this->describer->describe($user, $approval->tool, $approval->arguments),
-        ], $store->pendingApprovalsFor($conversationId)));
+        ], $store->pendingApprovalsFor($conversationId));
     }
 
     /**
