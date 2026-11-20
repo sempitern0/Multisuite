@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'komga' => ['enabled' => env('KOMGA_PROVISIONING_ENABLED', false)],
     'music' => [
         'enabled' => env('NAVIDROME_PROVISIONING_ENABLED', false),
         'url' => env('NAVIDROME_INTERNAL_URL', ''),

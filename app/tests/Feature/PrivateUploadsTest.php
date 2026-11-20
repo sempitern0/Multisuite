@@ -119,6 +119,17 @@ class PrivateUploadsTest extends TestCase
         $this->assertSame(0, StoragePool::findOrFail('disk')->used_bytes);
     }
 
+    public function test_chunk_checksum_rejects_changed_bytes_and_allows_retry(): void
+    {
+        $id = (string) Str::uuid();
+        $body = 'Contenido completo de prueba.';
+        $this->actingAs($this->user)->postJson('/uploads', ['key' => $id, 'bytes' => strlen($body)])->assertCreated();
+        $headers = ['CONTENT_TYPE' => 'application/octet-stream', 'HTTP_ACCEPT' => 'application/json', 'HTTP_X_CHUNK_SHA256' => hash('sha256', $body)];
+        $this->call('PUT', '/uploads/'.$id.'?offset=0', [], [], [], $headers, str_repeat('x', strlen($body)))->assertStatus(422);
+        $this->getJson('/uploads/'.$id)->assertOk()->assertJsonPath('received', 0);
+        $this->call('PUT', '/uploads/'.$id.'?offset=0', [], [], [], $headers, $body)->assertOk()->assertJsonPath('state', 'ready')->assertJsonPath('received', strlen($body));
+    }
+
     public function test_chunks_append_in_order_resume_after_a_lost_response_and_keep_the_reservation_alive(): void
     {
         config(['nas.upload_max_bytes' => 300000]);

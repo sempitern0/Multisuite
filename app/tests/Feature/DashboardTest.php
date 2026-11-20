@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ServiceAccount;
 use App\Models\User;
+use App\Support\ServiceTiles;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -11,6 +12,20 @@ use Tests\TestCase;
 class DashboardTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_komga_is_available_to_members_and_requires_a_connection_before_launch(): void
+    {
+        config(['portal.services.komga.enabled' => true, 'provisioning.komga.enabled' => true,
+            'portal.services.komga.url' => 'http://127.0.0.1:25600']);
+        $user = User::factory()->create(['role' => 'member', 'service_access' => ['komga']]);
+        $this->actingAs($user)->get('/services/komga')->assertRedirect(route('komga.confirm'));
+        $this->assertContains('komga', array_column(ServiceTiles::forUser($user), 'id'));
+        $user->role = 'owner';
+        $user->save();
+        $this->get('/services/komga')->assertRedirect(route('komga.connect'));
+        config(['portal.services.komga.enabled' => false]);
+        $this->get('/services/komga')->assertNotFound();
+    }
 
     public function test_guests_are_redirected_to_the_login_page(): void
     {

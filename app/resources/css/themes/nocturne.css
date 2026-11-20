@@ -237,13 +237,7 @@
     .ui-tile-arrow svg { width: 16px; height: 16px; }
 
     /* Auth */
-    .ui-auth { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 48px; max-width: 1200px; margin: auto; padding: 45px; }
-    .ui-auth-visual { padding: 50px; min-height: 510px; display: flex; flex-direction: column; justify-content: space-between; background: radial-gradient(circle at 60% 15%, #4f5b28 0%, transparent 49%), linear-gradient(125deg, #283321, #151b16); border: 1px solid #43513b; border-radius: 25px; overflow: hidden; }
-    .ui-auth-visual strong { display: block; margin-top: 24px; font-size: 46px; line-height: 1.08; letter-spacing: -.065em; }
-    .ui-auth-visual em { font-style: normal; color: var(--ui-accent); }
-    .ui-auth-visual p { font-size: 15px; color: #c1cbb8; max-width: 410px; margin: 6px 0 0; }
-    .ui-auth-emblem { align-self: flex-end; width: 140px; height: 140px; color: var(--ui-accent); opacity: .65; }
-    .ui-auth-emblem svg { width: 100%; height: 100%; stroke-width: 1; }
+    .ui-auth { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 48px; max-width: 560px; margin: auto; padding: 45px; }
     .ui-auth-card { max-width: 440px; width: 100%; justify-self: center; }
     .ui-auth-logo { width: 45px; height: 45px; background: var(--ui-accent); color: var(--ui-accent-ink); border-radius: 13px; display: grid; place-items: center; margin-bottom: 30px; }
     .ui-auth-logo svg { width: 24px; height: 24px; }
@@ -544,11 +538,27 @@
     .ui-table td[data-check] { width: 1%; padding-right: 0; }
     .ui-table td[data-check] input { accent-color: var(--ui-accent); width: 16px; height: 16px; display: block; }
 
+    :is(button:enabled, a[href]):active { filter: brightness(.8); }
+    .ui-input { font-size: 1rem; }
     /* Loading feedback: Livewire 4 marks the element that started a request with data-loading. */
-    @keyframes ui-spin { to { transform: rotate(360deg); } }
-    .ui-btn[data-loading] { position: relative; color: transparent !important; pointer-events: none; }
-    .ui-btn[data-loading]::after { content: ""; position: absolute; width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-color: var(--ui-text) transparent var(--ui-text) transparent; animation: ui-spin .7s linear infinite; }
-    .ui-btn-primary[data-loading]::after { border-color: var(--ui-accent-ink) transparent var(--ui-accent-ink) transparent; }
+    :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"]) { position: relative; cursor: progress; }
+    :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"])::after {
+        content: "";
+        width: 1em;
+        height: 1em;
+        flex: none;
+        border: 2px solid currentColor;
+        border-inline-end-color: transparent;
+        border-radius: 50%;
+        animation: ui-spin .8s linear infinite;
+    }
+    .ui-btn-icon[data-loading] svg { visibility: hidden; }
+    .ui-btn-icon[data-loading]::after { position: absolute; }
+    html[data-motion="off"] :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"])::after { content: "…"; border: 0; line-height: 1; }
+    @media (prefers-reduced-motion: reduce) {
+        html[data-motion="system"] :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"])::after { content: "…"; border: 0; line-height: 1; }
+    }
+
 
     /* Toasts */
     @keyframes ui-toast-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
@@ -594,11 +604,9 @@
         .ui-topbar { padding: 0 25px; }
         .ui-content { padding: 30px 25px 70px; }
         .ui-auth { gap: 25px; padding: 30px; }
-        .ui-auth-visual { padding: 30px; }
     }
     @media (max-width: 800px) {
         .ui-service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .ui-auth-visual strong { font-size: 38px; }
     }
     @media (max-width: 700px) {
         .ui-toolbar > .ui-field { max-width: none; }
@@ -639,7 +647,6 @@
         .ui-tile-icon svg { width: 27px; height: 27px; }
         .ui-tile-title { font-size: 19px; }
         .ui-auth { display: flex; justify-content: center; padding: 35px 22px; }
-        .ui-auth-visual { display: none; }
         .ui-h1 { font-size: 30px; }
     }
     @media (max-width: 420px) {
@@ -652,4 +659,9 @@
         html[data-motion="system"] *, html[data-motion="system"] *::before, html[data-motion="system"] *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
     }
     html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+@keyframes ui-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }

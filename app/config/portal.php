@@ -1,10 +1,20 @@
 <?php
 
 return [
+    'komga_internal_url' => env('KOMGA_INTERNAL_URL', 'http://komga-gateway:8080'),
     'reading_autologin' => env('KAVITA_AUTOLOGIN_ENABLED', false),
     'music_autologin' => env('NAVIDROME_AUTOLOGIN_ENABLED', false),
     'music_session_bridge' => env('NAVIDROME_SESSION_BRIDGE_ENABLED', false),
     'services' => [
+        'komga' => [
+            'name' => 'Lectura',
+            'icon' => 'book',
+            'description' => 'Tus libros y cómics, listos para leer.',
+            'category' => 'Leer',
+            'hidden_when_disabled' => true,
+            'enabled' => env('PORTAL_KOMGA_ENABLED', false),
+            'url' => env('PORTAL_KOMGA_URL', ''),
+        ],
         'music' => [
             'name' => 'Música',
             'icon' => 'music',
@@ -15,6 +25,7 @@ return [
         ],
         'reading' => [
             'name' => 'Lectura',
+            'hidden_when_disabled' => true,
             'icon' => 'book',
             'description' => 'Novelas, cómics, manga y documentación técnica en Kavita.',
             'category' => 'Leer',

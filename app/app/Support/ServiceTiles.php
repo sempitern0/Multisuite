@@ -25,6 +25,10 @@ class ServiceTiles
         /** @var array<string, array<string, mixed>> $services */
         $services = config('portal.services', []);
         foreach ($services as $id => $service) {
+            if ((! empty($service['admin_only']) && ! in_array($user->role, ['owner', 'admin'], true))
+                || (! empty($service['hidden_when_disabled']) && empty($service['enabled']))) {
+                continue;
+            }
             $managed = (bool) config('provisioning.'.$id.'.enabled');
             // Managed services outside the invitation are not shown at all.
             if ($access !== null && $managed && ! in_array($id, $access, true)) {
@@ -34,7 +38,10 @@ class ServiceTiles
             $name = (string) ($service['name'] ?? $id);
             $tile = ['id' => (string) $id, 'name' => $name, 'icon' => (string) ($service['icon'] ?? 'grid'), 'href' => null, 'username' => $account?->username];
 
-            if ($access !== null && $managed && $account?->status !== 'ready') {
+            if ($id === 'komga' && $managed && ! empty($service['enabled']) && $account?->status !== 'ready') {
+                $tiles[] = ['href' => route('services.open', $id)] + $tile
+                    + ['status' => 'pending', 'label' => 'Preparar Lectura', 'hint' => 'Abre Lectura para completar el acceso.'];
+            } elseif ($access !== null && $managed && $account?->status !== 'ready') {
                 $tiles[] = $tile + ['status' => 'pending', 'label' => 'Cuenta pendiente de preparación', 'hint' => match ($account?->status) {
                     'expired', ServiceAccounts::AWAITING_PASSWORD => 'Sal y vuelve a entrar con tu contraseña para activarla.',
                     'pending', null => 'Se está preparando. Vuelve en unos minutos.',

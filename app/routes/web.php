@@ -55,6 +55,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
     // Profile photos from the private disk; never under /storage/ (Nginx public disk).
     Route::get('avatars/{user}/{hash}', AvatarController::class)->whereNumber('user')->where('hash', '[a-f0-9]{20}')->name('avatars.show');
+    Route::livewire('services/komga/confirm', 'pages::komga-confirm')->middleware('throttle:account-change')->name('komga.confirm');
+    Route::livewire('admin/reading-connection', 'pages::admin.komga-connection')
+        ->middleware(['can:manage-storage-pools', 'password.confirm', 'throttle:admin'])->name('komga.connect');
     Route::get('services/{service}', ServiceController::class)->where('service', '[a-z0-9-]+')->name('services.open');
 
     Route::middleware(['can:manage-invitations', 'password.confirm', 'throttle:admin'])->group(function () {

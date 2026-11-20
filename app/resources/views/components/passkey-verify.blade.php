@@ -46,7 +46,7 @@
 >
     <template x-if="supported">
         <x-ui::stack gap="md">
-            <x-ui::button variant="secondary" icon="fingerprint" block x-on:click="verify()" x-bind:disabled="loading">
+            <x-ui::button variant="secondary" icon="fingerprint" block x-on:click="verify()" x-bind:disabled="loading" x-bind:aria-busy="loading.toString()">
                 <span x-show="!loading">{{ $label }}</span><span x-show="loading" x-cloak>{{ $loadingLabel }}</span>
             </x-ui::button>
             <div x-show="error" x-cloak><x-ui::notice tone="bad"><span x-text="error"></span></x-ui::notice></div>

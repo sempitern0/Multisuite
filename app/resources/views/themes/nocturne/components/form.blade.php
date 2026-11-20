@@ -6,7 +6,7 @@
 --}}
 @php($class = 'ui-form'.($inline ? ' ui-form-inline' : ''))
 @if ($action !== null)
-    <form method="POST" action="{{ $action }}" {{ $attributes->merge(['class' => $class]) }}>
+    <form x-data="{ submitting: false }" x-on:submit="submitting = !$event.defaultPrevented" x-on:pageshow.window="submitting = false" x-bind:aria-busy="submitting.toString()" method="POST" action="{{ $action }}" {{ $attributes->merge(['class' => $class]) }}>
         @csrf
         @if (strtoupper($method) !== 'POST') @method($method) @endif
         {{ $slot }}

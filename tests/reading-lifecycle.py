@@ -20,7 +20,7 @@ with tempfile.TemporaryDirectory(prefix="multisuite-reading-") as directory:
 
     def run(target, *options):
         log.write_text("")
-        result = subprocess.run(["make", target, "HOST_PREPARE=true", "PREFLIGHT_SCRIPT=true", "STATUS_SCRIPT=true", "HTTP_CHECK=true", *options], cwd=work, env=env, capture_output=True, text=True)
+        result = subprocess.run(["make", target, "KOMGA_AUTO=0", "READING_AUTO="+("1" if (work / "reading.env").exists() else "0"), "HOST_PREPARE=true", "PREFLIGHT_SCRIPT=true", "STATUS_SCRIPT=true", "HTTP_CHECK=true", *options], cwd=work, env=env, capture_output=True, text=True)
         assert result.returncode == 0, result.stdout + result.stderr
         return log.read_text().splitlines()
 
@@ -37,7 +37,8 @@ with tempfile.TemporaryDirectory(prefix="multisuite-reading-") as directory:
     # Reading alone never starts the music stack, and READING_AUTO=0 opts out completely.
     assert all("compose.music.yaml" not in c for c in calls), calls
     calls = run("up", "READING_AUTO=0")
-    assert all("reading" not in c and "network" not in c for c in calls), calls
+    assert all("network" not in c for c in calls), calls
+    assert not any("compose.reading.yaml" in c and "up -d" in c for c in calls), calls
     # Both services: one accounts overlay for the portal, both stacks started.
     (work / "music.env").write_text("# configured\n")
     calls = run("up")

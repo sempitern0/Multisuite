@@ -11,6 +11,10 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $user_id
  * @property string $service
  * @property string $remote_id
+ * @property string|null $external_id
+ * @property string|null $remote_email
+ * @property string|null $media_id
+ * @property array<string, string>|null $library_ids
  * @property string $username
  * @property string $status
  * @property string|null $pending_password
@@ -40,6 +44,7 @@ class ServiceAccount extends Model
     {
         return [
             'pending_password' => 'encrypted',
+            'library_ids' => 'array',
             'credential_expires_at' => 'immutable_datetime',
             'retry_at' => 'immutable_datetime',
         ];

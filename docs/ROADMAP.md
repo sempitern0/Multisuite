@@ -11,7 +11,12 @@ Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_ST
 
 Pendiente de validar en el piloto: autologin musical con dos usuarios y un navegador compartido ([guía](MUSIC_SESSION_BRIDGE.md)).
 
-## Orden vigente
+## Prioridad vigente desde el 17 de noviembre de 2026
+- [ ] Evaluar Komga con los libros ya subidos (KOMGA.md). Kavita deshabilitado y reactivable.
+- [ ] Tras validar su lector: aprovisionamiento, bibliotecas privadas por usuario, escaneo servidor a servidor y acceso Komga con passkeys. El puente de contraseña para cuentas existentes está en PR #41.
+- [ ] Adaptar copia y recuperación al lector elegido.
+
+## Orden anterior pendiente de replanificar
 1. **P04.1 Lectura (Kavita)** — en revisión; falta la QA del usuario con libros reales.
 2. **S04a Puente Mis archivos → servicios** — en revisión en la PR #36; falta la QA del usuario.
 3. **S04b** — Publicación administrativa (necesita tres decisiones del usuario).
@@ -65,3 +70,7 @@ Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúm
 - [ ] Mis archivos en el navegador real: subida grande con corte de red, vídeo MP4 y MOV, explorador en móvil.
 - [ ] Puente de sesión de Música con dos personas (MUSIC_SESSION_BRIDGE.md § QA) y checklist de Navidrome con Docker real (NAVIDROME.md).
 - [ ] Discos reales: `make nas-discover`/`nas-apply`, disco lleno o retirado, y una copia real con `make nas-backup`.
+
+## Lectura · validación PR #41
+- [ ] QA del usuario: conexión inicial desde panel, invitación, cuenta anterior, subida y lectura sin segundo login.
+- [ ] Publicación administrativa de contenido global: pendiente, sin conceder bibliotecas globales del piloto a miembros.

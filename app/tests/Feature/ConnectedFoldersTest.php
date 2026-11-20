@@ -6,6 +6,7 @@ use App\Models\Folder;
 use App\Models\PrivateUpload;
 use App\Models\ServiceAccount;
 use App\Models\User;
+use App\Models\UserFile;
 use App\Models\UserStorageQuota;
 use App\Services\Files\ConnectedFolders;
 use App\Services\Files\MediaLibrary;
@@ -171,6 +172,25 @@ class ConnectedFoldersTest extends TestCase
         $this->assertSame(0, UserStorageQuota::findOrFail($this->owner->id)->used_bytes);
     }
 
+    public function test_loose_books_are_migrated_into_scannable_directories(): void
+    {
+        $account = $this->account($this->owner, 'reading');
+        app(ConnectedFolders::class)->ensure($this->owner);
+        $books = $this->connected($this->owner, 'books');
+        $this->withoutDefer();
+        $this->upload($this->owner, 'book.pdf', "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n", $books->id)->assertOk();
+        $entry = $this->entry('book.pdf');
+        $directory = $this->media($account, 'libros');
+        $target = $directory.'/_lectura-'.$entry->id.'/book.pdf';
+        $this->assertFileExists($target);
+        link($target, $directory.'/book.pdf');
+        app(MediaLibrary::class)->sync($this->owner);
+        $this->assertFileDoesNotExist($directory.'/book.pdf');
+        $this->assertSame(fileinode($target), fileinode($this->root.'/.multisuite-private/'.$entry->upload_id.'.blob'));
+        app(MediaLibrary::class)->sync($this->owner);
+        $this->assertFileExists($target);
+    }
+
     public function test_ordinary_folders_stay_encrypted_and_out_of_the_services(): void
     {
         $account = $this->account($this->owner, 'reading');
@@ -216,13 +236,38 @@ class ConnectedFoldersTest extends TestCase
         $this->upload($this->owner, 'numero 1.cbz', $zip, $this->connected($this->owner, 'comics')->id)->assertOk();
     }
 
+    public function test_reading_mirror_changes_notify_komga_with_kavita_disabled(): void
+    {
+        $account = $this->account($this->owner, 'reading');
+        app(ConnectedFolders::class)->ensure($this->owner);
+        config(['portal.services.reading.enabled' => false, 'provisioning.reading.enabled' => false]);
+        $media = app(MediaLibrary::class);
+        $media->sync($this->owner);
+        $revision = $this->root.'/.multisuite-media/reading/.multisuite-revision';
+        $before = file_get_contents($revision);
+        $media->sync($this->owner);
+        $this->assertSame($before, file_get_contents($revision));
+
+        $this->upload($this->owner, 'new.pdf', "%PDF-1.4\n%%EOF\n", $this->connected($this->owner, 'books')->id)->assertOk();
+        $media->sync($this->owner);
+        $after = file_get_contents($revision);
+        $this->assertNotSame($before, $after);
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', $after);
+        $entry = UserFile::where('name', 'new.pdf')->firstOrFail();
+        $this->assertFileExists($this->media($account, 'libros').'/_lectura-'.$entry->id.'/new.pdf');
+        $media->sync($this->owner);
+        $this->assertSame($after, file_get_contents($revision));
+        Http::assertNothingSent();
+    }
+
     public function test_a_missing_or_stray_entry_is_repaired_by_the_next_pass(): void
     {
         $account = $this->account($this->owner, 'reading');
         app(ConnectedFolders::class)->ensure($this->owner);
         $this->upload($this->owner, 'novela.pdf', "%PDF-1.4\n%%EOF\n", $this->connected($this->owner, 'books')->id)->assertOk();
         app(MediaLibrary::class)->sync($this->owner);
-        $linked = $this->media($account, 'libros').'/novela.pdf';
+        $entry = UserFile::where('name', 'novela.pdf')->firstOrFail();
+        $linked = $this->media($account, 'libros').'/_lectura-'.$entry->id.'/novela.pdf';
         unlink($linked);
         file_put_contents($this->media($account, 'libros').'/intruso.pdf', 'x');
 

@@ -79,3 +79,9 @@ Sin dependencias nuevas: la extensión `sodium` viene incluida en PHP 8.4 (image
 
 ## Política: librería antes que código propio (decisión del usuario, 2026-11-15)
 Para cada función nueva se busca primero una librería o herramienta segura, mantenida y usada por la comunidad (criterios de AGENTS.md); el código propio queda para cuando no exista una adecuada. Que el entorno del agente no alcance un registro (npm, Packagist) no es motivo para reimplementar: se pide acceso o se genera el lockfile donde haya red.
+
+## Komga 1.30.1 · 2026-11-17
+
+Imagen `gotson/komga:1.30.1`, licencia MIT, lector mantenido de EPUB/PDF/CBZ/CBR. Release estable del 10 de noviembre de 2026. Se adopta a petición del usuario para una prueba administrativa local. JVM limitada inicialmente a un heap de 512 MiB; consumo total y tiempos de análisis pendientes de medir. Sin dependencias nuevas de PHP/JavaScript. La prueba real se ejecuta en el job existente de infraestructura.
+
+Fuentes: https://github.com/gotson/komga/releases/tag/1.30.1 · https://github.com/gotson/komga/blob/1.30.1/LICENSE · https://komga.org/docs/installation/docker/ · https://komga.org/docs/openapi/komga-api/
