@@ -40,7 +40,11 @@ async function measure() {
             if (slug === 'dashboard' && process.env.DESIGN_REVISION === 'candidate') {
                 await page.setViewport({width:360,height:860});
                 const trigger = '[aria-controls="portal-nav"]';
+                await page.bringToFront();
+                await page.waitForSelector(trigger, {visible:true});
+                await page.waitForFunction(() => window.Alpine && window.Livewire && matchMedia('(max-width: 700px)').matches);
                 await page.focus(trigger);
+                await page.waitForFunction(sel=>document.activeElement===document.querySelector(sel),{},trigger);
                 await page.keyboard.press('Enter');
                 await page.waitForFunction(()=>document.querySelector('#portal-nav').contains(document.activeElement));
                 for (let step=0;step<12;step++) {
