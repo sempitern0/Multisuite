@@ -16,7 +16,7 @@ Validado en CI: formato, análisis estático, pruebas de aplicación, integraci�
 
 ## En revisión · PR #42 MCP-00
 
-RFC del asistente y del puente MCP ([MCP.md](MCP.md)): configuración solo del propietario, herramientas sobre los servicios del dominio con los permisos de quien las usa, `laravel/ai` para el chat con uno o varios modelos y `laravel/mcp` para clientes externos tras la red privada. Solo documentación; decisiones D1–D4 tomadas el 2026-11-20 (owner elige personas, claves en el entorno, solo proveedores externos, historial de 30 días).
+RFC del asistente y del puente MCP ([MCP.md](MCP.md)): configuración solo del propietario, herramientas sobre los servicios del dominio con los permisos de quien las usa, `laravel/ai` para el chat con uno o varios modelos y `laravel/mcp` para clientes externos tras la red privada. Solo documentación; decisiones D1–D4 tomadas el 2026-11-20 (owner elige personas, proveedores y claves configurados por el owner en Multisuite, solo proveedores externos, historial de 30 días).
 
 ## Próximos pasos
 
