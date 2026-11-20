@@ -10,6 +10,8 @@ jobs:
   browser:
     if: github.head_ref == 'feat/nocturne-interactions'
     runs-on: ubuntu-latest
+    env:
+      DESIGN_REVISION: ${{ matrix.revision }}
     timeout-minutes: 35
     strategy:
       fail-fast: false
@@ -48,6 +50,12 @@ jobs:
           cd "$RUNNER_TEMP"
           npm install --no-audit --no-fund --no-save puppeteer-core@24.12.1 lighthouse@12.8.2 axe-core@4.10.3
           node measure.cjs
+      - name: Audit locked application dependencies
+        if: matrix.revision == 'candidate' && always()
+        working-directory: app
+        run: |
+          composer audit --locked
+          npm audit --audit-level=high
       - uses: actions/upload-artifact@v4
         if: always()
         with:
