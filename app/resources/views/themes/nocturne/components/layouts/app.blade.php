@@ -10,8 +10,8 @@
     </head>
     <body class="antialiased" x-data x-on:ui-preferences.window="Object.entries($event.detail.attributes).forEach(([name, value]) => document.documentElement.setAttribute(name, value))">
         <a href="#contenido" class="ui-skip">Saltar al contenido</a>
-        <div class="ui-shell" data-layout="app" x-data="{ navOpen: false }" x-bind:class="navOpen && 'ui-nav-open'" x-on:keydown.escape.window="if (navOpen) { navOpen = false; $refs.menuTrigger.focus() }">
-            <aside id="portal-nav" class="ui-sidebar" aria-label="Navegación principal">
+        <div class="ui-shell" data-layout="app" x-data="{ navOpen: false }" x-on:resize.window.debounce.100ms="if (innerWidth > 700) navOpen = false" x-bind:class="navOpen && 'ui-nav-open'" x-on:keydown.escape.window="if (navOpen) { navOpen = false; $refs.menuTrigger.focus() }">
+            <aside x-trap.inert.noscroll="navOpen" id="portal-nav" class="ui-sidebar" aria-label="Navegación principal">
                 <div class="ui-sidebar-head">
                     <a href="{{ $navigation['home'] }}" wire:navigate x-ref="navHome" class="ui-brand">
                         <span class="ui-brandmark"><x-ui::icon name="diamond" /></span>
@@ -60,6 +60,7 @@
                     <p class="ui-topbar-title">Multisuite @if (filled($title)) <span aria-hidden="true">/</span> <strong>{{ $title }}</strong>@endif</p>
                 </header>
                 <main id="contenido" class="ui-content" tabindex="-1">
+                    <p wire:offline class="ui-notice ui-notice-warn" role="status">Sin conexión. Vuelve a conectarte al NAS para guardar cambios.</p>
                     {{ $slot }}
                 </main>
             </div>
