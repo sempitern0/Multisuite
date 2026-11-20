@@ -39,7 +39,7 @@ Chat Livewire ──► laravel/ai (agente, proveedor elegido por el owner)   [M
 ## Configuración (solo `owner`)
 Página *Administración › Asistente*, protegida con el gate `manage-assistant` (solo `owner`) en cada petición:
 - Activar o desactivar el asistente.
-- **Proveedores y modelos** (MCP-02): uno o varios de los configurados por el operador en el entorno (D2), con modelo por defecto y lista de conmutación por error. Solo proveedores externos (D3).
+- **Proveedores y modelos** (MCP-02): alta, prueba, orden de conmutación por error y baja desde la página (D2). Solo proveedores externos (D3).
 - **Personas**: quién puede usarlo (el propietario siempre) y límite diario de consultas por persona; el de tokens llega con el chat.
 - **Herramientas**: las de lectura activas; las de escritura se activan una a una. Las administrativas no existen en el MVP.
 - **Privacidad** (MCP-02/03): si se permite enviar *contenido* de archivos al proveedor (D3) y la retención del historial.
@@ -99,10 +99,11 @@ Prompts previstos: `organize_my_files`, `explain_storage_usage`, `summarize_docu
 
 ## Datos nuevos
 - Tablas de `laravel/ai` para conversaciones (`agent_conversations`, `agent_conversation_messages`), con retención configurable y borrado por la persona.
-- `assistant_settings` (una fila: activo, herramientas, límite diario) y `assistant_members` (persona y quién concedió el acceso). Las claves de proveedor solo en el entorno (D2).
+- `assistant_settings` (una fila: activo, herramientas, límite diario) y `assistant_members` (persona y quién concedió el acceso).
+- `assistant_providers` (MCP-02): proveedor, modelo, orden, activo, clave cifrada y sus últimos 4 caracteres para reconocerla (D2).
 - `assistant_tool_calls`: herramienta, persona, resultado, duración y fecha; sirve de límite diario y de registro, y se purga a los 90 días (`model:prune`). Nunca argumentos, contenido, nombres de archivo, rutas ni respuestas del modelo. El cliente (chat o externo) se añadirá con MCP-05.
 - MCP-05: `agent_clients`, `agent_grants`, `agent_approvals`.
-- Todas entran en la copia de seguridad de la base de datos; las claves no (viven en `.env`).
+- Todas entran en la copia de seguridad de la base de datos; las claves van cifradas y no se pueden leer sin `APP_KEY`, que no está en la copia.
 
 ## Plan por PR
 Cada hito tiene su rama y su PR (apilada si la anterior no está fusionada), Pint, PHPStan nivel 7 y pruebas. Se fusiona solo con la aprobación del usuario.
@@ -120,9 +121,16 @@ Cada hito tiene su rama y su PR (apilada si la anterior no está fusionada), Pin
 | **MCP-08** Piloto | Dos personas, dos dispositivos, red privada | QA real y vuelta atrás ensayada |
 
 
+## Proveedores (MCP-02, D2 y D3)
+- Alta desde *Administración › Asistente* (solo owner, con confirmación de contraseña reciente): proveedor de una lista cerrada con endpoint oficial fijo (Anthropic, OpenAI, Gemini, Mistral, DeepSeek, Groq, xAI, OpenRouter), modelo, clave y orden. Sin URL personalizada ni `openai-compatible` en el MVP: una URL elegida en la página sería una puerta a SSRF.
+- La clave es un campo de solo escritura: se cifra con el cifrado de Laravel (`APP_KEY`, cast `encrypted`), nunca vuelve al navegador, a los registros, a la auditoría ni a los mensajes de error. Se muestra solo «…abcd». Cambiarla es escribir otra; borrar el proveedor la elimina.
+- **Probar conexión**: una petición mínima con tiempo máximo; el resultado se resume (válida, clave rechazada, modelo inexistente, límite del proveedor, sin conexión) sin reenviar la respuesta remota.
+- En cada conversación se construye el proveedor al vuelo con `Ai::build()` de `laravel/ai` y la lista activa en orden es la conmutación por error. Nombres internos que no coinciden con los proveedores de `config/ai.php`.
+- Altas, cambios (sin valores) y bajas quedan en *Actividad*. Rotar `APP_KEY` sin `APP_PREVIOUS_KEYS` obliga a volver a escribir las claves.
+
 ## Decisiones del usuario (2026-11-20)
 - **D1. Quién usa el chat:** el owner elige a las personas; por defecto, solo él.
-- **D2. Claves de proveedores:** solo en variables de entorno (`.env` del operador). La página elige entre los proveedores configurados y nunca muestra ni guarda claves.
+- **D2. Proveedores y claves (revisada el mismo día):** el owner da de alta los proveedores desde Multisuite (*Administración › Asistente*), sin tocar el servidor. Las claves se guardan cifradas en la base de datos, se escriben pero nunca se vuelven a mostrar y no se registran en ningún sitio (ver § Proveedores). Sustituye a la primera respuesta («solo en variables de entorno»).
 - **D3. Proveedores:** solo externos (Anthropic, OpenAI, Gemini…); no se ofrece modelo local porque en un VPS estándar no da resultados fiables. Los metadatos van al proveedor; el *contenido* de archivos (MCP-03) solo si el owner lo permite y la persona lo acepta.
 - **D4. Historial:** 30 días; cada persona puede borrar sus conversaciones.
 
