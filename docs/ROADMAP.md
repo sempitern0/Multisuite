@@ -12,9 +12,9 @@ Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_ST
 Pendiente de validar en el piloto: autologin musical con dos usuarios y un navegador compartido ([guía](MUSIC_SESSION_BRIDGE.md)).
 
 ## Prioridad vigente desde el 20 de noviembre de 2026
-1. **Cerrar PR #41 (Komga)** con la QA pendiente.
+1. QA de Komga (PR #41 fusionada).
 2. **Asistente y puente MCP** ([MCP.md](MCP.md)), siguiente integración por decisión del usuario:
-   - [ ] MCP-00 RFC (PR en revisión, apilada sobre #41): resolver las decisiones D1–D4.
+   - [ ] MCP-00 RFC (PR #42): decisiones D1–D4 tomadas, pendiente de fusionar.
    - [ ] MCP-01 Núcleo: `laravel/mcp` + `laravel/ai`, configuración solo del owner, autorización, auditoría y herramientas de lectura de metadatos.
    - [ ] MCP-02 Chat · MCP-03 Contenido · MCP-04 Escritura con aprobación.
    - [ ] MCP-05 Clientes externos (necesita P03) · MCP-06 Catálogos · MCP-07 Búsqueda semántica · MCP-08 Piloto.

@@ -91,7 +91,7 @@ Propuesta para MCP-01 y MCP-05 (docs/MCP.md). Se instalan y fijan en sus PR, con
 | Paquete | Versión / licencia | Uso | Mantenimiento |
 | --- | --- | --- | --- |
 | `laravel/mcp` | v1.2.1 (17-nov-2026), MIT; PHP ^8.2, Illuminate ^12.41.1\|^13.0 | Servidor MCP con herramientas, recursos y prompts; revisión 2026-07-28 con respuesta a clientes 2025-11-25/2025-06-18; pruebas con `Server::actingAs` | Primera parte de Laravel; 1.0 estable el 15-sep-2026 y cinco versiones desde octubre |
-| `laravel/ai` | v1.4.1 (13-nov-2026), MIT; PHP ^8.3, Illuminate ^12\|^13 | Chat: proveedores (Ollama, OpenAI-compatible, Anthropic, OpenAI, Gemini…), conmutación por error, conversaciones, streaming, aprobación de herramientas, *fakes* para pruebas | Primera parte; 1.0 estable el 23-sep-2026 y versiones frecuentes |
+| `laravel/ai` | v1.4.1 (13-nov-2026), MIT; PHP ^8.3, Illuminate ^12\|^13 | Chat: proveedores externos (Anthropic, OpenAI, Gemini…; D3), conmutación por error, conversaciones, streaming, aprobación de herramientas, *fakes* para pruebas | Primera parte; 1.0 estable el 23-sep-2026 y versiones frecuentes |
 | `laravel/passport` | v13.12.0 (12-nov-2026), MIT; `league/oauth2-server` ^9.2 | OAuth 2.1 para clientes MCP externos (MCP-05, tras P03) | Primera parte, versiones mensuales |
 
 Descartados: `mcp/sdk` (oficial pero anterior a 1.0 y duplicaría `laravel/mcp`), paquetes MCP de terceros con poca adopción (`opgginc/laravel-mcp-server`, `php-mcp/laravel`, solo hasta la revisión 2025-03-26) y un adaptador LLM propio. Sanctum no se añade: el chat usa la sesión web y los clientes externos, OAuth.
