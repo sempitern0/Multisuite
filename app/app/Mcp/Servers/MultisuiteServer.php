@@ -4,7 +4,12 @@ namespace App\Mcp\Servers;
 
 use App\Mcp\Tools\FilesList;
 use App\Mcp\Tools\FilesReadExcerpt;
+use App\Mcp\Tools\FilesRename;
+use App\Mcp\Tools\FilesRestore;
 use App\Mcp\Tools\FilesSearch;
+use App\Mcp\Tools\FilesTrash;
+use App\Mcp\Tools\FilesTrashList;
+use App\Mcp\Tools\FolderCreate;
 use App\Mcp\Tools\IdentityMe;
 use App\Mcp\Tools\ServicesList;
 use App\Mcp\Tools\StorageMyUsage;
@@ -30,6 +35,11 @@ class MultisuiteServer extends Server
         FilesList::class,
         FilesSearch::class,
         FilesReadExcerpt::class,
+        FilesTrashList::class,
+        FolderCreate::class,
+        FilesRename::class,
+        FilesTrash::class,
+        FilesRestore::class,
     ];
 
     protected array $tools = self::TOOLS;

@@ -10,6 +10,11 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Approvals\Decision;
+use Laravel\Ai\Approvals\Decisions;
+use Laravel\Ai\Approvals\PendingApproval;
+use Laravel\Ai\Contracts\ConversationStore;
+use Laravel\Ai\Contracts\ResolvesPendingApprovals;
 use Laravel\Ai\Exceptions\InsufficientCreditsException;
 use Laravel\Ai\Exceptions\InvalidApiKeyException;
 use Laravel\Ai\Exceptions\ProviderConnectionException;
@@ -40,9 +45,11 @@ class AssistantChat
         'limit' => 'El proveedor de IA ha alcanzado su límite de uso. Prueba más tarde.',
         'unavailable' => 'El proveedor de IA no responde ahora mismo. Prueba de nuevo en unos minutos.',
         'failed' => 'No se ha podido obtener respuesta. Prueba de nuevo; si sigue pasando, avisa a quien administra Multisuite.',
+        'pending' => 'Antes de seguir, aprueba o rechaza los cambios que ha propuesto el asistente.',
+        'nothing' => 'No hay ningún cambio pendiente de aprobar en esta conversación.',
     ];
 
-    public function __construct(private AssistantAccess $access, private AssistantProviders $providers) {}
+    public function __construct(private AssistantAccess $access, private AssistantProviders $providers, private ChangeDescriber $describer) {}
 
     /** @return Collection<int, stdClass> id, title, updated_at */
     public function conversations(User $user): Collection
@@ -69,6 +76,60 @@ class AssistantChat
      */
     public function send(User $user, ?string $conversationId, string $message, ?Closure $onDelta = null): array
     {
+        $chain = $this->ready($user, $conversationId);
+        if ($conversationId !== null && $this->pending($user, $conversationId) !== []) {
+            throw new RuntimeException(self::ERRORS['pending']);
+        }
+
+        return $this->run($user, $conversationId, $message, $chain, $onDelta);
+    }
+
+    /**
+     * Changes the assistant proposed and is waiting to make, described from the person's own
+     * data (names are looked up here, never taken from the model).
+     *
+     * @return list<array{id: string, tool: string, description: string}>
+     */
+    public function pending(User $user, string $conversationId): array
+    {
+        $this->assertOwns($user, $conversationId);
+        $store = app(ConversationStore::class);
+        if (! $store instanceof ResolvesPendingApprovals) {
+            return [];
+        }
+
+        return array_values(array_map(fn (PendingApproval $approval): array => [
+            'id' => $approval->id,
+            'tool' => $approval->tool,
+            'description' => $this->describer->describe($user, $approval->tool, $approval->arguments),
+        ], $store->pendingApprovalsFor($conversationId)));
+    }
+
+    /**
+     * Approves or rejects every pending change of a conversation and lets the assistant
+     * continue. Only the person who owns the conversation can decide.
+     *
+     * @param  Closure(string): void|null  $onDelta
+     * @return array{conversation: string, text: string}
+     */
+    public function decide(User $user, string $conversationId, bool $approve, ?Closure $onDelta = null): array
+    {
+        $chain = $this->ready($user, $conversationId);
+        if ($this->pending($user, $conversationId) === []) {
+            throw new RuntimeException(self::ERRORS['nothing']);
+        }
+        $decisions = $approve ? Decision::approveAll() : Decision::rejectAll('La persona no ha aprobado este cambio. No lo intentes de nuevo salvo que te lo pida.');
+
+        return $this->run($user, $conversationId, $decisions, $chain, $onDelta);
+    }
+
+    /**
+     * Access, ownership, budget and providers, in that order.
+     *
+     * @return array<string, string>
+     */
+    private function ready(User $user, ?string $conversationId): array
+    {
         $denial = $this->access->denial($user);
         if ($denial !== null) {
             throw new RuntimeException(AssistantAccess::DENIALS[$denial]);
@@ -84,9 +145,19 @@ class AssistantChat
             throw new RuntimeException(self::ERRORS['providers']);
         }
 
+        return $chain;
+    }
+
+    /**
+     * @param  array<string, string>  $chain
+     * @param  Closure(string): void|null  $onDelta
+     * @return array{conversation: string, text: string}
+     */
+    private function run(User $user, ?string $conversationId, string|Decisions $prompt, array $chain, ?Closure $onDelta): array
+    {
         $agent = (new MultisuiteAssistant($user))->continueOrStart($conversationId, as: $user);
         try {
-            $response = $agent->stream($message, provider: $chain, timeout: 90);
+            $response = $agent->stream($prompt, provider: $chain, timeout: 90);
             foreach ($response as $event) {
                 if ($event instanceof TextDelta && $onDelta !== null) {
                     $onDelta(e($event->delta));

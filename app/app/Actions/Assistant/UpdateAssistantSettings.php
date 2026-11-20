@@ -23,7 +23,8 @@ class UpdateAssistantSettings
     /** @param list<string> $tools */
     public function handle(User $actor, bool $enabled, array $tools, int $dailyCalls, ?int $dailyTokens = null, ?bool $contentAllowed = null): void
     {
-        $unknown = array_diff($tools, array_keys(AssistantAccess::TOOLS));
+        $known = [...array_keys(AssistantAccess::TOOLS), ...array_keys(AssistantAccess::WRITE_TOOLS)];
+        $unknown = array_diff($tools, $known);
         if ($unknown !== []) {
             throw ValidationException::withMessages(['tools' => 'Hay herramientas que no existen.']);
         }
@@ -35,12 +36,12 @@ class UpdateAssistantSettings
             throw ValidationException::withMessages(['dailyTokens' => 'Elige un límite de uso válido.']);
         }
 
-        DB::transaction(function () use ($actor, $enabled, $tools, $dailyCalls, $dailyTokens, $contentAllowed): void {
+        DB::transaction(function () use ($actor, $enabled, $tools, $known, $dailyCalls, $dailyTokens, $contentAllowed): void {
             [$actor] = LockedUsers::pair($actor->id, $actor->id);
             Gate::forUser($actor)->authorize('manage-assistant');
             $settings = AssistantSetting::current();
             $settings->enabled = $enabled;
-            $settings->tools = array_values(array_intersect(array_keys(AssistantAccess::TOOLS), $tools));
+            $settings->tools = array_values(array_intersect($known, $tools));
             $settings->daily_calls = $dailyCalls;
             if ($dailyTokens !== null) {
                 $settings->daily_tokens = $dailyTokens;

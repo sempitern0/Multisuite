@@ -61,6 +61,7 @@ new #[Title('Asistente')] class extends Component {
     {
         $settings = AssistantSetting::current();
         $this->enabled = $settings->enabled;
+        // Read tools default to on; change tools stay off until the owner chooses them.
         $this->tools = $settings->tools ?? array_keys(AssistantAccess::TOOLS);
         $this->dailyCalls = $settings->daily_calls;
         $this->dailyTokens = $settings->daily_tokens;
@@ -219,6 +220,13 @@ new #[Title('Asistente')] class extends Component {
                         <x-ui::checkbox name="tools[]" :value="$tool" wire:model="tools" :checked="in_array($tool, $tools, true)" :label="$label" />
                     @endforeach
                     <p class="ui-help">Solo lectura de nombres, tamaños y estados.</p>
+                </fieldset>
+                <fieldset>
+                    <legend class="ui-label">Qué puede cambiar en Mis archivos</legend>
+                    @foreach (\App\Services\Assistant\AssistantAccess::WRITE_TOOLS as $tool => $label)
+                        <x-ui::checkbox name="tools[]" :value="$tool" wire:model="tools" :checked="in_array($tool, $tools, true)" :label="$label" />
+                    @endforeach
+                    <p class="ui-help">Cada cambio se le enseña a la persona y solo se hace si lo aprueba. Nunca borra nada definitivamente.</p>
                 </fieldset>
                 <x-ui::checkbox name="contentAllowed" wire:model="contentAllowed" :checked="$contentAllowed" label="Permitir que el asistente lea el texto de los archivos de quien lo acepte" />
                 <p class="ui-help">Texto, Markdown, CSV, JSON y PDF, por partes. Cada persona decide en su página del asistente si lo permite para sus archivos; el texto leído se envía al proveedor de IA.</p>

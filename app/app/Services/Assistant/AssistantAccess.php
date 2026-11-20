@@ -22,6 +22,20 @@ class AssistantAccess
         'storage_my_usage' => 'Espacio usado y disponible de cada persona',
         'files_list' => 'Carpetas y archivos de Mis archivos (nombres, tipos y tamaños; nunca el contenido)',
         'files_search' => 'Buscar en Mis archivos por nombre',
+        'files_trash_list' => 'Ver qué hay en la papelera de cada persona',
+    ];
+
+    /**
+     * Tools that change Mis archivos (MCP-04). Off until the owner turns each one on, and every
+     * call waits for the person's approval in the chat (ApprovalRequiredTool). Only reversible changes.
+     *
+     * @var array<string, string>
+     */
+    public const WRITE_TOOLS = [
+        'files_folder_create' => 'Crear carpetas',
+        'files_rename' => 'Cambiar el nombre de archivos',
+        'files_trash' => 'Mandar archivos a la papelera',
+        'files_restore' => 'Sacar archivos de la papelera',
     ];
 
     /** Tools that send file contents to the provider: governed by `content_allowed` and each person's consent (D3). */
@@ -39,6 +53,7 @@ class AssistantAccess
         'budget' => 'Has llegado al límite diario de consultas del asistente. Vuelve a intentarlo mañana.',
         'content_off' => 'Quien administra Multisuite no permite que el asistente lea el contenido de los archivos.',
         'content_consent' => 'Para leer el contenido de tus archivos, primero acéptalo en la página del asistente.',
+        'approval' => 'Este cambio solo se hace con tu aprobación desde la página del asistente.',
     ];
 
     /** Reason code from DENIALS, or null when the person may use the assistant. */
@@ -67,6 +82,10 @@ class AssistantAccess
         $settings = AssistantSetting::current();
         if (in_array($tool, self::CONTENT_TOOLS, true)) {
             return $settings->content_allowed;
+        }
+
+        if (array_key_exists($tool, self::WRITE_TOOLS)) {
+            return in_array($tool, $settings->tools ?? [], true);
         }
 
         return array_key_exists($tool, self::TOOLS) && ($settings->tools === null || in_array($tool, $settings->tools, true));

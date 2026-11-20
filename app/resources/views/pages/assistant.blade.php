@@ -49,6 +49,37 @@ new #[Title('Asistente')] class extends Component {
         }
     }
 
+    /** @return list<array{id: string, tool: string, description: string}> */
+    #[Computed]
+    public function pending(): array
+    {
+        if ($this->conversation === null) {
+            return [];
+        }
+        try {
+            return app(AssistantChat::class)->pending(Auth::user(), $this->conversation);
+        } catch (RuntimeException) {
+            return [];
+        }
+    }
+
+    /** Approves or rejects every proposed change; the answer streams like a normal reply. */
+    public function decide(bool $approve): void
+    {
+        $this->throttle('assistant');
+        if ($this->conversation === null) {
+            return;
+        }
+        try {
+            $result = app(AssistantChat::class)->decide(Auth::user(), $this->conversation, $approve,
+                fn (string $delta) => $this->stream(to: 'answer', content: $delta));
+            $this->conversation = $result['conversation'];
+        } catch (RuntimeException $exception) {
+            $this->toast($exception->getMessage(), 'bad');
+        }
+        unset($this->conversations, $this->messages, $this->pending);
+    }
+
     /** 'off' (the owner does not allow it), 'ask' or 'on' for this person's file contents. */
     #[Computed]
     public function contentState(): string
@@ -88,7 +119,7 @@ new #[Title('Asistente')] class extends Component {
             $this->message = $text;
             $this->addError('message', $exception->getMessage());
         }
-        unset($this->conversations, $this->messages);
+        unset($this->conversations, $this->messages, $this->pending);
     }
 
     public function start(): void
@@ -129,7 +160,7 @@ new #[Title('Asistente')] class extends Component {
 }; ?>
 
 <div>
-    <x-ui::page-header title="Asistente" description="Pregunta por tus archivos, tu espacio o tus servicios. Solo ve lo tuyo y todavía no puede cambiar nada." />
+    <x-ui::page-header title="Asistente" description="Pregunta por tus archivos, tu espacio o tus servicios. Solo ve lo tuyo y no cambia nada sin que lo apruebes." />
 
     @if ($this->contentState === 'ask')
         <x-ui::notice tone="info">
@@ -171,6 +202,25 @@ new #[Title('Asistente')] class extends Component {
                     <x-ui::chat-message role="assistant" author="Asistente" wire:key="turn-{{ $index }}"><x-ui::prose>{!! $this->answer($turn->content) !!}</x-ui::prose></x-ui::chat-message>
                 @endif
             @endforeach
+            @if ($this->pending !== [])
+                <x-ui::panel tone="dashed" role="group" aria-label="Cambios pendientes de aprobación">
+                    <x-ui::stack gap="md">
+                        <x-ui::heading :level="3">El asistente quiere hacer {{ count($this->pending) === 1 ? 'este cambio' : 'estos cambios' }}</x-ui::heading>
+                        <x-ui::list>
+                            @foreach ($this->pending as $change)
+                                <li wire:key="pending-{{ $change['id'] }}">{{ $change['description'] }}</li>
+                            @endforeach
+                        </x-ui::list>
+                        <x-ui::actions>
+                            <x-ui::button variant="ghost" wire:click="decide(false)" wire:loading.attr="disabled" wire:target="decide">No, déjalo</x-ui::button>
+                            <x-ui::button icon="check" wire:click="decide(true)" wire:loading.attr="disabled" wire:target="decide">Sí, hazlo</x-ui::button>
+                        </x-ui::actions>
+                    </x-ui::stack>
+                </x-ui::panel>
+            @endif
+            <div wire:loading.flex wire:target="decide" class="ui-chat">
+                <x-ui::chat-message role="assistant" author="Asistente"><span class="ui-chat-stream" wire:stream="answer"></span><x-ui::sr>Escribiendo…</x-ui::sr></x-ui::chat-message>
+            </div>
             <div wire:loading.flex wire:target="send" class="ui-chat">
                 <x-ui::chat-message role="user" author="Tú"><span wire:stream="question"></span></x-ui::chat-message>
                 <x-ui::chat-message role="assistant" author="Asistente"><span class="ui-chat-stream" wire:stream="answer"></span><x-ui::sr>Escribiendo…</x-ui::sr></x-ui::chat-message>
