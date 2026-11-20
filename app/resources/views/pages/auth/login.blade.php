@@ -1,4 +1,4 @@
-<x-layouts::auth title="Entrar" eyebrow="Bienvenido de nuevo" heading="Entra en Multisuite" description="Usa tu usuario o tu correo y tu contraseña.">
+<x-layouts::auth title="Entrar" heading="Entra en Multisuite">
     @if (session('status'))
         <x-ui::notice>{{ session('status') }}</x-ui::notice>
     @endif
@@ -6,7 +6,7 @@
     <x-passkey-verify :label="__('Entrar con una llave de acceso')" :loading-label="__('Comprobando…')" :separator="__('O entra con tu contraseña')" />
 
     <x-ui::form :action="route('login.store')">
-        <x-ui::field name="email" label="Usuario o correo electrónico" required autofocus autocomplete="username" placeholder="tony o tony@example.com" />
+        <x-ui::field name="email" label="Usuario o correo electrónico" required autofocus autocomplete="username" autocapitalize="none" spellcheck="false" />
         <x-ui::password name="password" label="Contraseña" required autocomplete="current-password" />
         <x-ui::checkbox name="remember" label="Recordarme en este dispositivo" />
         <x-ui::button type="submit" block data-test="login-button">Entrar</x-ui::button>
