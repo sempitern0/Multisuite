@@ -654,6 +654,22 @@
         .ui-tile-title { font-size: 18px; }
         .ui-auth-title { font-size: 30px; }
     }
+    /* Assistant chat */
+    .ui-textarea { min-height: 92px; resize: vertical; line-height: 1.5; }
+    .ui-chat { display: flex; flex-direction: column; gap: 14px; }
+    .ui-chat-msg { display: flex; }
+    .ui-chat-msg-user { justify-content: flex-end; }
+    .ui-chat-bubble { max-width: min(72ch, 92%); padding: 12px 15px; border-radius: 16px; line-height: 1.6; overflow-wrap: anywhere; }
+    .ui-chat-msg-user .ui-chat-bubble { background: var(--ui-accent-soft); color: var(--ui-text); border: 1px solid var(--ui-line); border-bottom-right-radius: 6px; white-space: pre-wrap; }
+    .ui-chat-msg-assistant .ui-chat-bubble { background: var(--ui-panel-2); color: var(--ui-text); border: 1px solid var(--ui-line); border-bottom-left-radius: 6px; }
+    .ui-chat-bubble .ui-prose { max-width: none; }
+    .ui-chat-bubble .ui-prose > :first-child { margin-top: 0; }
+    .ui-chat-bubble .ui-prose > :last-child { margin-bottom: 0; }
+    .ui-chat-stream { white-space: pre-wrap; }
+    .ui-chat-layout { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: 18px; align-items: start; }
+    .ui-chat-aside { display: flex; flex-direction: column; gap: 8px; }
+    .ui-chat-main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+    @media (max-width: 860px) { .ui-chat-layout { grid-template-columns: minmax(0, 1fr); } }
     /* Motion: data-motion on <html> comes from the person's preferences (system | on | off). */
     @media (prefers-reduced-motion: reduce) {
         html[data-motion="system"] *, html[data-motion="system"] *::before, html[data-motion="system"] *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }

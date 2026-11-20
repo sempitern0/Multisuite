@@ -22,3 +22,5 @@ Schedule::command('portal:files-purge')->dailyAt('03:30')->withoutOverlapping();
 Schedule::command('portal:exports-run')->everyMinute()->withoutOverlapping()->runInBackground();
 // Assistant audit rows older than 90 days (docs/MCP.md).
 Schedule::command('model:prune', ['--model' => [AssistantToolCall::class]])->dailyAt('04:10')->withoutOverlapping();
+// Assistant conversations untouched for 30 days (decision D4).
+Schedule::command('portal:assistant-prune')->dailyAt('04:20')->withoutOverlapping();

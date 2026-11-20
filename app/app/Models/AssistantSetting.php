@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property bool $enabled
  * @property list<string>|null $tools Enabled tool names; null means every tool.
  * @property int $daily_calls
+ * @property int $daily_tokens
  */
 class AssistantSetting extends Model
 {
@@ -16,11 +17,11 @@ class AssistantSetting extends Model
 
     public $incrementing = false;
 
-    protected $attributes = ['enabled' => false, 'daily_calls' => 200];
+    protected $attributes = ['enabled' => false, 'daily_calls' => 200, 'daily_tokens' => 200000];
 
     protected function casts(): array
     {
-        return ['enabled' => 'boolean', 'tools' => 'array', 'daily_calls' => 'integer'];
+        return ['enabled' => 'boolean', 'tools' => 'array', 'daily_calls' => 'integer', 'daily_tokens' => 'integer'];
     }
 
     public static function current(): self

@@ -22,13 +22,14 @@ class Navigation
         ['group' => null, 'items' => [
             ['route' => 'dashboard', 'label' => 'Servicios', 'icon' => 'grid', 'gate' => null, 'active' => ['dashboard']],
             ['route' => 'files.index', 'label' => 'Mis archivos', 'icon' => 'folder', 'gate' => null, 'active' => ['files.*']],
+            ['route' => 'assistant.index', 'label' => 'Asistente', 'icon' => 'diamond', 'gate' => 'use-assistant', 'active' => ['assistant.index']],
         ]],
         ['group' => 'Administración', 'items' => [
             ['route' => 'komga.connect', 'label' => 'Conexión de Lectura', 'icon' => 'book', 'gate' => 'manage-storage-pools', 'active' => ['komga.connect']],
             ['route' => 'users.index', 'label' => 'Personas', 'icon' => 'users', 'gate' => 'manage-invitations', 'active' => ['users.*']],
             ['route' => 'invitations.index', 'label' => 'Invitaciones', 'icon' => 'invite', 'gate' => 'manage-invitations', 'active' => ['invitations.*']],
             ['route' => 'storage.index', 'label' => 'Almacenamiento', 'icon' => 'storage', 'gate' => 'view-storage', 'active' => ['storage.*']],
-            ['route' => 'assistant.settings', 'label' => 'Asistente', 'icon' => 'diamond', 'gate' => 'manage-assistant', 'active' => ['assistant.*']],
+            ['route' => 'assistant.settings', 'label' => 'Ajustes del asistente', 'icon' => 'settings', 'gate' => 'manage-assistant', 'active' => ['assistant.settings']],
             ['route' => 'audit.index', 'label' => 'Actividad', 'icon' => 'activity', 'gate' => 'view-admin-audit', 'active' => ['audit.*']],
         ]],
     ];

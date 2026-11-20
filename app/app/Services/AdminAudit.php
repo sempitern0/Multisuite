@@ -32,6 +32,8 @@ class AdminAudit
         'assistant.updated' => 'Asistente configurado',
         'assistant.member_added' => 'Acceso al asistente concedido',
         'assistant.member_removed' => 'Acceso al asistente retirado',
+        'assistant.provider_saved' => 'Proveedor de IA guardado',
+        'assistant.provider_removed' => 'Proveedor de IA eliminado',
     ];
 
     /** @return array<string, string> */
