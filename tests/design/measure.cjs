@@ -5,7 +5,7 @@ const base = 'http://127.0.0.1:8000';
 const out = 'design-results';
 async function measure() {
     const {default: lighthouse} = await import('lighthouse');
-    const browser = await puppeteer.launch({executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox']});
+    const browser = await puppeteer.launch({executablePath: '/usr/bin/google-chrome', timeout:90000, args: ['--no-sandbox']});
     fs.mkdirSync(out, {recursive: true});
     const rows = [];
     const critical = [];
@@ -23,14 +23,32 @@ async function measure() {
                 await page.setViewport({width, height: 860});
                 for (const scheme of ['light','dark']) {
                     await page.emulateMediaFeatures([{name:'prefers-color-scheme',value:scheme},{name:'prefers-reduced-motion',value:'reduce'}]);
+                    // Wait for media change listeners, style recalculation and a paint.
+                    await page.evaluate(() => new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+                    if (process.env.DESIGN_REVISION === 'candidate') {
+                        await page.waitForFunction(s => document.documentElement.dataset.scheme === s, {}, scheme);
+                    }
                     if (width === 1280) {
                         await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});
-                        const findings = await page.evaluate(async () => (await axe.run()).violations.map(({id,impact,nodes})=>({id,impact,count:nodes.length})));
+                        const findings = await page.evaluate(async () => (await axe.run()).violations.map(({id,impact,nodes})=>({id,impact,targets:nodes.map(n=>n.target)})));
                         fs.writeFileSync(out+'/'+slug+'-'+scheme+'-axe.json', JSON.stringify(findings,null,2));
                         critical.push(...findings.filter(v=>v.impact==='critical'));
                     }
                     await page.screenshot({path: out + '/' + [slug,width,scheme].join('-') + '.png'});
                 }
+            }
+            if (slug === 'dashboard' && process.env.DESIGN_REVISION === 'candidate') {
+                await page.setViewport({width:360,height:860});
+                const trigger = '[aria-controls="portal-nav"]';
+                await page.focus(trigger);
+                await page.keyboard.press('Enter');
+                await page.waitForFunction(()=>document.querySelector('#portal-nav').contains(document.activeElement));
+                for (let step=0;step<12;step++) {
+                    await page.keyboard.press('Tab');
+                    if (!await page.evaluate(()=>document.querySelector('#portal-nav').contains(document.activeElement))) throw Error('Mobile focus escaped');
+                }
+                await page.keyboard.press('Escape');
+                await page.waitForFunction(sel=>document.activeElement===document.querySelector(sel),{},trigger);
             }
             if (slug === 'files') {
                 const actions = {};

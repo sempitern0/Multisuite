@@ -22,7 +22,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Keep identical measurement harness
-        run: cp tests/design/measure.cjs "$RUNNER_TEMP/measure.cjs"
+        run: cp tests/design/*.cjs "$RUNNER_TEMP/"
       - uses: actions/checkout@v4
         with:
           ref: ${{ matrix.revision == 'baseline' && 'c27e0b6fdad0c8f445df05ffe9acd6251c065c7f' || github.event.pull_request.head.sha }}
@@ -45,7 +45,8 @@ jobs:
           php artisan key:generate
           touch database/database.sqlite
           php artisan migrate --seed --force
-          php artisan serve --host=127.0.0.1 --port=8000 > "$RUNNER_TEMP/server.log" 2>&1 &
+          php artisan serve --host=127.0.0.1 --port=8001 > "$RUNNER_TEMP/server.log" 2>&1 &
+          node "$RUNNER_TEMP/serve.cjs" &
           for i in {1..30}; do curl -fsS http://127.0.0.1:8000/login >/dev/null && break; sleep 1; done
           cd "$RUNNER_TEMP"
           npm install --no-audit --no-fund --no-save puppeteer-core@24.12.1 lighthouse@12.8.2 axe-core@4.10.3

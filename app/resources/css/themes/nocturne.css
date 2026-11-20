@@ -236,7 +236,7 @@
     /* Page entrance: the single orchestrated moment, replayed on each SPA navigation. */
     @keyframes ui-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
     /* backwards, not both: a transform kept after the animation would anchor fixed elements (upload tray, drop zone) to the content instead of the window. */
-    .ui-content { animation: ui-enter .32s cubic-bezier(.2, .7, .2, 1) backwards; }
+    .ui-content { animation: ui-enter .2s cubic-bezier(.2, .7, .2, 1) backwards; }
 
     /* Toolbar & inputs */
     .ui-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
@@ -277,7 +277,6 @@
     .ui-table th { text-align: left; font-size: 11px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--ui-muted); padding: 13px 16px; border-bottom: 1px solid var(--ui-line); white-space: nowrap; }
     .ui-table td { padding: 14px 16px; border-bottom: 1px solid #29322a; vertical-align: middle; }
     .ui-table tbody tr:last-child td { border-bottom: 0; }
-    .ui-table tbody tr {  }
     .ui-table tbody tr:hover { background: var(--ui-panel-2); }
     .ui-table td[data-align="end"], .ui-table th[data-align="end"] { text-align: right; width: 1%; white-space: nowrap; }
     .ui-cell-actions { display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
@@ -357,12 +356,12 @@
     .ui-uploader-pick { cursor: pointer; }
     .ui-uploader-pick:focus-within { outline: 2px solid var(--ui-accent); outline-offset: 3px; }
     /* Explorer: filter bar, view switch and tiles. */
-    .ui-segmented { display: inline-flex; padding: 4px; gap: 4px; border: 1px solid var(--ui-line); border-radius: 13px; background: #0f140f; }
+    .ui-segmented { display: inline-flex; padding: 4px; gap: 4px; border: 1px solid var(--ui-line); border-radius: 13px; background: var(--ui-bg-2); }
     .ui-segmented > .ui-btn { border-color: transparent; min-height: 38px; padding-inline: 12px; color: var(--ui-sub); }
     .ui-segmented > .ui-btn svg { width: 18px; height: 18px; }
     .ui-segmented > .ui-btn[aria-pressed="true"] { background: var(--ui-accent); color: var(--ui-accent-ink); }
     /* Command bar and selection bar: the controls of a list, set apart from its content. */
-    .ui-toolbar-surface { padding: 14px 16px; border: 1px solid #2b342c; border-radius: 16px; background: #141a15; }
+    .ui-toolbar-surface { padding: 14px 16px; border: 1px solid #2b342c; border-radius: 16px; background: var(--ui-panel); }
     .ui-toolbar-surface .ui-label { font-size: 12px; }
     .ui-command-stack { display: grid; }
     .ui-command-stack > * { grid-area: 1 / 1; min-width: 0; }
@@ -469,7 +468,7 @@
     /* New files glow briefly in the listing so they are easy to find. */
     @keyframes ui-fresh { from { background: #2f3d22; } to { background: transparent; } }
     .ui-table tbody tr[data-fresh] { animation: ui-fresh 2.6s ease-out; }
-    .ui-table tbody tr[data-fresh] .ui-entry::after { content: "Nuevo"; margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: #2b3a20; color: var(--ui-accent); font-size: 11px; font-weight: 750; }
+    .ui-table tbody tr[data-fresh] .ui-entry::after { content: "Nuevo"; margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: var(--ui-accent-soft); color: var(--ui-accent); font-size: 11px; font-weight: 750; }
     .ui-preview { overflow: hidden; }
     .ui-viewer { background: var(--ui-bg-2); }
     .ui-viewer-stage { position: relative; height: clamp(320px, calc(100dvh - 260px), 80vh); overflow: hidden; cursor: grab; touch-action: pan-y; overscroll-behavior: contain; user-select: none; }
