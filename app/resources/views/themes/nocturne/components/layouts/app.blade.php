@@ -12,11 +12,22 @@
         <a href="#contenido" class="ui-skip">Saltar al contenido</a>
         <div class="ui-shell" data-layout="app" x-data="{
             navOpen: false,
+            syncNav() {
+                const drawer = this.$refs.drawer;
+                if (matchMedia('(max-width: 700px)').matches) {
+                    if (!this.navOpen && drawer.open) drawer.close();
+                } else {
+                    if (this.navOpen) this.closeNav();
+                    if (!drawer.open) drawer.show();
+                }
+            },
             openNav() {
                 this.navOpen = true;
-                this.$nextTick(() => requestAnimationFrame(() => this.$refs.closeMenu.focus()));
+                this.$refs.drawer.showModal();
+                this.$refs.closeMenu.focus();
             },
             closeNav() {
+                this.$refs.drawer.close();
                 this.navOpen = false;
                 this.$nextTick(() => this.$refs.menuTrigger.focus());
             },
@@ -27,7 +38,8 @@
                 if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
                 if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
             }
-        }" x-on:resize.window.debounce.100ms="if (innerWidth > 700) navOpen = false" x-bind:class="navOpen && 'ui-nav-open'" x-on:keydown.escape.window="if (navOpen) { closeNav() }">
+        }" x-init="$nextTick(() => syncNav())" x-on:resize.window.debounce.100ms="syncNav()" x-bind:class="navOpen && 'ui-nav-open'">
+            <dialog open class="ui-nav-dialog" x-ref="drawer" aria-label="Menú principal" x-on:cancel.prevent="closeNav()" x-on:click.self="if (navOpen) closeNav()">
             <aside x-ref="sidebar" x-on:keydown.tab="cycleNav($event)" id="portal-nav" class="ui-sidebar" aria-label="Navegación principal">
                 <div class="ui-sidebar-head">
                     <a href="{{ $navigation['home'] }}" wire:navigate x-ref="navHome" class="ui-brand">
@@ -70,8 +82,8 @@
                     </form>
                 </div>
             </aside>
-            <div class="ui-shade" x-on:click="closeNav()" aria-hidden="true"></div>
-            <div class="ui-main" x-bind:inert="navOpen">
+            </dialog>
+            <div class="ui-main">
                 <header class="ui-topbar">
                     <button type="button" class="ui-iconbtn ui-menubtn" x-ref="menuTrigger" x-on:click="openNav()" aria-controls="portal-nav" x-bind:aria-expanded="navOpen.toString()" aria-label="Abrir el menú"><x-ui::icon name="menu" /></button>
                     <p class="ui-topbar-title">Multisuite @if (filled($title)) <span aria-hidden="true">/</span> <strong>{{ $title }}</strong>@endif</p>
