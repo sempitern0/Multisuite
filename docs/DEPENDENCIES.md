@@ -87,7 +87,7 @@ Imagen `gotson/komga:1.30.1`, licencia MIT, lector mantenido de EPUB/PDF/CBZ/CBR
 Fuentes: https://github.com/gotson/komga/releases/tag/1.30.1 · https://github.com/gotson/komga/blob/1.30.1/LICENSE · https://komga.org/docs/installation/docker/ · https://komga.org/docs/openapi/komga-api/
 
 ## D017 — Asistente y MCP (2026-11-20, MCP-00/MCP-01)
-`laravel/mcp` v1.2.1 **instalado en MCP-01** (composer.json y lock). `laravel/ai` se instala en MCP-02 y `laravel/passport` en MCP-05, con sus lockfiles.
+`laravel/mcp` v1.2.1 y `laravel/ai` v1.4.1 **instalados** (MCP-01 y MCP-02, PR #44; composer.json y lock). `laravel/ai` añade `symfony/yaml` v8.1.11 (MIT, de Symfony, ya en su ecosistema). `laravel/passport` se instalará en MCP-05. Su migración de conversaciones se copió a `database/migrations` y `config/ai.php` deja la lista de proveedores vacía (D2).
 | Paquete | Versión / licencia | Uso | Mantenimiento |
 | --- | --- | --- | --- |
 | `laravel/mcp` | v1.2.1 (17-nov-2026), MIT; PHP ^8.2, Illuminate ^12.41.1\|^13.0 | Servidor MCP con herramientas, recursos y prompts; revisión 2026-07-28 con respuesta a clientes 2025-11-25/2025-06-18; pruebas con `Server::actingAs` | Primera parte de Laravel; 1.0 estable el 15-sep-2026 y cinco versiones desde octubre |

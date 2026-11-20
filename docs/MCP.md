@@ -2,7 +2,7 @@
 
 RFC del hito MCP-00 (2026-11-20), que sustituye al *Estudio de integración MCP* del 15 de noviembre de 2026 (hecho sobre `f633d5d`, PR #35) y lo pone al día con el estado actual y las librerías estables publicadas desde entonces.
 
-**Estado:** MCP-01 implementado y validado en CI (ver § Implementado). No hay chat ni ruta MCP pública todavía.
+**Estado:** MCP-01 y MCP-02 implementados y validados en CI (§ Implementado, PR #44). Falta la QA del usuario con un proveedor real. No hay ruta MCP pública.
 
 ## Objetivo
 - Conectar uno o varios modelos de proveedores externos que puedan **consultar y actuar sobre Multisuite** como chatbot dentro del portal y, más adelante, desde clientes MCP externos (Claude, ChatGPT, clientes locales).
@@ -97,6 +97,21 @@ Prompts previstos: `organize_my_files`, `explain_storage_usage`, `summarize_docu
 - *Administración › Asistente* (solo owner, con confirmación de contraseña): activar, herramientas activas, límite diario por persona (50–1000) y quién puede usarlo, con consultas del día. Cambios en *Actividad*.
 - Pruebas (`tests/Feature/Mcp/AssistantToolsTest`): sin activar no hay herramientas; solo el owner y las personas elegidas; A no ve archivos de B ni el owner los de nadie; suspensión y contraseña inicial cortan la siguiente llamada; herramienta desactivada y límite diario; argumentos inválidos como fallo; paginación; un admin no configura ni concede acceso.
 
+## Implementado (MCP-02)
+- `laravel/ai` v1.4.1. Agente `App\Ai\Agents\MultisuiteAssistant`: instrucciones en español, aviso de que los nombres de archivos son datos y no órdenes, y las herramientas activas de MCP-01 envueltas con `McpServerTool` (mismo proceso, mismas comprobaciones).
+- Proveedores desde *Administración › Asistente* (D2): lista cerrada de controladores con dirección oficial fija, modelo recomendado editable, clave cifrada de solo escritura («…abcd»), orden de conmutación por error, pausa, **Probar** y baja. `config/ai.php` no tiene proveedores: cada conversación los construye con `AiManager::build()`.
+- Página **Asistente** (`/assistant`, gate `use-assistant`): respuesta progresiva (`wire:stream`, cada trozo escapado antes de insertarse), historial a la izquierda, borrar conversación, Intro para enviar. La respuesta final se muestra como Markdown saneado y la página no carga imágenes remotas (CSP `img-src 'self' data:`), para que una respuesta manipulada no pueda llamar a un servidor externo.
+- `AssistantChat`: comprueba acceso, propiedad de la conversación (también al leer y borrar), límite diario de tokens y que haya proveedores; los fallos del proveedor se muestran como fallo con un mensaje claro, y en el registro solo queda el tipo de error.
+- Historial: tablas de `laravel/ai`, sin títulos generados por el modelo; `portal:assistant-prune` borra a diario lo que lleve 30 días sin uso (D4). Uso por persona y día en `assistant_usage`.
+- Pruebas (`tests/Feature/Mcp/AssistantChatTest`, proveedores simulados): clave cifrada, oculta y fuera de la auditoría; solo el owner gestiona proveedores; orden y pausa; prueba de conexión; conversaciones privadas (otra persona no lee, continúa ni borra); respuesta escapada al llegar; rechazos claros sin acceso, sin proveedores o sin presupuesto; fallo del proveedor sin respuesta inventada; purga a 30 días; página solo con acceso y con CSP.
+
+### Probar con un modelo real
+1. `make up` (aplica las migraciones) y entra como owner.
+2. *Administración › Ajustes del asistente*: marca «Asistente activado» y guarda.
+3. «Añadir proveedor»: por ejemplo Anthropic con una clave creada en su consola; deja el modelo recomendado y pulsa **Probar**.
+4. Abre **Asistente** en el menú y pregunta «¿Cuánto espacio me queda?» o «Busca mis PDF».
+5. Para que otra persona lo use, pulsa **Permitir** en su fila.
+
 ## Datos nuevos
 - Tablas de `laravel/ai` para conversaciones (`agent_conversations`, `agent_conversation_messages`), con retención configurable y borrado por la persona.
 - `assistant_settings` (una fila: activo, herramientas, límite diario) y `assistant_members` (persona y quién concedió el acceso).
@@ -111,8 +126,8 @@ Cada hito tiene su rama y su PR (apilada si la anterior no está fusionada), Pin
 | Hito | Alcance | Se cierra cuando |
 | --- | --- | --- |
 | **MCP-00** | Este RFC, prioridad en el ROADMAP, evaluación de dependencias | Decisiones D1–D4 tomadas (2026-11-20) |
-| **MCP-01** Núcleo | `laravel/mcp`; gate `manage-assistant` y página de configuración; autorización, presupuesto y auditoría; herramientas de lectura de metadatos; servidor MCP probado con `Server::actingAs`, sin ruta pública | Las pruebas de A/B, owner sin acceso ajeno, suspensión y no-owner que no configura pasan en CI |
-| **MCP-02** Chat | `laravel/ai`; página *Asistente* con respuesta en streaming, proveedores del owner, conmutación por error, historial propio (30 días) y presupuesto | Pruebas con los *fakes* de `laravel/ai`; QA visual del usuario con un proveedor real |
+| **MCP-01** Núcleo ✅ | `laravel/mcp`; gate `manage-assistant` y página de configuración; autorización, presupuesto y auditoría; herramientas de lectura de metadatos; servidor MCP probado con `Server::actingAs`, sin ruta pública | Las pruebas de A/B, owner sin acceso ajeno, suspensión y no-owner que no configura pasan en CI |
+| **MCP-02** Chat ✅ | `laravel/ai`; página *Asistente* con respuesta en streaming, proveedores del owner, conmutación por error, historial propio (30 días) y presupuesto | Pruebas con los *fakes* de `laravel/ai`; QA visual del usuario con un proveedor real |
 | **MCP-03** Contenido | `files_read_excerpt` (texto, Markdown y PDF con extractor aislado) y permiso de nube | Ninguna lectura supera los límites ni sale a la nube sin permiso |
 | **MCP-04** Escritura | Crear carpeta, renombrar, papelera y restaurar con aprobación en el chat | Idempotencia y auditoría probadas; rechazar no cambia nada |
 | **MCP-05** Clientes externos | Passport + `Mcp::oauthRoutes`, pantalla de consentimiento con `x-ui::`, concesiones, revocación y límites; compatibilidad 2026-07-28 y 2025-11-25 | Necesita P03 (VPN/TLS); probado con Claude y otro cliente |

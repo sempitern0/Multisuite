@@ -103,7 +103,7 @@ class AssistantChat
             Log::warning('Assistant answer failed.', ['exception' => $exception::class]);
             throw new RuntimeException(self::ERRORS['failed']);
         }
-        $this->recordUsage($user, $response->usage?->inputTokens ?? 0, $response->usage?->outputTokens ?? 0);
+        $this->recordUsage($user, $response->usage->inputTokens ?? 0, $response->usage->outputTokens ?? 0);
 
         return ['conversation' => (string) ($response->conversationId ?? $conversationId), 'text' => (string) $response->text];
     }
@@ -143,11 +143,7 @@ class AssistantChat
         $key = ['user_id' => $user->id, 'day' => now()->toDateString()];
         // Insert-or-ignore then increment: safe when two answers finish at the same time.
         DB::table('assistant_usage')->insertOrIgnore($key + ['prompts' => 0, 'input_tokens' => 0, 'output_tokens' => 0]);
-        DB::table('assistant_usage')->where($key)->update([
-            'prompts' => DB::raw('prompts + 1'),
-            'input_tokens' => DB::raw('input_tokens + '.max(0, $input)),
-            'output_tokens' => DB::raw('output_tokens + '.max(0, $output)),
-        ]);
+        DB::table('assistant_usage')->where($key)->incrementEach(['prompts' => 1, 'input_tokens' => max(0, $input), 'output_tokens' => max(0, $output)]);
     }
 
     private function owned(User $user): Builder
