@@ -1,6 +1,6 @@
 # Roadmap de Multisuite
 
-Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_STATUS.md) y en git. Revisión 2026-11-20.
+Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_STATUS.md) y en git. Revisión 2026-11-21.
 
 ## Contrato del producto (no cambia sin decisión explícita del usuario)
 - Portal Laravel/Livewire privado para propietario, familia y amistades: portada de servicios, invitaciones, cuentas, almacenamiento y auditoría.
@@ -12,18 +12,17 @@ Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_ST
 Pendiente de validar en el piloto: autologin musical con dos usuarios y un navegador compartido ([guía](MUSIC_SESSION_BRIDGE.md)).
 
 ## Prioridad vigente desde el 20 de noviembre de 2026
-1. QA de Komga (PR #41 fusionada).
+1. QA de Komga.
 2. **Asistente y puente MCP** ([MCP.md](MCP.md)), siguiente integración por decisión del usuario:
-   - [ ] MCP-00 RFC (PR #42): decisiones D1–D4 tomadas, pendiente de fusionar.
-   - [ ] MCP-01 a MCP-07 (PR #44, apilada sobre #42): implementados y validados en CI. Falta la QA del usuario con un proveedor real (MCP.md § Probar con un modelo real) y `composer audit`.
+   - [ ] QA del usuario de MCP-01 a MCP-07 (fusionados en #42 y #44) con un proveedor real (MCP.md § Probar con un modelo real) y `composer audit`.
    - [ ] QA de clientes externos (MCP-05) con Claude/ChatGPT cuando exista P03.
-   - [ ] Límite de peticiones en `/oauth/register` y un único dueño del borrado del índice (`AssistantAccess::setContentConsent` duplica `SemanticIndex::forget`), pendientes de la revisión de calidad de #44.
+   - [ ] Límite de peticiones en `/oauth/register` y un único dueño del borrado del índice (`AssistantAccess::setContentConsent` duplica `SemanticIndex::forget`), pendientes de la revisión de calidad de #44 (sin PR propia; ir con el siguiente incremento del asistente).
    - [ ] MCP-08 Piloto: dos personas, dos dispositivos, red privada.
 3. **S04b** Publicación administrativa (tras MCP-04 o cuando el usuario decida las tres cuestiones).
 
 ## Lectura (Komga)
 - [ ] Evaluar Komga con los libros ya subidos (KOMGA.md). Kavita deshabilitado y reactivable.
-- [ ] Tras validar su lector: aprovisionamiento, bibliotecas privadas por usuario, escaneo servidor a servidor y acceso Komga con passkeys. El puente de contraseña para cuentas existentes está en PR #41.
+- [ ] Tras validar su lector: aprovisionamiento, bibliotecas privadas por usuario, escaneo servidor a servidor y acceso Komga con passkeys. El puente de contraseña para cuentas existentes ya está en main.
 - [ ] Adaptar copia y recuperación al lector elegido.
 
 ## Después

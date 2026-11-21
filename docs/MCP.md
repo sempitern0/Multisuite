@@ -2,7 +2,7 @@
 
 RFC del hito MCP-00 (2026-11-20), que sustituye al *Estudio de integración MCP* del 15 de noviembre de 2026 (hecho sobre `f633d5d`, PR #35) y lo pone al día con el estado actual y las librerías estables publicadas desde entonces.
 
-**Estado:** MCP-01 a MCP-07 implementados y validados en CI (§ Implementado, PR #44). Falta la QA del usuario con un proveedor real; la de clientes externos (MCP-05) la hará más adelante, cuando exista la red privada (P03).
+**Estado:** MCP-01 a MCP-07 implementados, validados en CI y fusionados en main (§ Implementado, PR #42 y #44). Falta la QA del usuario con un proveedor real; la de clientes externos (MCP-05) la hará más adelante, cuando exista la red privada (P03).
 
 ## Objetivo
 - Conectar uno o varios modelos de proveedores externos que puedan **consultar y actuar sobre Multisuite** como chatbot dentro del portal y, más adelante, desde clientes MCP externos (Claude, ChatGPT, clientes locales).
