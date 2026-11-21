@@ -338,7 +338,8 @@ new #[Title('Mis archivos')] class extends Component {
                 $emptyText = $l['searching'] || $kind !== '' ? 'Nada coincide con la búsqueda o el filtro.' : 'Esta carpeta está vacía. Sube archivos o arrástralos aquí.';
             @endphp
 
-            <div data-range-select>
+            <div class="ui-results" data-range-select>
+            <x-ui::skeleton wire:loading.delay.flex wire:target="search,kind,sort,toggleDirection" />
             @if ($l['view'] === 'details')
                 <x-ui::table label="Contenido de la carpeta" quiet>
                     <x-slot:head>
@@ -421,7 +422,11 @@ new #[Title('Mis archivos')] class extends Component {
                 </x-ui::form>
                 <x-ui::separator />
                 <x-ui::text tone="muted">Solo se pueden eliminar carpetas vacías.</x-ui::text>
-                <x-ui::button variant="danger" icon="trash" wire:click="deleteFolder">Eliminar carpeta</x-ui::button>
+                <x-ui::confirm title="¿Eliminar esta carpeta vacía?">
+                    <x-slot:trigger><x-ui::button variant="danger" icon="trash">Eliminar carpeta</x-ui::button></x-slot:trigger>
+                    La carpeta se eliminará de Mis archivos.
+                    <x-slot:action><x-ui::button variant="danger" wire:click="deleteFolder">Eliminar carpeta</x-ui::button></x-slot:action>
+                </x-ui::confirm>
             </x-ui::stack>
         </x-ui::dialog>
     @endif

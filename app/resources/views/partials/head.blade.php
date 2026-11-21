@@ -10,5 +10,8 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
 {{-- Typography belongs to the active theme (system stack in Nocturne): no web fonts. --}}
+@include('partials.color-scheme')
 @vite(['resources/css/app.css', 'resources/js/app.js'])
-{{-- The active theme is dark-only: no light/dark switcher (@fluxAppearance) on purpose. --}}
+@if (request()->routeIs('two-factor.login', 'security.edit'))
+    @vite('resources/css/otp.css')
+@endif
