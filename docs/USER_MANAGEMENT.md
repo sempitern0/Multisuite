@@ -51,4 +51,4 @@ Las cuentas nuevas reciben al azar uno de 18 personajes (`App\Support\ProfileSti
 
 En Perfil → Foto de perfil la persona puede subir una foto, elegir otro personaje o usar sus iniciales. Con foto subida, elegir un personaje o las iniciales pide confirmación porque la foto se borra y no se recupera. Solo se aceptan identificadores del catálogo y solo la propia persona elige su imagen. Límite propio de 30 cambios por minuto (`avatar-sticker`), separado del de cambios de cuenta. Si se sustituye una imagen, subir `ProfileStickers::VERSION` para invalidar la caché del navegador.
 
-Procedencia de las imágenes: aportadas por el propietario del proyecto en la PR #45; licencia pendiente de anotar aquí.
+Procedencia de las imágenes: generadas por el propietario del proyecto para Multisuite (PR #45). Se distribuyen con la licencia del repositorio (MIT, `LICENSE`).
