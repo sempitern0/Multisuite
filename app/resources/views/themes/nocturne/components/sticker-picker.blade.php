@@ -37,7 +37,7 @@
             <p class="ui-sub">Tu foto se borrará y no se podrá recuperar. Podrás subir otra cuando quieras.</p>
             <div class="ui-dialog-actions">
                 <button type="button" class="ui-btn ui-btn-ghost" x-on:click="$refs.confirm.close()">Cancelar</button>
-                <button type="button" class="ui-btn ui-btn-danger" x-on:click="confirm()">Quitar foto y cambiar</button>
+                <button type="button" class="ui-btn ui-btn-danger" x-on:click="confirm()">Borrar la foto y cambiar</button>
             </div>
         </div>
     </dialog>
