@@ -5,6 +5,7 @@ Instantánea del 21 de noviembre de 2026. Se reescribe al cerrar cada incremento
 ## Integrado en main
 - Portal Laravel/Livewire con personas, invitaciones, cuentas de servicio, Mis archivos (carpetas conectadas con los servicios), cuotas, almacenamiento y auditoría. Música con Navidrome y Lectura con Komga 1.30.1 (Kavita desactivado y reactivable), con cuentas automáticas y bibliotecas privadas. Validado en CI; QA de Komga con dos personas pendiente.
 - Interacciones de Nocturne y navegación móvil (PR #43). Paleta revisada en OKLCH para los temas claro y oscuro, sin colores escritos a mano, y botón sol/luna en la barra superior y en el acceso (docs/design-system.md § Color).
+- Personajes de perfil (PR #45): 18 imágenes propias, elegibles en Perfil con confirmación si hay foto, y uno al azar para cada cuenta nueva (USER_MANAGEMENT.md).
 - **Asistente y puente MCP** (docs/MCP.md; PR #42 con el RFC y decisiones D1–D4, PR #44 con MCP-01 a MCP-07), validado en CI y pendiente de QA del usuario con un proveedor real:
   - `laravel/mcp` v1.2.1 con herramientas que actúan siempre como la persona de la sesión, con acceso, interruptor y límite diario comprobados en cada llamada (`AssistantAccess::toolDenial`).
   - `laravel/ai` v1.4.1: página **Asistente** y botón flotante con panel de chat (ocultable por persona), respuesta progresiva, historial privado de 30 días; proveedores externos dados de alta por el owner con clave cifrada de solo escritura, prueba de conexión y conmutación por error; límite diario de tokens.

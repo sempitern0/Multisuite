@@ -93,6 +93,13 @@
     /* Cropper.js elements: the canvas fills the stage; the fixed selection is drawn as a circle. */
     .ui-avatar-stage cropper-canvas { width: 100%; height: 100%; }
     .ui-avatar-stage cropper-selection { border-radius: 50%; box-shadow: 0 0 0 999px var(--ui-scrim); outline: 2px solid color-mix(in oklab, var(--ui-accent) 60%, transparent); pointer-events: none; }
+    /* Character picker (profile picture alternative). */
+    .ui-sticker-picker > summary { cursor: pointer; width: fit-content; }
+    .ui-sticker-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 6rem), 1fr)); gap: .5rem; margin-block: .75rem; }
+    .ui-sticker-choice { display: grid; place-items: center; align-content: start; gap: .25rem; padding: .5rem; background: var(--ui-panel); border: 1px solid var(--ui-line); border-radius: var(--ui-radius-control); color: var(--ui-text); font-size: .875rem; cursor: pointer; }
+    .ui-sticker-choice:hover { border-color: var(--ui-line-hover); }
+    .ui-sticker-choice[aria-pressed="true"] { border-color: var(--ui-accent-text); box-shadow: inset 0 0 0 1px var(--ui-accent-text); background: var(--ui-accent-soft); }
+    .ui-sticker-choice img { border-radius: 50%; }
     .ui-main { min-width: 0; flex: 1; }
     .ui-topbar { height: 64px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--ui-line); padding: 0 40px; }
     .ui-topbar-title { font-size: 13px; color: var(--ui-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

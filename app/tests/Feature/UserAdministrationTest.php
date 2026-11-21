@@ -6,6 +6,7 @@ use App\Models\AdminAuditEvent;
 use App\Models\ServiceAccount;
 use App\Models\User;
 use App\Services\ServiceAccounts;
+use App\Support\ProfileStickers;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
@@ -245,6 +246,46 @@ class UserAdministrationTest extends TestCase
         $url = (string) $member->fresh()->avatarUrl();
         Livewire::test('pages::settings.profile')->call('removeAvatar')
             ->assertDispatched('avatar-changed')->assertDontSee($url, false)->assertDontSee('Quitar foto');
+    }
+
+    public function test_profile_stickers_are_stable_optional_and_limited_to_the_catalogue(): void
+    {
+        $member = $this->person('member');
+        $original = $member->avatarUrl();
+        $this->assertNotNull($original);
+        $this->assertSame($original, $member->fresh()->avatarUrl());
+        foreach (ProfileStickers::LABELS as $id => $label) {
+            $this->assertFileExists(public_path('stickers/'.$id.'.webp'));
+        }
+
+        $this->actingAs($member);
+        $page = Livewire::test('pages::settings.profile');
+        $page->call('selectSticker', '../outside')->assertHasErrors('sticker');
+        $this->assertSame($original, $member->fresh()->avatarUrl());
+        $page->call('selectSticker', 'marinero')->assertDispatched('avatar-changed');
+        $this->assertSame(ProfileStickers::url('marinero'), $member->fresh()->avatarUrl());
+        $page->call('selectSticker', null);
+        $this->assertNull($member->fresh()->avatarUrl());
+    }
+
+    public function test_choosing_a_character_deletes_the_uploaded_photo_and_an_explicit_choice_is_kept(): void
+    {
+        Storage::fake('local');
+        $member = $this->person('member');
+        $this->actingAs($member);
+        Livewire::test('pages::settings.profile')->set('avatar', $this->picture('yo.png', 300, 300, 20))->call('saveAvatar')->assertHasNoErrors();
+        $hash = (string) $member->fresh()->avatar_hash;
+        $path = 'avatars/'.$member->id.'/'.$hash.'.webp';
+        Storage::disk('local')->assertExists($path);
+
+        $page = Livewire::test('pages::settings.profile')->assertSee('¿Quitar tu foto?')->call('selectSticker', 'mago')->assertHasNoErrors();
+
+        $this->assertNull($member->fresh()->avatar_hash);
+        Storage::disk('local')->assertMissing($path);
+        $this->get(route('avatars.show', ['user' => $member->id, 'hash' => $hash]))->assertNotFound();
+        $page->assertSee((string) ProfileStickers::url('mago'), false);
+
+        $this->assertNull(User::factory()->create(['avatar_sticker' => null])->avatarUrl(), 'Initials chosen on creation are kept.');
     }
 
     public function test_photos_that_are_not_images_are_rejected(): void

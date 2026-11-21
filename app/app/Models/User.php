@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\Users\Avatars;
+use App\Support\ProfileStickers;
 use App\Support\UserPreferences;
 use Carbon\CarbonInterface;
 use Database\Factories\UserFactory;
@@ -32,6 +33,7 @@ use Laravel\Passport\HasApiTokens;
  * @property string|null $username
  * @property string $email
  * @property CarbonInterface|null $email_verified_at
+ * @property string|null $avatar_sticker
  * @property string|null $avatar_hash
  * @property CarbonInterface|null $suspended_at
  * @property bool $must_change_password
@@ -59,6 +61,13 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable,
 
     protected static function booted(): void
     {
+        static::creating(function (User $user): void {
+            // Only when nobody chose: an explicit value (also null for initials) is kept.
+            if (! array_key_exists('avatar_sticker', $user->getAttributes())) {
+                $user->avatar_sticker = array_rand(ProfileStickers::LABELS);
+            }
+        });
+
         // Any deletion path (administration or the person's own) takes the photo with it.
         static::deleted(function (User $user): void {
             if ($user->avatar_hash !== null) {
@@ -75,7 +84,7 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable,
     /** Cache-safe address of the current photo: the hash changes with every new photo. */
     public function avatarUrl(): ?string
     {
-        return $this->avatar_hash === null ? null : route('avatars.show', ['user' => $this->id, 'hash' => $this->avatar_hash]);
+        return $this->avatar_hash === null ? ProfileStickers::url($this->avatar_sticker) : route('avatars.show', ['user' => $this->id, 'hash' => $this->avatar_hash]);
     }
 
     public function canInviteRole(string $role): bool

@@ -45,3 +45,10 @@ Invalida invitaciones previas de ese correo. Roles del portal no otorgan privile
 
 ## Espacio de almacenamiento
 La ficha muestra el uso y enlaza a **Almacenamiento**, donde se fija el espacio máximo. Una baja se bloquea mientras la persona tenga espacio usado o reservado (STORAGE.md).
+
+### Personajes de perfil
+Las cuentas nuevas reciben al azar uno de 18 personajes (`App\Support\ProfileStickers`, imágenes en `public/stickers`); si al crear la cuenta se indica otro o ninguno, se respeta. La elección se conserva al cambiar de nombre y al subir una foto, así que al quitar la foto vuelve el personaje. Las cuentas anteriores conservan su foto o sus iniciales.
+
+En Perfil → Foto de perfil la persona puede subir una foto, elegir otro personaje o usar sus iniciales. Con foto subida, elegir un personaje o las iniciales pide confirmación porque la foto se borra y no se recupera. Solo se aceptan identificadores del catálogo y solo la propia persona elige su imagen. Límite propio de 30 cambios por minuto (`avatar-sticker`), separado del de cambios de cuenta. Si se sustituye una imagen, subir `ProfileStickers::VERSION` para invalidar la caché del navegador.
+
+Procedencia de las imágenes: generadas por el propietario del proyecto para Multisuite (PR #45). Se distribuyen con la licencia del repositorio (MIT, `LICENSE`).

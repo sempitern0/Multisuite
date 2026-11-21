@@ -63,12 +63,21 @@ new #[Title('Perfil')] class extends Component {
         $this->toast('Foto guardada');
     }
 
+    public function selectSticker(?string $id, UpdateAvatar $update): void
+    {
+        $this->throttle('avatar-sticker');
+        $update->selectSticker(Auth::user(), Auth::user(), $id);
+        Auth::user()->refresh();
+        $this->dispatch('avatar-changed', url: Auth::user()->avatarUrl());
+        $this->toast($id === null ? 'Ahora se muestran tus iniciales' : 'Personaje actualizado');
+    }
+
     public function removeAvatar(RemoveAvatar $remove): void
     {
         $this->throttle('account-change');
         $remove->handle(Auth::user(), Auth::user());
         Auth::user()->refresh();
-        $this->dispatch('avatar-changed', url: null);
+        $this->dispatch('avatar-changed', url: Auth::user()->avatarUrl());
         $this->toast('Foto quitada');
     }
 
@@ -112,6 +121,9 @@ new #[Title('Perfil')] class extends Component {
                         @if (auth()->user()->avatar_hash)
                             <x-ui::button variant="ghost" icon="trash" wire:click="removeAvatar">Quitar foto</x-ui::button>
                         @endif
+                        <x-slot:alternatives>
+                            <x-ui::sticker-picker :options="\App\Support\ProfileStickers::options()" :selected="auth()->user()->avatar_hash ? null : auth()->user()->avatar_sticker" :has-photo="(bool) auth()->user()->avatar_hash" />
+                        </x-slot:alternatives>
                     </x-ui::avatar-editor>
                     <x-ui::text tone="muted">La ven tú y quienes administran Multisuite. Se guarda recortada y sin datos de ubicación.</x-ui::text>
                 </x-ui::stack>
