@@ -1,6 +1,7 @@
-@props(['selected', 'hasPhoto'])
+@props(['options', 'selected', 'hasPhoto'])
 {{--
-    Character picker for the profile picture. Calls selectSticker(id|null) on the page.
+    Character picker for the profile picture. $options: list of id, label and url prepared by
+    the page (the theme does not know the catalogue). Calls selectSticker(id|null) on the page.
     With a photo, choosing asks first: the photo is deleted and cannot be recovered.
     wire:ignore.self keeps the panel open while the choices re-render.
 --}}
@@ -20,11 +21,11 @@
     }">
     <summary class="ui-btn ui-btn-secondary">Elegir un personaje</summary>
     <div class="ui-sticker-grid" role="group" aria-label="Personajes" x-ref="grid" data-has-photo="{{ $hasPhoto ? '1' : '0' }}">
-        @foreach (\App\Support\ProfileStickers::LABELS as $id => $label)
-            <button type="button" class="ui-sticker-choice" wire:key="sticker-{{ $id }}" x-on:click="pick(@js($id))"
-                wire:loading.attr="disabled" wire:target="selectSticker" aria-pressed="{{ $selected === $id ? 'true' : 'false' }}">
-                <img src="{{ \App\Support\ProfileStickers::url($id) }}" alt="" width="64" height="64" loading="lazy" decoding="async">
-                <span>{{ $label }}</span>
+        @foreach ($options as $option)
+            <button type="button" class="ui-sticker-choice" wire:key="sticker-{{ $option['id'] }}" x-on:click="pick(@js($option['id']))"
+                wire:loading.attr="disabled" wire:target="selectSticker" aria-pressed="{{ $selected === $option['id'] ? 'true' : 'false' }}">
+                <img src="{{ $option['url'] }}" alt="" width="64" height="64" loading="lazy" decoding="async">
+                <span>{{ $option['label'] }}</span>
             </button>
         @endforeach
     </div>

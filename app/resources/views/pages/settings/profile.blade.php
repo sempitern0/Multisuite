@@ -122,7 +122,7 @@ new #[Title('Perfil')] class extends Component {
                             <x-ui::button variant="ghost" icon="trash" wire:click="removeAvatar">Quitar foto</x-ui::button>
                         @endif
                         <x-slot:alternatives>
-                            <x-ui::sticker-picker :selected="auth()->user()->avatar_hash ? null : auth()->user()->avatar_sticker" :has-photo="(bool) auth()->user()->avatar_hash" />
+                            <x-ui::sticker-picker :options="\App\Support\ProfileStickers::options()" :selected="auth()->user()->avatar_hash ? null : auth()->user()->avatar_sticker" :has-photo="(bool) auth()->user()->avatar_hash" />
                         </x-slot:alternatives>
                     </x-ui::avatar-editor>
                     <x-ui::text tone="muted">La ven tú y quienes administran Multisuite. Se guarda recortada y sin datos de ubicación.</x-ui::text>
