@@ -1,4 +1,4 @@
-@props(['storeUrl', 'uploadUrl', 'maxBytes', 'folder' => null, 'label' => 'Subir archivos', 'hint' => null])
+@props(['storeUrl', 'uploadUrl', 'maxBytes', 'folder' => null, 'label' => 'Subir archivos', 'hint' => null, 'accept' => null, 'multiple' => true, 'capture' => null, 'variant' => 'primary'])
 {{--
     Contract: file picker and drop zone driven by resources/js/files.js (data-uploader* and
     data-tray* hooks). Progress appears in a floating tray: one summary line with the total
@@ -6,12 +6,13 @@
     The script fills the tray by cloning <template data-tray-row> and only sets data-state
     (queued|uploading|ok|bad), texts and progress values; this file decides how it looks.
     Livewire must not touch it while uploads run (wire:ignore); the script dispatches
-    `files-uploaded` with the new file ids as files finish.
+    `files-uploaded` with the new file ids as files finish. accept/multiple/capture go to the
+    file input (capture="environment" offers the rear camera on phones); the server still checks types.
 --}}
 <div wire:ignore data-uploader data-store-url="{{ $storeUrl }}" data-upload-url="{{ $uploadUrl }}" data-folder="{{ $folder }}" data-max-bytes="{{ $maxBytes }}" data-csrf="{{ csrf_token() }}" {{ $attributes->merge(['class' => 'ui-uploader']) }}>
-    <label class="ui-btn ui-btn-primary ui-uploader-pick" title="{{ $hint ? $hint.' ' : '' }}También puedes arrastrar archivos a esta página.">
+    <label class="ui-btn ui-btn-{{ $variant }} ui-uploader-pick" title="{{ $hint ? $hint.' ' : '' }}También puedes arrastrar archivos a esta página.">
         <x-ui::icon name="upload" /><span>{{ $label }}</span>
-        <input type="file" multiple class="ui-sr-only" data-uploader-input>
+        <input type="file" @if ($multiple) multiple @endif @if ($accept) accept="{{ $accept }}" @endif @if ($capture) capture="{{ $capture }}" @endif class="ui-sr-only" data-uploader-input>
     </label>
     <div class="ui-dropzone" data-uploader-drop hidden aria-hidden="true">
         <x-ui::icon name="upload" /><span>Suelta los archivos para subirlos aquí</span>

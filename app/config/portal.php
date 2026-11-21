@@ -5,6 +5,8 @@ return [
     'reading_autologin' => env('KAVITA_AUTOLOGIN_ENABLED', false),
     'music_autologin' => env('NAVIDROME_AUTOLOGIN_ENABLED', false),
     'music_session_bridge' => env('NAVIDROME_SESSION_BRIDGE_ENABLED', false),
+    // Mis finanzas (docs/PERSONAL_FINANCES.md): personal income and expenses for every account.
+    'finances' => ['enabled' => (bool) env('PORTAL_FINANCES', true)],
     'services' => [
         'komga' => [
             'name' => 'Lectura',

@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Support\Finance\MoneyFormat;
 use Illuminate\Validation\Rule;
 
 /**
@@ -23,12 +24,15 @@ final class UserPreferences
         'files_view' => ['details', 'list', 'gallery'],
         // Floating assistant button on every page (only shown to people who can use the assistant).
         'assistant_button' => ['on', 'off'],
+        // Mis finanzas: chosen on that page (MoneyFormat lists what each value means).
+        'finance_currency' => ['EUR', 'USD', 'GBP', 'CHF', 'MXN', 'ARS', 'COP', 'CLP', 'BRL', 'CAD', 'JPY'],
+        'finance_format' => ['es_ES', 'en_US', 'fr_FR', 'de_CH'],
     ];
 
     /** Keys chosen elsewhere than the Preferences form. */
-    private const OUTSIDE_FORM = ['sidebar', 'files_view'];
+    private const OUTSIDE_FORM = ['sidebar', 'files_view', 'finance_currency', 'finance_format'];
 
-    /** @param array{motion: string, density: string, sidebar: string, start: string, per_page: int, files_view: string, assistant_button: string} $values */
+    /** @param array{motion: string, density: string, sidebar: string, start: string, per_page: int, files_view: string, assistant_button: string, finance_currency: string, finance_format: string} $values */
     private function __construct(private readonly array $values) {}
 
     /** @param array<string, mixed>|null $stored */
@@ -94,13 +98,18 @@ final class UserPreferences
         return $this->values['assistant_button'] === 'on';
     }
 
+    public function moneyFormat(): MoneyFormat
+    {
+        return new MoneyFormat($this->values['finance_currency'], $this->values['finance_format']);
+    }
+
     /** Same preferences with one value changed (invalid values fall back to the default). */
     public function with(string $key, mixed $value): self
     {
         return self::from([$key => $value] + $this->values);
     }
 
-    /** @return array{motion: string, density: string, sidebar: string, start: string, per_page: int, files_view: string, assistant_button: string} */
+    /** @return array{motion: string, density: string, sidebar: string, start: string, per_page: int, files_view: string, assistant_button: string, finance_currency: string, finance_format: string} */
     public function toArray(): array
     {
         return $this->values;

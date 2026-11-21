@@ -23,3 +23,14 @@ En Servicios, las tarjetas pasan a una columna hasta 35 rem. El icono identifica
 
 ## Casillas e interruptores
 `x-ui::checkbox` es una fila completa, como en los ajustes de GitHub, Linear o Stripe: toda la fila marca o desmarca, mide al menos 44 px, texto de 14 px, casilla de 20 px y fondo teñido cuando está marcada, para repasar una lista de un vistazo. Con `switch` se muestra como interruptor al final de la fila (`role="switch"`), para un ajuste que se enciende o apaga entero; sin él, para elegir opciones de una lista. `description` añade una línea de explicación anunciada como descripción (`aria-describedby`), no como parte del nombre. Las listas van en `<fieldset class="ui-check-group">`.
+
+## Tablas
+Una fila se marca como elegida cuando contiene un control con `aria-current="true"` (por ejemplo, el mes cuyo detalle se muestra debajo): fondo teñido y barra de acento a la izquierda, sin estilos en la vista. Las celdas `nowrap` (tamaños, fechas, importes) y los valores de `x-ui::stats` usan cifras de ancho fijo para que se alineen por dígito.
+
+## Cifras, gráficos y columnas
+- `x-ui::metrics`: tarjetas de cifras principales con tono (`ok`, `bad`, `accent`), símbolo de moneda opcional y una línea secundaria; dos por fila en el móvil.
+- `x-ui::month-chart`: barras emparejadas (ingresos/gastos) por periodo; cada periodo es un botón con nombre accesible que incluye los importes, y el elegido lleva `aria-current`. La tabla equivalente va en un desplegable para quien prefiera leer cifras.
+- `x-ui::breakdown`: reparto de un total con barra de proporción y porcentaje.
+- `x-ui::columns`: contenido principal y columna lateral fija al desplazarse en pantallas de 1180 px o más; debajo en las estrechas.
+- `x-ui::field prefix`: signo fijo delante del valor (moneda). `x-ui::uploader` admite `accept`, `multiple`, `capture` y `variant`.
+- Los iconos de los botones no encogen (`flex: none`): antes, un botón de solo icono dentro de `x-ui::segmented` dejaba el icono en 6 px.
