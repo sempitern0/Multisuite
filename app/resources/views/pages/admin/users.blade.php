@@ -58,7 +58,7 @@ new #[Title('Personas')] class extends Component {
                 <tr wire:key="user-{{ $listedUser->id }}">
                     <x-ui::td><x-ui::person :name="$listedUser->name" :sub="$listedUser->email" :src="$listedUser->avatarUrl()" :initials="$listedUser->initials()" /></x-ui::td>
                     <x-ui::td label="Usuario">{{ $listedUser->username ? '@'.$listedUser->username : '—' }}</x-ui::td>
-                    <x-ui::td label="Rol"><x-ui::tag :tone="$listedUser->role === 'member' ? 'grey' : null">{{ $listedUser->roleLabel() }}</x-ui::tag></x-ui::td>
+                    <x-ui::td label="Rol"><x-ui::role :role="$listedUser->role" :level="$listedUser->roleLevel()">{{ $listedUser->roleLabel() }}</x-ui::role></x-ui::td>
                     <x-ui::td label="Estado">
                         @if ($listedUser->isSuspended())
                             <x-ui::status tone="bad">Suspendida</x-ui::status>

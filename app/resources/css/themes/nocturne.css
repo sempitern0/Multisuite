@@ -95,11 +95,14 @@
     .ui-avatar-stage cropper-selection { border-radius: 50%; box-shadow: 0 0 0 999px var(--ui-scrim); outline: 2px solid color-mix(in oklab, var(--ui-accent) 60%, transparent); pointer-events: none; }
     /* Character picker (profile picture alternative). */
     .ui-sticker-picker > summary { cursor: pointer; width: fit-content; }
-    .ui-sticker-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 6rem), 1fr)); gap: .5rem; margin-block: .75rem; }
-    .ui-sticker-choice { display: grid; place-items: center; align-content: start; gap: .25rem; padding: .5rem; background: var(--ui-panel); border: 1px solid var(--ui-line); border-radius: var(--ui-radius-control); color: var(--ui-text); font-size: .875rem; cursor: pointer; }
+    .ui-sticker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(4.25rem, 1fr)); gap: .5rem; margin-block: .75rem; max-width: 40rem; }
+    .ui-sticker-choice { display: grid; place-items: center; aspect-ratio: 1; padding: .375rem; background: var(--ui-panel); border: 1px solid var(--ui-line); border-radius: var(--ui-radius-control); cursor: pointer; transition: border-color var(--ui-speed) var(--ui-ease), transform var(--ui-speed) var(--ui-ease); }
     .ui-sticker-choice:hover { border-color: var(--ui-line-hover); }
     .ui-sticker-choice[aria-pressed="true"] { border-color: var(--ui-accent-text); box-shadow: inset 0 0 0 1px var(--ui-accent-text); background: var(--ui-accent-soft); }
-    .ui-sticker-choice img { border-radius: 50%; }
+    .ui-sticker-choice img { width: 100%; height: auto; max-width: 56px; border-radius: 50%; }
+    .ui-sticker-choice:hover img { transform: scale(1.06); }
+    .ui-sticker-choice img { transition: transform var(--ui-speed) var(--ui-ease); }
+    html[data-motion="off"] .ui-sticker-choice img { transition: none; transform: none; }
     .ui-main { min-width: 0; flex: 1; }
     .ui-topbar { height: 64px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--ui-line); padding: 0 40px; }
     .ui-topbar-title { font-size: 13px; color: var(--ui-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -190,15 +193,53 @@
     .ui-input { font-size: 1rem; display: block; width: 100%; background: var(--ui-panel); color: var(--ui-text); border: 1px solid var(--ui-field); /* 3:1 non-text contrast */ border-radius: var(--ui-radius-control); padding: 11px var(--ui-space-control); min-height: 46px; }
     .ui-input::placeholder { color: var(--ui-muted); }
     .ui-input[aria-invalid="true"] { border-color: var(--ui-bad); }
-    .ui-help { font-size: 11px; color: var(--ui-muted); margin: 8px 0 0; }
+    .ui-help { font-size: 12.5px; line-height: 1.45; color: var(--ui-muted); margin: 8px 0 0; }
     .ui-error { font-size: 12px; color: var(--ui-bad); margin: 8px 0 0; }
     .ui-inputrow { position: relative; }
     .ui-inputrow .ui-input { padding-right: 48px; }
     .ui-inputrow .ui-reveal { position: absolute; right: 4px; top: 4px; height: 38px; width: 38px; border: 0; background: transparent; color: var(--ui-sub); display: grid; place-items: center; cursor: pointer; }
     .ui-inputrow .ui-reveal:hover { color: var(--ui-accent-text); }
     .ui-inputrow svg { width: 19px; height: 19px; }
-    .ui-check { display: flex; align-items: center; gap: 9px; font-size: 12px; color: var(--ui-sub); }
-    .ui-check input { accent-color: var(--ui-accent-text); width: 16px; height: 16px; }
+    /* Checkbox rows (settings lists in GitHub, Linear, Stripe): the whole row is the target,
+       ≥ 44px tall, 14px text; a checked row is tinted so a list can be scanned at a glance. */
+    .ui-check { position: relative; display: grid; grid-template-columns: auto 1fr; column-gap: 12px; padding: 10px 12px; min-height: var(--ui-hit); border: 1px solid transparent; border-radius: var(--ui-radius-control); transition: background var(--ui-speed) var(--ui-ease), border-color var(--ui-speed) var(--ui-ease); }
+    .ui-check:hover { background: var(--ui-panel-2); }
+    .ui-check:has(input:checked) { background: color-mix(in oklab, var(--ui-accent-text) 7%, var(--ui-panel)); border-color: color-mix(in oklab, var(--ui-accent-text) 22%, var(--ui-panel)); }
+    .ui-check:has(input:disabled) { opacity: .55; }
+    .ui-check-main { display: contents; cursor: pointer; }
+    .ui-check-main::after { content: ""; position: absolute; inset: 0; border-radius: inherit; cursor: pointer; } /* whole row clickable */
+    .ui-check input { grid-column: 1; grid-row: 1; align-self: center; margin: 0; accent-color: var(--ui-accent-text); width: 20px; height: 20px; cursor: pointer; }
+    .ui-check-label { grid-column: 2; align-self: center; font-size: 14px; line-height: 1.4; color: var(--ui-text); }
+    .ui-check-desc { grid-column: 2; margin: 3px 0 0; font-size: 13px; line-height: 1.45; color: var(--ui-muted); }
+    .ui-check .ui-error { grid-column: 2; }
+    .ui-check:has(input:focus-visible) { outline: 2px solid var(--ui-accent-text); outline-offset: 2px; }
+    .ui-check input:focus-visible { outline: none; }
+    /* Switch: one setting that turns on or off as a whole; control at the end, like iOS/Android settings. */
+    .ui-check[data-variant="switch"] { grid-template-columns: 1fr auto; }
+    .ui-check[data-variant="switch"] .ui-check-label, .ui-check[data-variant="switch"] .ui-check-desc, .ui-check[data-variant="switch"] .ui-error { grid-column: 1; }
+    .ui-check[data-variant="switch"] .ui-check-label { font-weight: 600; }
+    .ui-check[data-variant="switch"] input { grid-column: 2; appearance: none; position: relative; width: 44px; height: 26px; border-radius: 999px; background: var(--ui-panel-3); border: 1px solid var(--ui-field); transition: background var(--ui-speed) var(--ui-ease), border-color var(--ui-speed) var(--ui-ease); }
+    .ui-check[data-variant="switch"] input::before { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--ui-sub); transition: transform var(--ui-speed) var(--ui-ease), background var(--ui-speed) var(--ui-ease); }
+    .ui-check[data-variant="switch"] input:checked { background: var(--ui-accent); border-color: var(--ui-accent-text); }
+    .ui-check[data-variant="switch"] input:checked::before { transform: translateX(18px); background: var(--ui-accent-ink); }
+    .ui-check[data-variant="switch"]:has(input:checked) { background: transparent; border-color: transparent; }
+    .ui-check[data-variant="switch"]:has(input:checked):hover, .ui-check[data-variant="switch"]:hover { background: var(--ui-panel-2); }
+    .ui-check-group { display: grid; gap: 2px; min-width: 0; margin: 0; padding: 0; border: 0; }
+    .ui-check-group > .ui-label { margin-bottom: 6px; }
+    html[data-motion="off"] :is(.ui-check, .ui-check input, .ui-check input::before) { transition: none; }
+    @media (prefers-reduced-motion: reduce) { html[data-motion="system"] :is(.ui-check, .ui-check input, .ui-check input::before) { transition: none; } }
+    /* Role badge: colour by role, bars by how much it can do (Discord-like, kept quiet). */
+    .ui-role { --tone: var(--ui-sub); display: inline-flex; align-items: center; gap: 7px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 650; line-height: 1.3; white-space: nowrap; color: color-mix(in oklab, var(--tone) 72%, var(--ui-text)); background: color-mix(in oklab, var(--tone) 10%, var(--ui-panel)); border: 1px solid color-mix(in oklab, var(--tone) 28%, var(--ui-panel)); }
+    .ui-role[data-role="owner"] { --tone: var(--ui-warn); }
+    .ui-role[data-role="admin"] { --tone: var(--ui-info); }
+    .ui-role[data-role="member"] { --tone: var(--ui-accent-text); }
+    .ui-role-level { display: inline-flex; align-items: flex-end; gap: 2px; height: 10px; }
+    .ui-role-level i { width: 3px; border-radius: 1px; background: color-mix(in oklab, var(--tone) 28%, transparent); }
+    .ui-role-level i:nth-child(1) { height: 4px; }
+    .ui-role-level i:nth-child(2) { height: 7px; }
+    .ui-role-level i:nth-child(3) { height: 10px; }
+    .ui-role-level i.is-on { background: var(--tone); }
+    .ui-role-plain { padding: 0; border: 0; background: none; font-weight: 500; color: var(--ui-muted); }
 
     .ui-meter-block { display: flex; flex-direction: column; gap: 9px; }
     .ui-meter { height: 9px; background: var(--ui-panel-3); border-radius: 99px; overflow: hidden; }

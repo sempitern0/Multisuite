@@ -146,6 +146,17 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable,
         };
     }
 
+    /** How much the role can do, for the role badge: owner 3, admin 2, member 1. */
+    public function roleLevel(): int
+    {
+        return match ($this->role) {
+            'owner' => 3,
+            'admin' => 2,
+            'member' => 1,
+            default => 0,
+        };
+    }
+
     /**
      * Roles this person may give to someone else, with their labels (derived from canInviteRole()).
      *

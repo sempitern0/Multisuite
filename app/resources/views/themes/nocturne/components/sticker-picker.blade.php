@@ -23,9 +23,9 @@
     <div class="ui-sticker-grid" role="group" aria-label="Personajes" x-ref="grid" data-has-photo="{{ $hasPhoto ? '1' : '0' }}">
         @foreach ($options as $option)
             <button type="button" class="ui-sticker-choice" wire:key="sticker-{{ $option['id'] }}" x-on:click="pick(@js($option['id']))"
-                wire:loading.attr="disabled" wire:target="selectSticker" aria-pressed="{{ $selected === $option['id'] ? 'true' : 'false' }}">
-                <img src="{{ $option['url'] }}" alt="" width="64" height="64" loading="lazy" decoding="async">
-                <span>{{ $option['label'] }}</span>
+                wire:loading.attr="disabled" wire:target="selectSticker" aria-pressed="{{ $selected === $option['id'] ? 'true' : 'false' }}"
+                aria-label="{{ $option['label'] }}" title="{{ $option['label'] }}">
+                <img src="{{ $option['url'] }}" alt="" width="56" height="56" loading="lazy" decoding="async">
             </button>
         @endforeach
     </div>

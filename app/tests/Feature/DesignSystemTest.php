@@ -33,6 +33,24 @@ class DesignSystemTest extends TestCase
             ->assertDontSee(route('storage.index'), false);
     }
 
+    public function test_checkbox_rows_switches_and_role_badges_keep_their_accessible_contract(): void
+    {
+        $this->blade('<x-ui::checkbox switch name="enabled" label="Activado" description="Nadie puede usarlo apagado." />')
+            ->assertSee('role="switch"', false)
+            ->assertSee('aria-describedby="chk-enabled-1-desc"', false)
+            ->assertSee('id="chk-enabled-1-desc"', false);
+        $this->blade('<x-ui::checkbox name="tools[]" value="files_list" label="Archivos" />')
+            ->assertDontSee('role="switch"', false)->assertDontSee('aria-describedby', false);
+        $this->blade('<x-ui::role role="admin" :level="2">Administrador</x-ui::role>')
+            ->assertSee('data-role="admin"', false)->assertSee('nivel de permisos 2 de 3');
+
+        $this->assertSame([3, 2, 1], [
+            User::factory()->make(['role' => 'owner'])->roleLevel(),
+            User::factory()->make(['role' => 'admin'])->roleLevel(),
+            User::factory()->make(['role' => 'member'])->roleLevel(),
+        ]);
+    }
+
     public function test_the_light_and_dark_switch_is_also_on_the_sign_in_page(): void
     {
         $this->get(route('login'))->assertOk()->assertSee('data-scheme-toggle', false);

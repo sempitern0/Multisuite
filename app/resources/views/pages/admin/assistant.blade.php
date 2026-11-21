@@ -226,32 +226,27 @@ new #[Title('Asistente')] class extends Component {
 
         <x-ui::panel>
             <x-ui::form wire:submit="save">
-                <x-ui::checkbox name="enabled" wire:model="enabled" :checked="$enabled" label="Asistente activado" />
-                <fieldset>
+                <x-ui::checkbox switch name="enabled" wire:model="enabled" :checked="$enabled" label="Asistente activado" description="Con el asistente apagado nadie puede usarlo, ni aquí ni desde aplicaciones externas." />
+                <fieldset class="ui-check-group">
                     <legend class="ui-label">Qué puede consultar</legend>
                     @foreach (\App\Services\Assistant\AssistantAccess::TOOLS as $tool => $label)
                         <x-ui::checkbox name="tools[]" :value="$tool" wire:model="tools" :checked="in_array($tool, $tools, true)" :label="$label" />
                     @endforeach
                     <p class="ui-help">Solo lectura de nombres, tamaños y estados.</p>
                 </fieldset>
-                <fieldset>
+                <fieldset class="ui-check-group">
                     <legend class="ui-label">Qué puede cambiar en Mis archivos</legend>
                     @foreach (\App\Services\Assistant\AssistantAccess::WRITE_TOOLS as $tool => $label)
                         <x-ui::checkbox name="tools[]" :value="$tool" wire:model="tools" :checked="in_array($tool, $tools, true)" :label="$label" />
                     @endforeach
                     <p class="ui-help">Cada cambio se le enseña a la persona y solo se hace si lo aprueba. Nunca borra nada definitivamente.</p>
                 </fieldset>
-                <x-ui::checkbox name="contentAllowed" wire:model="contentAllowed" :checked="$contentAllowed" label="Permitir que el asistente lea el texto de los archivos de quien lo acepte" />
-                <p class="ui-help">Texto, Markdown, CSV, JSON y PDF, por partes. Cada persona decide en su página del asistente si lo permite para sus archivos; el texto leído se envía al proveedor de IA.</p>
-                <x-ui::checkbox name="semanticEnabled" wire:model="semanticEnabled" :checked="$semanticEnabled" label="Búsqueda por significado en los archivos de quien acepte la lectura" />
-                <p class="ui-help">
-                    Cada 15 minutos se prepara el texto de los archivos de esas personas para que el asistente encuentre cosas por lo que tratan. El texto se envía al proveedor para prepararlo y se guarda cifrado.
-                    @unless ($this->semanticProvider) Necesita un proveedor activo de OpenAI, Gemini, Mistral u OpenRouter (Anthropic no ofrece este servicio). @endunless
-                </p>
-                <x-ui::checkbox name="externalEnabled" wire:model="externalEnabled" :checked="$externalEnabled" label="Permitir conectar aplicaciones externas (Claude, ChatGPT…) por MCP" />
-                <p class="ui-help">
-                    Cada persona con acceso al asistente podrá conectar una aplicación desde ella con su cuenta de Multisuite. Solo consultas, nunca cambios. Actívalo solo si Multisuite es accesible por la red privada (VPN y HTTPS). Dirección: {{ url('/mcp') }}
-                </p>
+                <x-ui::checkbox switch name="contentAllowed" wire:model="contentAllowed" :checked="$contentAllowed" label="Permitir que el asistente lea el texto de los archivos de quien lo acepte"
+                    description="Texto, Markdown, CSV, JSON y PDF, por partes. Cada persona decide en su página del asistente si lo permite para sus archivos; el texto leído se envía al proveedor de IA." />
+                <x-ui::checkbox switch name="semanticEnabled" wire:model="semanticEnabled" :checked="$semanticEnabled" label="Búsqueda por significado en los archivos de quien acepte la lectura"
+                    :description="'Cada 15 minutos se prepara el texto de los archivos de esas personas para que el asistente encuentre cosas por lo que tratan. El texto se envía al proveedor para prepararlo y se guarda cifrado.'.($this->semanticProvider ? '' : ' Necesita un proveedor activo de OpenAI, Gemini, Mistral u OpenRouter (Anthropic no ofrece este servicio).')" />
+                <x-ui::checkbox switch name="externalEnabled" wire:model="externalEnabled" :checked="$externalEnabled" label="Permitir conectar aplicaciones externas (Claude, ChatGPT…) por MCP"
+                    :description="'Cada persona con acceso al asistente podrá conectar una aplicación desde ella con su cuenta de Multisuite. Solo consultas, nunca cambios. Actívalo solo si Multisuite es accesible por la red privada (VPN y HTTPS). Dirección: '.url('/mcp')" />
                 <x-ui::select name="dailyCalls" label="Consultas a Multisuite" :options="$this->limits" wire:model="dailyCalls" :value="$dailyCalls"
                     help="Cada vez que el asistente mira tus archivos, tu espacio o tus servicios cuenta una consulta." />
                 <x-ui::select name="dailyTokens" label="Uso del proveedor de IA por persona y día" :options="$this->tokenLimits" wire:model="dailyTokens" :value="$dailyTokens"
@@ -293,7 +288,7 @@ new #[Title('Asistente')] class extends Component {
                         <x-ui::password name="apiKey" :label="$providerId === null ? 'Clave de la API' : 'Clave nueva (déjala vacía para conservar la actual)'" wire:model="apiKey" autocomplete="off"
                             help="Se crea en la web del proveedor. Se guarda cifrada y no se vuelve a mostrar." />
                         <x-ui::field name="position" type="number" label="Orden" wire:model="position" min="1" max="99" />
-                        <x-ui::checkbox name="providerEnabled" wire:model="providerEnabled" :checked="$providerEnabled" label="Activo" />
+                        <x-ui::checkbox switch name="providerEnabled" wire:model="providerEnabled" :checked="$providerEnabled" label="Activo" description="Un proveedor inactivo se conserva pero no se usa." />
                         <x-ui::actions>
                             <x-ui::button type="submit">Guardar proveedor</x-ui::button>
                             <x-ui::button variant="ghost" wire:click="cancelProvider">Cancelar</x-ui::button>

@@ -86,6 +86,8 @@ class Navigation
                 'initials' => $user->initials(),
                 'avatar' => $user->avatarUrl(),
                 'role' => $user->roleLabel(),
+                'roleKey' => $user->role,
+                'roleLevel' => $user->roleLevel(),
                 'settings' => self::link(self::SETTINGS),
                 'logout' => route('logout'),
             ],

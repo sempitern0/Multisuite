@@ -70,7 +70,7 @@
                         <x-ui::avatar :src="$account['avatar']" :initials="$account['initials']" live />
                         <span class="ui-hide-compact ui-person-text">
                             <span class="ui-person-name">{{ $account['name'] }}</span>
-                            <span class="ui-muted">{{ $account['role'] }}</span>
+                            <x-ui::role :role="$account['roleKey']" :level="$account['roleLevel']" class="ui-role-plain">{{ $account['role'] }}</x-ui::role>
                         </span>
                     </div>
                     <x-ui::nav-item :href="$account['settings']['href']" :icon="$account['settings']['icon']" :active="$account['settings']['active']" :spa="$account['settings']['spa']">{{ $account['settings']['label'] }}</x-ui::nav-item>
