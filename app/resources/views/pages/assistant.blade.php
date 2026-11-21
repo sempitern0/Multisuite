@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Concerns\ChatsWithAssistant;
 use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
 use App\Models\AssistantSetting;
@@ -17,7 +18,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new #[Title('Asistente')] class extends Component {
-    use NotifiesInterface, ThrottlesActions;
+    use ChatsWithAssistant, NotifiesInterface, ThrottlesActions;
 
     /** Conversation open; checked against its owner on every read. */
     #[Url(as: 'c', except: null)]
@@ -34,52 +35,6 @@ new #[Title('Asistente')] class extends Component {
     public function conversations(): Collection
     {
         return app(AssistantChat::class)->conversations(Auth::user());
-    }
-
-    #[Computed]
-    public function messages(): Collection
-    {
-        if ($this->conversation === null) {
-            return new Collection;
-        }
-        try {
-            return app(AssistantChat::class)->messages(Auth::user(), $this->conversation);
-        } catch (RuntimeException) {
-            $this->conversation = null;
-
-            return new Collection;
-        }
-    }
-
-    /** @return list<array{id: string, tool: string, description: string}> */
-    #[Computed]
-    public function pending(): array
-    {
-        if ($this->conversation === null) {
-            return [];
-        }
-        try {
-            return app(AssistantChat::class)->pending(Auth::user(), $this->conversation);
-        } catch (RuntimeException) {
-            return [];
-        }
-    }
-
-    /** Approves or rejects every proposed change; the answer streams like a normal reply. */
-    public function decide(bool $approve): void
-    {
-        $this->throttle('assistant');
-        if ($this->conversation === null) {
-            return;
-        }
-        try {
-            $result = app(AssistantChat::class)->decide(Auth::user(), $this->conversation, $approve,
-                fn (string $delta) => $this->stream(to: 'answer', content: $delta));
-            $this->conversation = $result['conversation'];
-        } catch (RuntimeException $exception) {
-            $this->toast($exception->getMessage(), 'bad');
-        }
-        unset($this->conversations, $this->messages, $this->pending);
     }
 
     /** 'off' (the owner does not allow it), 'ask' or 'on' for this person's file contents. */
@@ -142,33 +97,9 @@ new #[Title('Asistente')] class extends Component {
         $this->toast($accepted ? 'El asistente ya puede leer el texto de tus archivos cuando se lo pidas.' : 'El asistente ya no puede leer el contenido de tus archivos.');
     }
 
-    public function send(): void
+    protected function forgetChatState(): void
     {
-        $this->throttle('assistant');
-        $this->validate(['message' => ['required', 'string', 'max:'.AssistantChat::MAX_MESSAGE]], [
-            'message.required' => 'Escribe una pregunta.',
-            'message.max' => 'La pregunta es demasiado larga (máximo '.AssistantChat::MAX_MESSAGE.' caracteres).',
-        ]);
-        $text = trim($this->message);
-        $this->message = '';
-        $this->stream(to: 'question', content: e($text), replace: true);
-        try {
-            // Each piece of the answer is escaped before it reaches the page (insertAdjacentHTML).
-            $result = app(AssistantChat::class)->send(Auth::user(), $this->conversation, $text,
-                fn (string $delta) => $this->stream(to: 'answer', content: $delta));
-            $this->conversation = $result['conversation'];
-        } catch (RuntimeException $exception) {
-            $this->message = $text;
-            $this->addError('message', $exception->getMessage());
-        }
         unset($this->conversations, $this->messages, $this->pending);
-    }
-
-    public function start(): void
-    {
-        $this->conversation = null;
-        $this->message = '';
-        unset($this->messages);
     }
 
     public function open(string $id): void
@@ -192,12 +123,6 @@ new #[Title('Asistente')] class extends Component {
         }
         unset($this->conversations, $this->messages);
         $this->toast('Conversación borrada.');
-    }
-
-    public function answer(string $markdown): string
-    {
-        // Same safe rendering as Markdown previews; the page's CSP blocks remote images.
-        return Str::markdown($markdown, ['html_input' => 'strip', 'allow_unsafe_links' => false, 'max_nesting_level' => 20]);
     }
 }; ?>
 

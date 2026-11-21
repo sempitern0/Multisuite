@@ -670,6 +670,26 @@
     .ui-chat-aside { display: flex; flex-direction: column; gap: 8px; }
     .ui-chat-main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
     @media (max-width: 860px) { .ui-chat-layout { grid-template-columns: minmax(0, 1fr); } }
+    /* Floating assistant: small launcher, non-modal panel; never over the upload tray. */
+    .ui-dock-launcher { position: fixed; right: 22px; bottom: 22px; z-index: 70; width: 48px; height: 48px; display: grid; place-items: center; border-radius: 999px; background: var(--ui-accent); color: var(--ui-accent-ink); box-shadow: var(--ui-shadow); }
+    .ui-dock-launcher svg { width: 22px; height: 22px; }
+    .ui-dock-launcher:hover { filter: brightness(1.08); }
+    .ui-dock-launcher:focus-visible { outline: 3px solid var(--ui-text); outline-offset: 3px; }
+    .ui-dock-panel { position: fixed; right: 22px; bottom: 82px; z-index: 70; width: min(420px, calc(100vw - 28px)); height: min(620px, calc(100vh - 120px)); display: flex; flex-direction: column; background: var(--ui-panel); border: 1px solid var(--ui-line); border-radius: 18px; box-shadow: 0 18px 50px #000a; overflow: hidden; animation: ui-toast-in .2s ease; }
+    .ui-dock-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--ui-line); }
+    .ui-dock-title { font-size: 15px; font-weight: 750; margin: 0; }
+    .ui-dock-tools { display: flex; align-items: center; gap: 2px; }
+    .ui-dock-body { flex: 1; overflow-y: auto; padding: 14px; overscroll-behavior: contain; }
+    .ui-dock-body .ui-chat-bubble { max-width: 100%; }
+    .ui-dock-foot { border-top: 1px solid var(--ui-line); padding: 10px 12px; }
+    .ui-dock-foot .ui-form { gap: 8px; }
+    body:has(.ui-dock-launcher) .ui-toasts { bottom: 82px; }
+    body:has(.ui-tray:not([hidden])) .ui-dock { display: none; }
+    @media (max-width: 640px) {
+        .ui-dock-launcher { right: 14px; bottom: 14px; width: 44px; height: 44px; }
+        .ui-dock-panel { right: 8px; left: 8px; bottom: 68px; width: auto; height: calc(100vh - 90px); }
+    }
+    @media print { .ui-dock { display: none; } }
     /* Motion: data-motion on <html> comes from the person's preferences (system | on | off). */
     @media (prefers-reduced-motion: reduce) {
         html[data-motion="system"] *, html[data-motion="system"] *::before, html[data-motion="system"] *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
