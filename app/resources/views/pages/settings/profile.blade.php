@@ -65,11 +65,11 @@ new #[Title('Perfil')] class extends Component {
 
     public function selectSticker(?string $id, UpdateAvatar $update): void
     {
-        $this->throttle('account-change');
+        $this->throttle('avatar-sticker');
         $update->selectSticker(Auth::user(), Auth::user(), $id);
         Auth::user()->refresh();
         $this->dispatch('avatar-changed', url: Auth::user()->avatarUrl());
-        $this->toast('Avatar actualizado');
+        $this->toast($id === null ? 'Ahora se muestran tus iniciales' : 'Personaje actualizado');
     }
 
     public function removeAvatar(RemoveAvatar $remove): void

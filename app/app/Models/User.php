@@ -62,7 +62,10 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable,
     protected static function booted(): void
     {
         static::creating(function (User $user): void {
-            $user->avatar_sticker = array_rand(ProfileStickers::LABELS);
+            // Only when nobody chose: an explicit value (also null for initials) is kept.
+            if (! array_key_exists('avatar_sticker', $user->getAttributes())) {
+                $user->avatar_sticker = array_rand(ProfileStickers::LABELS);
+            }
         });
 
         // Any deletion path (administration or the person's own) takes the photo with it.

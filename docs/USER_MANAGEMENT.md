@@ -46,6 +46,9 @@ Invalida invitaciones previas de ese correo. Roles del portal no otorgan privile
 ## Espacio de almacenamiento
 La ficha muestra el uso y enlaza a **Almacenamiento**, donde se fija el espacio máximo. Una baja se bloquea mientras la persona tenga espacio usado o reservado (STORAGE.md).
 
-### Stickers de perfil
+### Personajes de perfil
+Las cuentas nuevas reciben al azar uno de 18 personajes (`App\Support\ProfileStickers`, imágenes en `public/stickers`); si al crear la cuenta se indica otro o ninguno, se respeta. La elección se conserva al cambiar de nombre y al subir una foto, así que al quitar la foto vuelve el personaje. Las cuentas anteriores conservan su foto o sus iniciales.
 
-Las cuentas nuevas reciben al azar uno de 18 personajes. La elección se conserva al cambiar de nombre. En Perfil → Foto de perfil la persona puede subir una foto, elegir otro sticker o usar sus iniciales. Al retirar una foto vuelve su sticker anterior si lo tenía. Las cuentas anteriores conservan su imagen o iniciales. El catálogo es local y solo el propietario de la cuenta puede elegir su avatar.
+En Perfil → Foto de perfil la persona puede subir una foto, elegir otro personaje o usar sus iniciales. Con foto subida, elegir un personaje o las iniciales pide confirmación porque la foto se borra y no se recupera. Solo se aceptan identificadores del catálogo y solo la propia persona elige su imagen. Límite propio de 30 cambios por minuto (`avatar-sticker`), separado del de cambios de cuenta. Si se sustituye una imagen, subir `ProfileStickers::VERSION` para invalidar la caché del navegador.
+
+Procedencia de las imágenes: aportadas por el propietario del proyecto en la PR #45; licencia pendiente de anotar aquí.

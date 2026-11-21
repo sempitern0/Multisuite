@@ -268,6 +268,26 @@ class UserAdministrationTest extends TestCase
         $this->assertNull($member->fresh()->avatarUrl());
     }
 
+    public function test_choosing_a_character_deletes_the_uploaded_photo_and_an_explicit_choice_is_kept(): void
+    {
+        Storage::fake('local');
+        $member = $this->person('member');
+        $this->actingAs($member);
+        Livewire::test('pages::settings.profile')->set('avatar', $this->picture('yo.png', 300, 300, 20))->call('saveAvatar')->assertHasNoErrors();
+        $hash = (string) $member->fresh()->avatar_hash;
+        $path = 'avatars/'.$member->id.'/'.$hash.'.webp';
+        Storage::disk('local')->assertExists($path);
+
+        $page = Livewire::test('pages::settings.profile')->assertSee('¿Quitar tu foto?')->call('selectSticker', 'mago')->assertHasNoErrors();
+
+        $this->assertNull($member->fresh()->avatar_hash);
+        Storage::disk('local')->assertMissing($path);
+        $this->get(route('avatars.show', ['user' => $member->id, 'hash' => $hash]))->assertNotFound();
+        $page->assertSee((string) ProfileStickers::url('mago'), false);
+
+        $this->assertNull(User::factory()->create(['avatar_sticker' => null])->avatarUrl(), 'Initials chosen on creation are kept.');
+    }
+
     public function test_photos_that_are_not_images_are_rejected(): void
     {
         Storage::fake('local');

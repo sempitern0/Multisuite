@@ -2,8 +2,12 @@
 
 namespace App\Support;
 
+/** Local character pictures for the profile (public/stickers, docs/USER_MANAGEMENT.md). */
 final class ProfileStickers
 {
+    /** Raise when an image changes: browsers cache /stickers for a long time. */
+    private const VERSION = 1;
+
     public const LABELS = [
         'botanica' => 'Botánica curiosa',
         'panadero' => 'Panadero sonriente',
@@ -27,6 +31,6 @@ final class ProfileStickers
 
     public static function url(?string $id): ?string
     {
-        return isset(self::LABELS[$id]) ? asset('stickers/'.$id.'.webp') : null;
+        return $id !== null && isset(self::LABELS[$id]) ? asset('stickers/'.$id.'.webp').'?v='.self::VERSION : null;
     }
 }

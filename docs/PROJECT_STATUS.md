@@ -15,7 +15,7 @@ Instantánea del 21 de noviembre de 2026. Se reescribe al cerrar cada incremento
   - Clientes MCP externos por OAuth (Passport), solo consultas, con interruptor del owner y desconexión por persona; pendiente de probar con clientes reales tras P03.
 
 ## En revisión
-Selector de 18 stickers en Perfil y asignación inicial para nuevas cuentas.
+Selector de 18 personajes en Perfil (con confirmación si hay foto) y asignación inicial para nuevas cuentas (PR #45).
 
 ## Próximos pasos
 QA del asistente con un modelo real (MCP.md § Probar con un modelo real) y de Komga; los dos pendientes de la revisión de calidad (ROADMAP); después P03 (red privada) para probar los clientes externos y MCP-08 (piloto).

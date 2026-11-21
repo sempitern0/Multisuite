@@ -35,7 +35,7 @@ class UpdateAvatar
     {
         Gate::forUser($actor)->authorize('changeAvatar', $target);
         if ($sticker !== null && ! isset(ProfileStickers::LABELS[$sticker])) {
-            throw ValidationException::withMessages(['sticker' => 'Elige un personaje de la colección.']);
+            throw ValidationException::withMessages(['sticker' => 'Elige uno de los personajes de la lista.']);
         }
         $this->replace($target, null, $sticker);
     }
