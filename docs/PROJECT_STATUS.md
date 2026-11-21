@@ -5,6 +5,7 @@ Instantánea del 21 de noviembre de 2026. Se reescribe al cerrar cada incremento
 ## Integrado en main
 - Portal Laravel/Livewire con personas, invitaciones, cuentas de servicio, Mis archivos (carpetas conectadas con los servicios), cuotas, almacenamiento y auditoría. Música con Navidrome y Lectura con Komga 1.30.1 (Kavita desactivado y reactivable), con cuentas automáticas y bibliotecas privadas. Validado en CI; QA de Komga con dos personas pendiente.
 - Interacciones de Nocturne y navegación móvil (PR #43). Paleta revisada en OKLCH para los temas claro y oscuro, sin colores escritos a mano, y botón sol/luna en la barra superior y en el acceso (docs/design-system.md § Color). Casillas como filas completas con interruptores para ajustes generales e insignias de rol con nivel de permisos.
+- Mis finanzas (PR #46): ingresos y gastos personales con resumen anual y gráfico mensual, presupuesto por mes, moneda y formato por persona, y tickets subidos desde la propia página o desde Mis archivos con lectura local en segundo plano (JPG, PNG, WebP, PDF). Validado en CI y por el usuario (lectura de tickets) ([PERSONAL_FINANCES.md](PERSONAL_FINANCES.md)).
 - Personajes de perfil (PR #45): 18 imágenes propias, elegibles en Perfil con confirmación si hay foto, y uno al azar para cada cuenta nueva (USER_MANAGEMENT.md).
 - **Asistente y puente MCP** (docs/MCP.md; PR #42 con el RFC y decisiones D1–D4, PR #44 con MCP-01 a MCP-07), validado en CI y pendiente de QA del usuario con un proveedor real:
   - `laravel/mcp` v1.2.1 con herramientas que actúan siempre como la persona de la sesión, con acceso, interruptor y límite diario comprobados en cada llamada (`AssistantAccess::toolDenial`).
@@ -14,9 +15,6 @@ Instantánea del 21 de noviembre de 2026. Se reescribe al cerrar cada incremento
   - Búsqueda en Música (Navidrome) y Lectura (Komga) limitada a las bibliotecas de cada persona.
   - Búsqueda por significado en los archivos de quien acepte la lectura (embeddings del proveedor, texto cifrado, cada 15 minutos; una caída del proveedor deja los archivos pendientes para la siguiente pasada).
   - Clientes MCP externos por OAuth (Passport), solo consultas, con interruptor del owner y desconexión por persona; pendiente de probar con clientes reales tras P03.
-
-## En revisión
-PR #46 · Mis finanzas: ingresos y gastos personales con resumen anual, presupuesto mensual, moneda y formato por persona y lectura de facturas en segundo plano ([PERSONAL_FINANCES.md](PERSONAL_FINANCES.md)).
 
 ## Próximos pasos
 QA del asistente con un modelo real (MCP.md § Probar con un modelo real) y de Komga; los dos pendientes de la revisión de calidad (ROADMAP); después P03 (red privada) para probar los clientes externos y MCP-08 (piloto).
