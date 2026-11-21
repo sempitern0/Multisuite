@@ -1,6 +1,6 @@
 # Roadmap de Multisuite
 
-Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_STATUS.md) y en git. Revisión 2026-11-15.
+Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_STATUS.md) y en git. Revisión 2026-11-20.
 
 ## Contrato del producto (no cambia sin decisión explícita del usuario)
 - Portal Laravel/Livewire privado para propietario, familia y amistades: portada de servicios, invitaciones, cuentas, almacenamiento y auditoría.
@@ -11,17 +11,23 @@ Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_ST
 
 Pendiente de validar en el piloto: autologin musical con dos usuarios y un navegador compartido ([guía](MUSIC_SESSION_BRIDGE.md)).
 
-## Prioridad vigente desde el 17 de noviembre de 2026
+## Prioridad vigente desde el 20 de noviembre de 2026
+1. QA de Komga (PR #41 fusionada).
+2. **Asistente y puente MCP** ([MCP.md](MCP.md)), siguiente integración por decisión del usuario:
+   - [ ] MCP-00 RFC (PR #42): decisiones D1–D4 tomadas, pendiente de fusionar.
+   - [ ] MCP-01 Núcleo: `laravel/mcp` + `laravel/ai`, configuración solo del owner, autorización, auditoría y herramientas de lectura de metadatos.
+   - [ ] MCP-02 Chat · MCP-03 Contenido · MCP-04 Escritura con aprobación.
+   - [ ] MCP-05 Clientes externos (necesita P03) · MCP-06 Catálogos · MCP-07 Búsqueda semántica · MCP-08 Piloto.
+3. **S04b** Publicación administrativa (tras MCP-04 o cuando el usuario decida las tres cuestiones).
+
+## Lectura (Komga)
 - [ ] Evaluar Komga con los libros ya subidos (KOMGA.md). Kavita deshabilitado y reactivable.
 - [ ] Tras validar su lector: aprovisionamiento, bibliotecas privadas por usuario, escaneo servidor a servidor y acceso Komga con passkeys. El puente de contraseña para cuentas existentes está en PR #41.
 - [ ] Adaptar copia y recuperación al lector elegido.
 
-## Orden anterior pendiente de replanificar
-1. **P04.1 Lectura (Kavita)** — en revisión; falta la QA del usuario con libros reales.
-2. **S04a Puente Mis archivos → servicios** — en revisión en la PR #36; falta la QA del usuario.
-3. **S04b** — Publicación administrativa (necesita tres decisiones del usuario).
-4. **P03** — Red privada (VPN/TLS), segundo dispositivo y vinculación de cuentas existentes.
-5. **P05** — Despliegue reproducible y piloto familiar.
+## Después
+- **P03** — Red privada (VPN/TLS), segundo dispositivo y vinculación de cuentas existentes (prerrequisito de MCP-05).
+- **P05** — Despliegue reproducible y piloto familiar.
 
 ## P04 — Servicios (uno por PR)
 Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúmenes, copia y restauración, cuotas y aislamiento; adaptador `ServiceProvisioner` con prueba en CI contra la versión fijada.
