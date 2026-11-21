@@ -18,6 +18,10 @@
         </div>
     </div>
 
+    @isset($alternatives)
+        <div x-show="! editing">{{ $alternatives }}</div>
+    @endisset
+
     <div class="ui-avatar-editor-crop" x-show="editing" x-cloak wire:ignore>
         <div class="ui-avatar-stage" x-ref="stage" tabindex="0" role="group"
              aria-label="Encuadre de la foto. Arrastra o usa las flechas para moverla; + y − para acercar o alejar."

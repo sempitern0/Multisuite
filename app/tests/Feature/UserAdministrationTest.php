@@ -6,6 +6,7 @@ use App\Models\AdminAuditEvent;
 use App\Models\ServiceAccount;
 use App\Models\User;
 use App\Services\ServiceAccounts;
+use App\Support\ProfileStickers;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
@@ -245,6 +246,26 @@ class UserAdministrationTest extends TestCase
         $url = (string) $member->fresh()->avatarUrl();
         Livewire::test('pages::settings.profile')->call('removeAvatar')
             ->assertDispatched('avatar-changed')->assertDontSee($url, false)->assertDontSee('Quitar foto');
+    }
+
+    public function test_profile_stickers_are_stable_optional_and_limited_to_the_catalogue(): void
+    {
+        $member = $this->person('member');
+        $original = $member->avatarUrl();
+        $this->assertNotNull($original);
+        $this->assertSame($original, $member->fresh()->avatarUrl());
+        foreach (ProfileStickers::LABELS as $id => $label) {
+            $this->assertFileExists(public_path('stickers/'.$id.'.webp'));
+        }
+
+        $this->actingAs($member);
+        $page = Livewire::test('pages::settings.profile');
+        $page->call('selectSticker', '../outside')->assertHasErrors('sticker');
+        $this->assertSame($original, $member->fresh()->avatarUrl());
+        $page->call('selectSticker', 'marinero')->assertDispatched('avatar-changed');
+        $this->assertSame(ProfileStickers::url('marinero'), $member->fresh()->avatarUrl());
+        $page->call('selectSticker', null);
+        $this->assertNull($member->fresh()->avatarUrl());
     }
 
     public function test_photos_that_are_not_images_are_rejected(): void

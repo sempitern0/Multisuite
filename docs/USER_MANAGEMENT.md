@@ -45,3 +45,7 @@ Invalida invitaciones previas de ese correo. Roles del portal no otorgan privile
 
 ## Espacio de almacenamiento
 La ficha muestra el uso y enlaza a **Almacenamiento**, donde se fija el espacio máximo. Una baja se bloquea mientras la persona tenga espacio usado o reservado (STORAGE.md).
+
+### Stickers de perfil
+
+Las cuentas nuevas reciben al azar uno de 18 personajes. La elección se conserva al cambiar de nombre. En Perfil → Foto de perfil la persona puede subir una foto, elegir otro sticker o usar sus iniciales. Al retirar una foto vuelve su sticker anterior si lo tenía. Las cuentas anteriores conservan su imagen o iniciales. El catálogo es local y solo el propietario de la cuenta puede elegir su avatar.
