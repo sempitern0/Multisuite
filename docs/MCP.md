@@ -155,6 +155,13 @@ Prompts previstos: `organize_my_files`, `explain_storage_usage`, `summarize_docu
 - Los vectores también describen el contenido: se tratan como datos personales (solo con consentimiento, por persona, borrables).
 - Pruebas (`AssistantSemanticTest`, embeddings simulados): encuentra por significado y guarda el texto cifrado; no reindexa lo que no cambia; nadie más alcanza el índice; la papelera lo saca; retirar el consentimiento o apagarlo lo borra; sin proveedor compatible, mensaje claro.
 
+## Botón flotante del asistente
+- Un botón redondo pequeño abajo a la derecha (`x-ui::dock`) abre un panel no modal con la misma conversación en cualquier página (`pages/assistant-dock`). La conversación abierta se recuerda en la sesión, así que sigue al cambiar de página; desde el panel se puede empezar otra, abrir la pantalla completa y aprobar o rechazar cambios.
+- Para que no moleste: solo aparece a quien puede usar el asistente, nunca en la página Asistente, se esconde mientras se ve la bandeja de subidas, aparta los avisos hacia arriba, no hace consultas mientras está cerrado y cada persona lo oculta desde el propio panel o en *Preferencias › Botón del asistente* (preferencia `assistant_button`). Escape lo cierra y el foco entra en el campo al abrirlo.
+- Las respuestas se muestran sin imágenes en el panel y en la página (el panel vive en páginas sin la CSP de Asistente): una respuesta manipulada no puede hacer que el navegador llame a una dirección externa.
+- La lógica de conversación es común a la página y al panel (`Livewire/Concerns/ChatsWithAssistant`).
+- Pruebas (`AssistantDockTest`): visible solo con acceso y fuera de la página Asistente; se oculta y vuelve desde Preferencias; abre la conversación en curso y no muestra la de otra persona; sin imágenes.
+
 ## Datos nuevos
 - Tablas de `laravel/ai` para conversaciones (`agent_conversations`, `agent_conversation_messages`), con retención configurable y borrado por la persona.
 - `assistant_settings` (una fila: activo, herramientas, límite diario) y `assistant_members` (persona y quién concedió el acceso).

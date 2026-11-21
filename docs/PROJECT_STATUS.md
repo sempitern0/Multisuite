@@ -15,6 +15,7 @@ Portal Laravel/Livewire con personas, invitaciones, cuentas de servicio, Mis arc
   - Búsqueda en Música (Navidrome) y Lectura (Komga) limitada a las bibliotecas de cada persona.
   - Búsqueda por significado en los archivos de quien acepte la lectura (embeddings del proveedor, texto cifrado, cada 15 minutos).
   - Clientes MCP externos por OAuth (Passport), solo consultas, con interruptor del owner y desconexión por persona; pendiente de probar con clientes reales tras P03.
+  - Botón flotante con panel de chat en todas las páginas, ocultable por persona.
   - Validado en CI. Pendiente: QA del usuario con un proveedor real y `composer audit`.
 
 ## Próximos pasos
