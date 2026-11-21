@@ -4,7 +4,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 @theme inline {
     --color-accent: var(--ui-accent);
-    --color-accent-content: var(--ui-accent);
+    --color-accent-content: var(--ui-accent-text);
     --color-accent-foreground: var(--ui-accent-ink);
 }
 [data-flux-field]:not(ui-radio, ui-checkbox) {
