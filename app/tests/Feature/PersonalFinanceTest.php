@@ -92,7 +92,9 @@ class PersonalFinanceTest extends TestCase
         $this->assertSame([123456, ['EUR']], [$usd['expense'], $usd['otherCurrencies']]);
 
         $yen = new MoneyFormat('JPY', 'de_CH');
-        $this->assertSame([1234, 'CHF 1’234.56'], [$yen->parse('1.234'), (new MoneyFormat('CHF', 'de_CH'))->format(123456)]);
+        $this->assertSame(1234, $yen->parse('1.234'));
+        // The grouping mark of de_CH depends on the ICU version (’ or ').
+        $this->assertMatchesRegularExpression("/^CHF.1[’']234\\.56$/u", (new MoneyFormat('CHF', 'de_CH'))->format(123456));
         $this->assertNull((new MoneyFormat('EUR', 'es_ES'))->parse('-5'));
     }
 
@@ -105,7 +107,7 @@ class PersonalFinanceTest extends TestCase
         $this->assertDatabaseHas('monthly_budgets', ['user_id' => $this->owner->id, 'currency' => 'EUR', 'limit_minor' => 10000]);
         $id = (int) PersonalTransaction::value('id');
 
-        $page->set('amount', '0')->call('saveTransaction')->assertHasErrors('amount');
+        $page->set('description', 'Prueba')->set('amount', '0')->call('saveTransaction')->assertHasErrors('amount');
         $page->set('amount', 'doce')->call('saveTransaction')->assertHasErrors('amount');
         $page->set('kind', 'income')->set('category', 'food')->set('amount', '5')->call('saveTransaction')->assertHasErrors('category');
 

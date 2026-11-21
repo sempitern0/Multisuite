@@ -30,30 +30,39 @@ class FinanceSummary
             ->groupBy('occurred_on', 'kind', 'category', 'currency')
             ->toBase()->get();
 
-        $months = array_fill(1, 12, ['income' => 0, 'expense' => 0, 'balance' => 0]);
+        $income = array_fill(1, 12, 0);
+        $expense = array_fill(1, 12, 0);
+        /** @var array{income: array<string, int>, expense: array<string, int>} $categories */
         $categories = ['income' => [], 'expense' => []];
         $others = [];
         foreach ($rows as $row) {
             if ($row->currency !== $currency) {
-                $others[$row->currency] = true;
+                $others[] = (string) $row->currency;
 
                 continue;
             }
-            $kind = $row->kind === 'income' ? 'income' : 'expense';
+            $total = (int) $row->total;
             $month = (int) substr((string) $row->occurred_on, 5, 2);
-            $months[$month][$kind] += (int) $row->total;
-            $categories[$kind][$row->category] = ($categories[$kind][$row->category] ?? 0) + (int) $row->total;
+            $key = (string) $row->category;
+            if ($row->kind === 'income') {
+                $income[$month] += $total;
+                $categories['income'][$key] = ($categories['income'][$key] ?? 0) + $total;
+            } else {
+                $expense[$month] += $total;
+                $categories['expense'][$key] = ($categories['expense'][$key] ?? 0) + $total;
+            }
         }
-        foreach ($months as $number => $totals) {
-            $months[$number]['balance'] = $totals['income'] - $totals['expense'];
+        $months = [];
+        foreach (range(1, 12) as $number) {
+            $months[$number] = ['income' => $income[$number], 'expense' => $expense[$number], 'balance' => $income[$number] - $expense[$number]];
         }
         arsort($categories['income']);
         arsort($categories['expense']);
-        $income = array_sum(array_column($months, 'income'));
-        $expense = array_sum(array_column($months, 'expense'));
+        $totalIncome = array_sum($income);
+        $totalExpense = array_sum($expense);
 
-        return ['months' => $months, 'income' => $income, 'expense' => $expense, 'balance' => $income - $expense,
-            'categories' => $categories, 'otherCurrencies' => array_keys($others)];
+        return ['months' => $months, 'income' => $totalIncome, 'expense' => $totalExpense, 'balance' => $totalIncome - $totalExpense,
+            'categories' => $categories, 'otherCurrencies' => array_values(array_unique($others))];
     }
 
     public function budget(User $user, CarbonImmutable $month, string $currency): ?int
