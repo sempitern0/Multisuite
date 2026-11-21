@@ -150,7 +150,7 @@
     /* Buttons */
     .ui-btn { display: inline-flex; gap: 9px; align-items: center; justify-content: center; min-height: 40px; border: 1px solid transparent; border-radius: 11px; padding: 9px 15px; white-space: nowrap; font-size: 13px; font-weight: 750; transition: transform var(--ui-speed) var(--ui-ease); cursor: pointer; }
     .ui-btn:disabled, .ui-btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; transform: none; }
-    .ui-btn svg { width: 16px; height: 16px; }
+    .ui-btn svg { width: 16px; height: 16px; flex: none; }
     .ui-btn-primary { background: var(--ui-accent); color: var(--ui-accent-ink); }
     .ui-btn-secondary { background: var(--ui-panel-2); color: var(--ui-text); border-color: var(--ui-line); }
     .ui-btn-ghost { color: var(--ui-sub); background: transparent; border-color: var(--ui-line); }
@@ -373,6 +373,52 @@
     .ui-stats dt { font-size: 12px; color: var(--ui-muted); }
     .ui-stats dd { margin: 2px 0 0; font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
     .ui-table td[data-nowrap] { font-variant-numeric: tabular-nums; } /* sizes, dates and amounts line up by digit */
+    /* Input with a fixed sign in front (currency). */
+    .ui-input-group { position: relative; display: flex; align-items: center; }
+    .ui-input-group > .ui-input { padding-left: 3rem; font-variant-numeric: tabular-nums; }
+    .ui-input-prefix { position: absolute; left: 1px; top: 1px; bottom: 1px; width: 2.5rem; display: grid; place-items: center; border-right: 1px solid var(--ui-line); border-radius: var(--ui-radius-control) 0 0 var(--ui-radius-control); background: var(--ui-panel-2); color: var(--ui-sub); font-weight: 700; pointer-events: none; }
+    /* Headline figures. */
+    .ui-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); gap: 12px; margin: 0; }
+    @media (max-width: 640px) { .ui-metric { padding: 12px 14px; } .ui-metric dd { font-size: 18px; } }
+    .ui-metric { --tone: var(--ui-sub); padding: 16px 18px; border: 1px solid var(--ui-line); border-radius: var(--ui-radius-control); background: var(--ui-panel); }
+    .ui-metric[data-tone="ok"] { --tone: var(--ui-ok); }
+    .ui-metric[data-tone="bad"] { --tone: var(--ui-bad); }
+    .ui-metric[data-tone="accent"] { --tone: var(--ui-accent-text); }
+    .ui-metric dt { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ui-sub); }
+    .ui-metric-symbol { display: grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 8px; font-size: 13px; font-weight: 800; color: color-mix(in oklab, var(--tone) 80%, var(--ui-text)); background: color-mix(in oklab, var(--tone) 14%, var(--ui-panel)); }
+    .ui-metric dd { margin: 8px 0 0; font-size: 22px; font-weight: 750; letter-spacing: -.01em; font-variant-numeric: tabular-nums; color: var(--ui-text); }
+    .ui-metric dd.ui-metric-sub { margin-top: 2px; font-size: 12.5px; font-weight: 500; color: var(--ui-muted); letter-spacing: 0; }
+    /* Income and expense per month. */
+    .ui-month-chart { margin: 0; display: grid; gap: 10px; }
+    .ui-month-legend { display: flex; gap: 16px; font-size: 12.5px; color: var(--ui-sub); }
+    .ui-month-legend [data-series]::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+    [data-series="income"] { --series: var(--ui-ok); }
+    [data-series="expense"] { --series: var(--ui-bad); }
+    .ui-month-legend [data-series]::before, .ui-month-pair > span { background: var(--series); }
+    .ui-month-bars { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; align-items: end; }
+    .ui-month { display: grid; gap: 6px; padding: 8px 2px 6px; border: 1px solid transparent; border-radius: var(--ui-radius-control); background: none; color: var(--ui-sub); cursor: pointer; font: inherit; }
+    .ui-month:hover { background: var(--ui-panel-2); }
+    .ui-month[aria-current="true"] { background: color-mix(in oklab, var(--ui-accent-text) 9%, var(--ui-panel)); border-color: color-mix(in oklab, var(--ui-accent-text) 35%, var(--ui-panel)); color: var(--ui-text); }
+    .ui-month-pair { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 120px; }
+    .ui-month-pair > span { width: min(14px, 40%); min-height: 2px; border-radius: 4px 4px 1px 1px; transition: height var(--ui-speed) var(--ui-ease); }
+    .ui-month-label { font-size: 12px; font-weight: 650; text-align: center; }
+    @media (max-width: 640px) { .ui-month-pair { height: 84px; gap: 2px; } .ui-month { padding-inline: 0; } .ui-month-label { font-size: 10.5px; } }
+    html[data-motion="off"] .ui-month-pair > span { transition: none; }
+    @media (prefers-reduced-motion: reduce) { html[data-motion="system"] .ui-month-pair > span { transition: none; } }
+    /* Share of a total. */
+    .ui-breakdown { --tone: var(--ui-accent-text); list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+    .ui-breakdown[data-tone="ok"] { --tone: var(--ui-ok); }
+    .ui-breakdown[data-tone="bad"] { --tone: var(--ui-bad); }
+    .ui-breakdown li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 14px; }
+    .ui-breakdown-label { color: var(--ui-text); }
+    .ui-breakdown-value { font-weight: 650; font-variant-numeric: tabular-nums; }
+    .ui-breakdown-percent { margin-left: 6px; font-weight: 500; color: var(--ui-muted); }
+    .ui-breakdown-bar { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: var(--ui-panel-3); overflow: hidden; }
+    .ui-breakdown-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--tone); }
+    /* Main content with a side column. */
+    .ui-columns { display: grid; gap: 20px; align-items: start; }
+    .ui-columns-main, .ui-columns-aside { min-width: 0; display: grid; gap: 20px; }
+    @media (min-width: 1180px) { .ui-columns { grid-template-columns: minmax(0, 1fr) minmax(320px, 380px); } .ui-columns-aside { position: sticky; top: 84px; } }
     .ui-segments { display: flex; flex-direction: column; gap: 9px; }
     .ui-segments-bar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: var(--ui-panel-3); }
     .ui-segments-legend { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--ui-sub); }

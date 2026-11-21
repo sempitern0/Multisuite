@@ -25,6 +25,15 @@ final class MoneyFormat
         'JPY' => 'Yen japonés',
     ];
 
+    /**
+     * Official sign of each currency, as printed on its notes and price tags. Several pesos
+     * and dollars share "$": the code goes next to it wherever both could be confused.
+     */
+    public const SYMBOLS = [
+        'EUR' => '€', 'USD' => '$', 'GBP' => '£', 'CHF' => 'Fr.', 'MXN' => '$', 'ARS' => '$',
+        'COP' => '$', 'CLP' => '$', 'BRL' => 'R$', 'CAD' => '$', 'JPY' => '¥',
+    ];
+
     /** Number formats by ICU locale; the label is built with the person's currency. */
     public const FORMATS = ['es_ES', 'en_US', 'fr_FR', 'de_CH'];
 
@@ -35,6 +44,11 @@ final class MoneyFormat
     public static function supports(string $currency, string $locale): bool
     {
         return isset(self::CURRENCIES[$currency]) && in_array($locale, self::FORMATS, true);
+    }
+
+    public function symbol(): string
+    {
+        return self::SYMBOLS[$this->currency] ?? $this->currency;
     }
 
     public function decimals(): int

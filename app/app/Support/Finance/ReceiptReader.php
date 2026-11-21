@@ -13,13 +13,13 @@ use Symfony\Component\Process\Process;
  */
 final class ReceiptReader implements ReadsReceipts
 {
-    public const TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
+    public const TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 
     /** @return array{amount: string, date: string} amount as a plain decimal ("1234.56") or '' */
     public function read(StoredBlob $blob, string $mime): array
     {
         if (! in_array($mime, self::TYPES, true) || $blob->size() > 12 * 1024 * 1024) {
-            throw new ReceiptUnreadable('La lectura automática admite JPG, PNG o PDF de hasta 12 MiB. Puedes introducir el movimiento a mano.');
+            throw new ReceiptUnreadable('La lectura automática admite JPG, PNG, WebP o PDF de hasta 12 MiB. Puedes introducir el movimiento a mano.');
         }
         $bytes = $blob->prefix($blob->size());
         if ($mime === 'application/pdf') {
@@ -33,8 +33,23 @@ final class ReceiptReader implements ReadsReceipts
         if ($size === false || $size[0] * $size[1] > 20000000) {
             throw new ReceiptUnreadable('La imagen es demasiado grande o ilegible. Puedes introducir el movimiento a mano.');
         }
+        if ($mime === 'image/webp') {
+            $bytes = $this->webpToPng($bytes); // Tesseract's image library may lack WebP; GD has it.
+        }
 
         return $this->suggest($this->run(['tesseract', 'stdin', 'stdout', '-l', 'spa+eng'], $bytes));
+    }
+
+    private function webpToPng(string $bytes): string
+    {
+        $image = @imagecreatefromstring($bytes);
+        if ($image === false) {
+            throw new ReceiptUnreadable('La imagen es demasiado grande o ilegible. Puedes introducir el movimiento a mano.');
+        }
+        ob_start();
+        imagepng($image);
+
+        return (string) ob_get_clean();
     }
 
     /** @param list<string> $command */

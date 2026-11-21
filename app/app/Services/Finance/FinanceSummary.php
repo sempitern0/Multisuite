@@ -16,7 +16,7 @@ class FinanceSummary
     /**
      * @return array{
      *     months: array<int, array{income: int, expense: int, balance: int}>,
-     *     income: int, expense: int, balance: int,
+     *     income: int, expense: int, balance: int, savingsRate: int|null,
      *     categories: array{income: array<string, int>, expense: array<string, int>},
      *     otherCurrencies: list<string>
      * }
@@ -61,7 +61,10 @@ class FinanceSummary
         $totalIncome = array_sum($income);
         $totalExpense = array_sum($expense);
 
-        return ['months' => $months, 'income' => $totalIncome, 'expense' => $totalExpense, 'balance' => $totalIncome - $totalExpense,
+        // Share of income kept: the usual headline of a personal budget (null without income).
+        $rate = $totalIncome > 0 ? (int) round(($totalIncome - $totalExpense) * 100 / $totalIncome) : null;
+
+        return ['months' => $months, 'income' => $totalIncome, 'expense' => $totalExpense, 'balance' => $totalIncome - $totalExpense, 'savingsRate' => $rate,
             'categories' => $categories, 'otherCurrencies' => array_values(array_unique($others))];
     }
 

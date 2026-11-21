@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\ReadReceipt;
+use App\Models\Folder;
 use App\Models\PersonalTransaction;
 use App\Models\User;
 use App\Services\Finance\FinanceSummary;
@@ -55,6 +56,50 @@ class PersonalFinanceTest extends TestCase
         $stranger = User::factory()->create(['role' => 'owner']);
         $this->actingAs($stranger)->get(route('finances.index', ['receipt' => $id]))->assertNotFound();
         $this->get(route('files.content', ['fileId' => $id]))->assertNotFound();
+    }
+
+    public function test_a_ticket_uploaded_from_the_page_goes_to_facturas_and_is_read_also_as_webp(): void
+    {
+        $this->actingAs($this->owner);
+        $page = Livewire::test('pages::finances');
+        $folder = Folder::where('user_id', $this->owner->id)->whereNull('parent_id')->where('name', 'Facturas')->sole();
+        Livewire::test('pages::finances'); // the folder is reused, not duplicated
+        $this->assertSame(1, Folder::where('user_id', $this->owner->id)->where('name', 'Facturas')->count());
+
+        // files.js uploads through Mis archivos into that folder and then announces the new id.
+        $this->upload($this->owner, 'ticket.webp', (string) file_get_contents(base_path('tests/Fixtures/finances/ticket.webp')), $folder->id)->assertOk();
+        $id = $this->entry('ticket.webp')->id;
+        $page->dispatch('files-uploaded', ids: [$id])
+            ->assertSet('receipt', $id)->assertSet('description', 'ticket')
+            ->assertSet('date', '2026-11-18')->assertSet('amount', '42,70')->assertHasNoErrors()
+            ->set('category', 'food')->call('saveTransaction')->assertHasNoErrors();
+        $this->assertDatabaseHas('personal_transactions', ['receipt_id' => $id, 'amount_minor' => 4270]);
+
+        $this->upload($this->owner, 'notas.txt', 'Hola')->assertOk();
+        $page->dispatch('files-uploaded', ids: [$this->entry('notas.txt')->id])->assertSet('receipt', null)->assertHasErrors('receipt');
+        $stranger = User::factory()->create(['role' => 'owner']);
+        $this->upload($stranger, 'ajeno.png', (string) file_get_contents(base_path('tests/Fixtures/finances/ticket.png')))->assertOk();
+        $this->actingAs($this->owner);
+        $page->dispatch('files-uploaded', ids: [$this->entry('ajeno.png')->id, 'x'])->assertSet('receipt', null);
+    }
+
+    public function test_months_can_be_browsed_filtered_and_searched(): void
+    {
+        $this->actingAs($this->owner);
+        $page = Livewire::test('pages::finances');
+        $this->record($page, 'income', 'salary', '2026-01-31', '1000');
+        $this->record($page, 'expense', 'food', '2026-01-10', '20');
+        $this->record($page, 'expense', 'leisure', '2026-01-12', '30');
+        $this->record($page, 'expense', 'food', '2025-12-24', '50');
+
+        $page->set('year', 2026)->call('selectMonth', 1)
+            ->set('show', 'expense')->assertSee('Leisure')->assertSee('Food')->assertDontSee('Salary')
+            ->set('search', 'leis')->assertSee('Leisure')->assertDontSee('Food')
+            ->set('show', 'nada')->assertSet('show', 'all')
+            ->set('search', '')->call('previousMonth')->assertSet('year', 2025)->assertSet('month', 12)->assertSee('Food')
+            ->call('nextMonth')->assertSet('year', 2026)->assertSet('month', 1);
+        $this->assertSame(['€', 'R$', 'Fr.'], [(new MoneyFormat('EUR', 'es_ES'))->symbol(), (new MoneyFormat('BRL', 'en_US'))->symbol(), (new MoneyFormat('CHF', 'de_CH'))->symbol()]);
+        $this->assertSame(95, app(FinanceSummary::class)->year($this->owner, 2026, 'EUR')['savingsRate']);
     }
 
     public function test_an_unreadable_receipt_says_why_and_the_movement_can_be_typed(): void
