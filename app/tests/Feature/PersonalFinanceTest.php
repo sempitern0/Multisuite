@@ -7,6 +7,7 @@ use App\Models\Folder;
 use App\Models\PersonalTransaction;
 use App\Models\User;
 use App\Services\Finance\FinanceSummary;
+use App\Services\Storage\StorageReservations;
 use App\Services\Storage\StoredBlob;
 use App\Support\Finance\MoneyFormat;
 use App\Support\Finance\ReadsReceipts;
@@ -78,6 +79,7 @@ class PersonalFinanceTest extends TestCase
         $this->upload($this->owner, 'notas.txt', 'Hola')->assertOk();
         $page->dispatch('files-uploaded', ids: [$this->entry('notas.txt')->id])->assertSet('receipt', null)->assertHasErrors('receipt');
         $stranger = User::factory()->create(['role' => 'owner']);
+        app(StorageReservations::class)->setUserQuota($stranger, 500000);
         $this->upload($stranger, 'ajeno.png', (string) file_get_contents(base_path('tests/Fixtures/finances/ticket.png')))->assertOk();
         $this->actingAs($this->owner);
         $page->dispatch('files-uploaded', ids: [$this->entry('ajeno.png')->id, 'x'])->assertSet('receipt', null);
