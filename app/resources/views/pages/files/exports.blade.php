@@ -39,7 +39,7 @@ new #[Title('Descargas ZIP')] class extends Component {
     }
 }; ?>
 
-<div @if ($this->pending) wire:poll.5s @endif>
+<div @if ($this->pending) wire:poll.visible.5s @endif>
     <x-ui::breadcrumbs :items="[['label' => 'Mis archivos', 'href' => route('files.index')], ['label' => 'Descargas ZIP', 'href' => route('files.exports.index')]]" />
     <x-ui::page-header title="Descargas ZIP" :back="route('files.index')" back-label="Mis archivos" :description="'Cada ZIP se puede descargar durante '.(int) config('nas.export_ttl_hours').' horas y después se borra solo. No ocupa espacio de tu cuota.'" />
 

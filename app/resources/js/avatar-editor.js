@@ -1,7 +1,6 @@
 // Profile photo editor (x-ui::avatar-editor) on Cropper.js 2: a fixed square selection
 // shown as a circle; the picture moves and zooms underneath and always covers it. Only
 // convenience: the server decodes, crops and re-encodes whatever arrives.
-import Cropper from 'cropperjs';
 
 const OUTPUT = 512;
 const MAX_INPUT = 40 * 1024 * 1024;
@@ -85,6 +84,17 @@ const avatarEditor = ({ model, save }) => ({
     // Cropper.js measures its canvas when it starts: wait until the stage is shown and laid out,
     // otherwise the selection is 0 × 0 and the picture is neither fitted nor croppable.
     async mount(source, ticket) {
+        let Cropper;
+        try {
+            ({ default: Cropper } = await import('cropperjs'));
+        } catch {
+            if (ticket === this.selection) {
+                this.close();
+                this.problem = 'No se ha podido cargar el editor. Vuelve a elegir la foto.';
+            }
+            return;
+        }
+        if (ticket !== this.selection) return;
         const stage = this.$refs.stage;
         for (let frame = 0; stage.clientWidth === 0 && frame < 60; frame++) {
             await new Promise((resolve) => requestAnimationFrame(resolve));

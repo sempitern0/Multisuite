@@ -15,6 +15,7 @@ El diseño está separado de la lógica para poder sustituirlo sin tocar control
 
 ## Cambiar de tema
 1. Copiar `resources/views/themes/nocturne` a `themes/<nuevo>` y `resources/css/themes/nocturne.css` a `<nuevo>.css`.
+   Copiar también el módulo de interacción importado por el tema, `nocturne-feedback.css`, que agrupa los estados de pulsación, carga y movimiento reducido.
 2. Mantener los **contratos** de la tabla siguiente (nombres de componente y props); el marcado interno es libre.
 3. Cambiar el `@import` de `resources/css/app.css` y `UI_THEME=<nuevo>`; `make npm CMD="run build"`.
 Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se añade con el mismo nombre en todos los temas.

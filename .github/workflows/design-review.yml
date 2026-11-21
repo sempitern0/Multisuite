@@ -1,0 +1,64 @@
+name: Design review
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/design-review.yml'
+      - 'tests/design/**'
+permissions:
+  contents: read
+jobs:
+  browser:
+    if: github.head_ref == 'feat/nocturne-interactions'
+    runs-on: ubuntu-latest
+    env:
+      DESIGN_REVISION: ${{ matrix.revision }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        revision: [baseline, candidate]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Keep identical measurement harness
+        run: cp tests/design/*.cjs "$RUNNER_TEMP/"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.revision == 'baseline' && 'c27e0b6fdad0c8f445df05ffe9acd6251c065c7f' || github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, pdo_sqlite, gd
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build disposable portal
+        working-directory: app
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          npm ci
+          npm run build
+          cp .env.example .env
+          php artisan key:generate
+          touch database/database.sqlite
+          php artisan migrate --seed --force
+          php artisan serve --host=127.0.0.1 --port=8001 > "$RUNNER_TEMP/server.log" 2>&1 &
+          node "$RUNNER_TEMP/serve.cjs" &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8000/login >/dev/null && break; sleep 1; done
+          cd "$RUNNER_TEMP"
+          npm install --no-audit --no-fund --no-save puppeteer-core@24.12.1 lighthouse@12.8.2 axe-core@4.10.3
+          node measure.cjs
+      - name: Audit locked application dependencies
+        if: matrix.revision == 'candidate' && always()
+        working-directory: app
+        run: |
+          composer audit --locked
+          npm audit --audit-level=high
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: design-${{ matrix.revision }}
+          path: ${{ runner.temp }}/design-results

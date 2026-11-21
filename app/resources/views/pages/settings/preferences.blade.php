@@ -40,6 +40,10 @@ new #[Title('Preferencias')] class extends Component {
 
 <x-pages::settings.layout heading="Preferencias" subheading="Ajusta Multisuite a tu manera. Los cambios se guardan al momento y solo te afectan a ti.">
     <x-ui::stack gap="lg">
+        <x-ui::select name="appearance" label="Tema de este dispositivo"
+            x-data x-init="$el.value = window.multisuiteTheme.choice"
+            x-on:change="window.multisuiteTheme.select($event.target.value)"
+            :options="['system' => 'Según el sistema', 'light' => 'Claro', 'dark' => 'Oscuro']" />
         <x-ui::choice-group name="motion" label="Animaciones" wire:model.live="motion"
             help="«Según el sistema» respeta la opción de reducir movimiento de tu dispositivo."
             :options="['system' => 'Según el sistema', 'on' => 'Activadas', 'off' => 'Desactivadas']" />

@@ -135,7 +135,7 @@ class KomgaProvisioningTest extends TestCase
         Http::fake(['*' => Http::failedConnection()]);
         Livewire::actingAs($owner)->test('pages::admin.komga-connection')
             ->assertSee('Multisuite no puede consultar Komga')
-            ->assertDontSee('Contraseña actual de Multisuite');
+            ->assertDontSee('Contraseña de la cuenta seleccionada');
     }
 
     public function test_claim_requires_a_boolean_status_before_any_account_is_created(): void

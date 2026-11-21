@@ -1,0 +1,34 @@
+@layer components {
+    :is(button:enabled, a[href]):active { filter: brightness(.8); }
+    /* Loading feedback: Livewire 4 marks the element that started a request with data-loading. */
+    :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"]) { position: relative; cursor: progress; }
+    :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"])::after {
+        content: "";
+        width: 1em;
+        height: 1em;
+        flex: none;
+        border: 2px solid currentColor;
+        border-inline-end-color: transparent;
+        border-radius: 50%;
+        animation: ui-spin .8s linear infinite;
+    }
+    .ui-btn-icon[data-loading] svg { visibility: hidden; }
+    .ui-btn-icon[data-loading]::after { position: absolute; }
+    html[data-motion="off"] :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"])::after { content: "…"; border: 0; line-height: 1; }
+    @media (prefers-reduced-motion: reduce) {
+        html[data-motion="system"] :is(.ui-btn[data-loading], form:is([data-loading], [aria-busy="true"]) .ui-btn[type="submit"])::after { content: "…"; border: 0; line-height: 1; }
+    }
+    @media (hover: hover) and (pointer: fine) {
+        .ui-btn:not(:disabled):hover { transform: translateY(-1px); }
+    }
+    .ui-btn:not(:disabled):active { transform: scale(.98); }
+    html[data-motion="off"] .ui-btn:is(:hover, :active) { transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+        html[data-motion="system"] .ui-btn:is(:hover, :active) { transform: none; }
+    }
+}
+
+@keyframes ui-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

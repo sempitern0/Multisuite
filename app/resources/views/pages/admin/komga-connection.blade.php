@@ -89,14 +89,13 @@ new #[Title('Conexión de Lectura')] class extends Component {
                     <p>Komga ya está inicializado. Si se preparó automáticamente, prueba tu cuenta de Multisuite. No se creará otro administrador.</p>
                 @endif
                 <x-ui::form wire:submit="connect">
-                    <x-ui::checkbox name="existingAccount" wire:model.live="existingAccount" label="Ya tenía otra cuenta administradora en Komga" />
-                    @if ($existingAccount)
-                        <x-ui::field name="email" type="email" label="Correo del administrador de Komga" wire:model="email" required autocomplete="username" />
-                    @else
-                        <p>Se usará tu cuenta: {{ auth()->user()->email }}</p>
-                    @endif
-                    <x-ui::password name="password" :label="$existingAccount ? 'Contraseña de esa cuenta de Komga' : 'Contraseña actual de Multisuite'" wire:model="password" required autocomplete="current-password" />
-                    <x-ui::button type="submit">{{ $existingAccount ? 'Conectar cuenta existente' : 'Usar mi cuenta de Multisuite' }}</x-ui::button>
+                    <x-ui::checkbox name="existingAccount" wire:model="existingAccount" label="Ya tenía otra cuenta administradora en Komga" />
+                    <div x-show="$wire.existingAccount" x-cloak>
+                        <x-ui::field name="email" type="email" label="Correo del administrador de Komga" wire:model="email" x-bind:disabled="!$wire.existingAccount" required autocomplete="username" />
+                    </div>
+                        <p x-show="!$wire.existingAccount">Se usará tu cuenta: {{ auth()->user()->email }}</p>
+                    <x-ui::password name="password" label="Contraseña de la cuenta seleccionada" wire:model="password" required autocomplete="current-password" />
+                    <x-ui::button type="submit"><span x-show="!$wire.existingAccount">Usar mi cuenta de Multisuite</span><span x-show="$wire.existingAccount" x-cloak>Conectar cuenta existente</span></x-ui::button>
                 </x-ui::form>
             @endif
         </x-ui::panel>
