@@ -2,7 +2,7 @@
 
 RFC del hito MCP-00 (2026-11-20), que sustituye al *Estudio de integración MCP* del 15 de noviembre de 2026 (hecho sobre `f633d5d`, PR #35) y lo pone al día con el estado actual y las librerías estables publicadas desde entonces.
 
-**Estado:** MCP-01 a MCP-04 implementados y validados en CI (§ Implementado, PR #44). Falta la QA del usuario con un proveedor real. No hay ruta MCP pública.
+**Estado:** MCP-01 a MCP-07 implementados y validados en CI (§ Implementado, PR #44). Falta la QA del usuario con un proveedor real; la de clientes externos (MCP-05) la hará más adelante, cuando exista la red privada (P03).
 
 ## Objetivo
 - Conectar uno o varios modelos de proveedores externos que puedan **consultar y actuar sobre Multisuite** como chatbot dentro del portal y, más adelante, desde clientes MCP externos (Claude, ChatGPT, clientes locales).
@@ -113,6 +113,8 @@ Prompts previstos: `organize_my_files`, `explain_storage_usage`, `summarize_docu
 5. Para que cambie cosas: activa en los ajustes lo que puede cambiar y pide, por ejemplo, «Crea una carpeta Facturas 2026»; aprueba la tarjeta.
 6. Para que lea contenido: marca el permiso en los ajustes, pulsa «Permitir que lea mis archivos» en la página del asistente y pide «Resume el archivo …».
 7. Para que otra persona lo use, pulsa **Permitir** en su fila.
+8. Búsqueda por significado: marca su casilla en los ajustes (con un proveedor de OpenAI, Gemini, Mistral u OpenRouter), acepta la lectura en la página del asistente y espera a la siguiente pasada (o `make artisan CMD="portal:assistant-index"`).
+9. Clientes externos (cuando haya red privada): marca «Permitir conectar aplicaciones externas» y añade `https://tu-dominio/mcp` como conector en el cliente.
 
 ## Implementado (MCP-03)
 - Herramienta `files_read_excerpt(file_id, offset)`: texto de un archivo propio y vigente (no en la papelera ni versiones antiguas), 32 KB por llamada sin partir caracteres, con `next_offset` para seguir. Formatos: texto, Markdown, CSV, JSON y PDF. Se devuelve en `untrusted_content` con un aviso, y las instrucciones del agente le prohíben seguir órdenes que aparezcan en él.
@@ -128,6 +130,30 @@ Prompts previstos: `organize_my_files`, `explain_storage_usage`, `summarize_docu
 - `AssistantChat::decide` comprueba acceso, propiedad de la conversación, presupuesto y proveedores, y continúa la conversación con la decisión. Rechazar no cambia nada y se le dice al modelo que no insista.
 - Defensa en profundidad: `Mcp/Tools/ChangeTool` solo actúa dentro de `ApprovedChange`, que abre únicamente el envoltorio del chat al ejecutar un cambio aprobado. Llamar a la herramienta por cualquier otra vía (el servidor MCP, por ejemplo) responde «Este cambio solo se hace con tu aprobación…» y no toca nada. Los clientes MCP externos tendrán su propia aprobación en MCP-05.
 - Pruebas (`tests/Feature/Mcp/AssistantChangesTest`, proveedor simulado que pide usar herramientas): apagadas por defecto y envueltas al activarlas; ninguna otra vía cambia nada; el cambio espera a la aprobación, bloquea nuevas preguntas, solo lo decide quien es dueño de la conversación y después se hace; rechazar no cambia nada; tarjetas solo con datos propios; la página muestra el cambio y sus botones.
+
+## Implementado (MCP-05) — clientes MCP externos
+- `laravel/passport` 13 (OAuth 2.1, PKCE S256, tokens de 1 hora y renovación de 30 días). `routes/ai.php`: `Mcp::oauthRoutes()` (metadatos `/.well-known/oauth-*` y registro dinámico de clientes) y `POST /mcp` con `auth:api`, scope `mcp:use`, `EnsureExternalAssistant` y límite de 60 peticiones/minuto.
+- **Cambio respecto al RFC:** `laravel/mcp` no implementa en servidor los Client ID Metadata Documents, así que se usa el registro dinámico que trae, limitado a los dominios de retorno de `MCP_REDIRECT_DOMAINS` (por defecto claude.ai, claude.com, chatgpt.com y localhost). Registrar un cliente no da acceso: hace falta iniciar sesión en Multisuite y aceptar.
+- Interruptor del owner «Permitir conectar aplicaciones externas» (`assistant_settings.external_enabled`, apagado). `EnsureExternalAssistant` comprueba en cada petición ese interruptor y el acceso de la persona (verificada, no suspendida, contraseña inicial cambiada, acceso concedido): un token anterior deja de valer en cuanto algo cambia.
+- Pantalla de consentimiento propia (`pages/oauth-authorize`, componentes `x-ui::`): explica qué podrá hacer la aplicación; sin acceso no muestra el botón de conectar.
+- Solo consultas: las herramientas de cambio no se ofrecen nunca por `/mcp` (`ChangeTool::shouldRegister` = falso) y, aunque se llamen, exigen la aprobación del chat. La lectura de contenido y la búsqueda por significado siguen necesitando el consentimiento de la persona.
+- La página Asistente lista las **aplicaciones conectadas** y permite desconectarlas (revoca los tokens de acceso y renovación de ese cliente).
+- Claves OAuth: `portal:dev-bootstrap` las crea en desarrollo; en producción, `PASSPORT_PRIVATE_KEY`/`PASSPORT_PUBLIC_KEY` o `passport:keys` una vez. Solo debe exponerse por la red privada (P03).
+- Pruebas (`AssistantExternalTest`): metadatos OAuth; sin token, 401; interruptor del owner, suspensión y retirada de acceso cortan la siguiente petición; sin scope `mcp:use`, 403; las herramientas de cambio no aparecen; la pantalla de consentimiento solo ofrece conectar con acceso. La prueba con clientes reales queda para el usuario.
+
+## Implementado (MCP-06) — búsqueda en Música y Lectura
+- `music_search` (Navidrome: álbumes y canciones) y `reading_search` (Komga: series y libros), activables en los ajustes. Solo nombres, artistas y títulos; para escuchar o leer, la persona abre el servicio desde la portada.
+- **Cambio respecto al RFC:** el portal no guarda las contraseñas de las personas en los servicios, así que consulta con la cuenta de servicio del operador **y** con las bibliotecas que el propio servicio asigna a esa persona: Navidrome `GET /api/user/{id}/library`; Komga, las bibliotecas que el portal asignó a la cuenta acotadas a las que Komga comparte con ella ahora. La búsqueda se limita a esas bibliotecas (`library_id` repetido) y cada resultado se vuelve a filtrar por biblioteca, de modo que un servidor que ignorase el filtro tampoco devolvería nada ajeno.
+- Pruebas (`AssistantCatalogTest`, servicios simulados): solo bibliotecas propias aunque el servicio devuelva otras; la consulta no menciona bibliotecas ajenas; sin servicio o sin cuenta lista, mensaje claro; servicio caído, sin detalles.
+
+## Implementado (MCP-07) — búsqueda por significado
+- `semantic_search`: fragmentos de los archivos propios más parecidos en significado a la pregunta, con su archivo y carpeta; el agente puede seguir con `files_read_excerpt`.
+- Solo con el interruptor del owner «Búsqueda por significado» (`semantic_enabled`) **y** el consentimiento de lectura de la persona (D3), y con un proveedor activo que ofrezca embeddings (OpenAI, Gemini, Mistral u OpenRouter; Anthropic no los ofrece).
+- `Services/Assistant/SemanticIndex` + `portal:assistant-index` (cada 15 minutos): trocea el texto (hasta 256 KB por archivo, 120 fragmentos de 1.500 caracteres con solape), pide embeddings de 768 dimensiones y guarda el **texto cifrado** (`APP_KEY`) con su vector. Reindexa lo que cambia y retira lo borrado; los vectores llevan la marca proveedor:modelo:dimensiones y se rehacen si cambia el proveedor.
+- **Decisión:** sin pgvector (la imagen `postgres:17-alpine` no lo trae y cambiarla afecta a todo el despliegue). Los vectores se comparan en PHP con un límite de 6.000 fragmentos y 2.000 archivos por persona, suficiente para un hogar. Si se queda corto, migrar a pgvector.
+- Archivos en la papelera desaparecen de los resultados al momento (la consulta solo une archivos vigentes) y del índice en la siguiente pasada. Retirar el consentimiento borra el índice de esa persona al instante; apagar la función lo borra en la siguiente pasada.
+- Los vectores también describen el contenido: se tratan como datos personales (solo con consentimiento, por persona, borrables).
+- Pruebas (`AssistantSemanticTest`, embeddings simulados): encuentra por significado y guarda el texto cifrado; no reindexa lo que no cambia; nadie más alcanza el índice; la papelera lo saca; retirar el consentimiento o apagarlo lo borra; sin proveedor compatible, mensaje claro.
 
 ## Datos nuevos
 - Tablas de `laravel/ai` para conversaciones (`agent_conversations`, `agent_conversation_messages`), con retención configurable y borrado por la persona.
@@ -147,9 +173,9 @@ Cada hito tiene su rama y su PR (apilada si la anterior no está fusionada), Pin
 | **MCP-02** Chat ✅ | `laravel/ai`; página *Asistente* con respuesta en streaming, proveedores del owner, conmutación por error, historial propio (30 días) y presupuesto | Pruebas con los *fakes* de `laravel/ai`; QA visual del usuario con un proveedor real |
 | **MCP-03** Contenido ✅ | `files_read_excerpt` (texto, Markdown y PDF con extractor aislado) y permiso de nube | Ninguna lectura supera los límites ni sale a la nube sin permiso |
 | **MCP-04** Escritura ✅ | Crear carpeta, renombrar, papelera y restaurar con aprobación en el chat | Idempotencia y auditoría probadas; rechazar no cambia nada |
-| **MCP-05** Clientes externos | Passport + `Mcp::oauthRoutes`, pantalla de consentimiento con `x-ui::`, concesiones, revocación y límites; compatibilidad 2026-07-28 y 2025-11-25 | Necesita P03 (VPN/TLS); probado con Claude y otro cliente |
-| **MCP-06** Catálogos | Búsqueda en Navidrome y Komga con permisos reales de la persona | Sin duplicar catálogos; ACL real verificada en CI |
-| **MCP-07** Búsqueda semántica | Indexado opcional por persona, embeddings del proveedor con el permiso de D3, eventos de cambio | Borrar o mandar a la papelera retira del índice; copia y restauración probadas |
+| **MCP-05** Clientes externos ✅ | Passport + `Mcp::oauthRoutes`, pantalla de consentimiento con `x-ui::`, concesiones, revocación y límites; compatibilidad 2026-07-28 y 2025-11-25 | Necesita P03 (VPN/TLS); probado con Claude y otro cliente |
+| **MCP-06** Catálogos ✅ | Búsqueda en Navidrome y Komga con permisos reales de la persona | Sin duplicar catálogos; ACL real verificada en CI |
+| **MCP-07** Búsqueda semántica ✅ | Indexado opcional por persona, embeddings del proveedor con el permiso de D3, eventos de cambio | Borrar o mandar a la papelera retira del índice; copia y restauración probadas |
 | **MCP-08** Piloto | Dos personas, dos dispositivos, red privada | QA real y vuelta atrás ensayada |
 
 

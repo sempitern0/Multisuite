@@ -99,7 +99,8 @@ class SemanticIndex
         // Drop what is no longer a current file, or was indexed with another model.
         $stale = DB::table('assistant_indexed_files')->where('user_id', $user->id)
             ->where(fn ($query) => $query->whereNotIn('user_file_id', $currentIds === [] ? [0] : $currentIds)->orWhere('model', '!=', $provider['key']))
-            ->pluck('user_file_id')->map(fn ($id): int => (int) $id)->values()->all();
+            ->pluck('user_file_id')->map(fn ($id): int => (int) $id)->all();
+        $stale = array_values($stale);
         $this->dropFiles($stale);
 
         $indexed = DB::table('assistant_indexed_files')->where('user_id', $user->id)->pluck('upload_id', 'user_file_id')->all();

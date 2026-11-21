@@ -17,6 +17,7 @@ Entrada VPN + TLS: loopback para proxy en host; si el proxy es un contenedor, di
 El Compose heredado de producción publica puertos por defecto: adaptarlo antes de desplegar. compose.music.yaml mantiene loopback incluso en servidor; no publica una web pública.
 El operador aporta dominio/resolución DNS, secretos, VPN y destinos de almacenamiento/backup. Objetivo: solo configuración por entorno, sin editar código.
 Probar paridad local y staging con misma imagen antes de promoción; nunca copiar datos personales a staging.
+Asistente: claves OAuth de Passport (`PASSPORT_PRIVATE_KEY`/`PASSPORT_PUBLIC_KEY` o `passport:keys` una vez) y `MCP_REDIRECT_DOMAINS`; el endpoint `/mcp` solo debe ser accesible por la red privada (docs/MCP.md § MCP-05). En desarrollo `make up` crea las claves.
 
 ## Operación
 Las altas y contraseñas de cuentas nuevas pueden aprovisionarse desde el portal mediante SERVICE_ACCOUNTS.md. VPN, sesión web unificada y baja integral siguen pendientes.

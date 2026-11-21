@@ -15,8 +15,9 @@ Pendiente de validar en el piloto: autologin musical con dos usuarios y un naveg
 1. QA de Komga (PR #41 fusionada).
 2. **Asistente y puente MCP** ([MCP.md](MCP.md)), siguiente integración por decisión del usuario:
    - [ ] MCP-00 RFC (PR #42): decisiones D1–D4 tomadas, pendiente de fusionar.
-   - [ ] MCP-01 Núcleo, MCP-02 Chat, MCP-03 Contenido y MCP-04 Cambios con aprobación (PR #44, apilada sobre #42): implementados y validados en CI. Falta la QA del usuario con un proveedor real (MCP.md § Probar con un modelo real) y `composer audit`.
-   - [ ] MCP-05 Clientes externos (necesita P03) · MCP-06 Catálogos · MCP-07 Búsqueda semántica · MCP-08 Piloto.
+   - [ ] MCP-01 a MCP-07 (PR #44, apilada sobre #42): implementados y validados en CI. Falta la QA del usuario con un proveedor real (MCP.md § Probar con un modelo real) y `composer audit`.
+   - [ ] QA de clientes externos (MCP-05) con Claude/ChatGPT cuando exista P03.
+   - [ ] MCP-08 Piloto: dos personas, dos dispositivos, red privada.
 3. **S04b** Publicación administrativa (tras MCP-04 o cuando el usuario decida las tres cuestiones).
 
 ## Lectura (Komga)
