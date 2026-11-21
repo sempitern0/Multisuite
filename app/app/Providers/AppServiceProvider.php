@@ -46,7 +46,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(UserFile::class, UserFilePolicy::class);
         Gate::policy(Folder::class, FolderPolicy::class);
         // External MCP clients (MCP-05): our own consent screen, short access tokens.
-        Passport::authorizationView(fn (array $parameters) => view('pages.oauth-authorize', $parameters));
+        Passport::authorizationView('pages.oauth-authorize');
         Passport::tokensExpireIn(now()->addHour());
         Passport::refreshTokensExpireIn(now()->addDays(30));
         // Named limiters: unnamed `throttle:N,1` share one counter per user across every

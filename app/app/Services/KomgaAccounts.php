@@ -256,7 +256,6 @@ final class KomgaAccounts implements PersonalLibraries, ServiceProvisioner
         });
     }
 
-    /** @return array<string, mixed>|null */
     /**
      * Series and books matching $query that this account may read (MCP-06). The allowed
      * libraries are the ones the portal assigned to the account, narrowed to what Komga
@@ -301,6 +300,7 @@ final class KomgaAccounts implements PersonalLibraries, ServiceProvisioner
         return $result;
     }
 
+    /** @return array<string, mixed>|null */
     private function find(ServiceAccount $account): ?array
     {
         if ($account->external_id === null) {

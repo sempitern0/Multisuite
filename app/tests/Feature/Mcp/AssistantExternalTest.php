@@ -111,9 +111,12 @@ class AssistantExternalTest extends TestCase
         $open = $render($this->member);
         $this->assertStringContainsString('¿Conectar «Claude»?', $open);
         $this->assertStringContainsString('No podrá cambiar nada', $open);
-        $this->assertStringContainsString(route('passport.authorizations.approve'), $open);
+        $this->assertStringContainsString('name="auth_token" value="token-123"', $open);
 
+        // Without access to the assistant the approve form is not rendered at all.
         $stranger = User::factory()->create(['role' => 'member']);
-        $this->assertStringNotContainsString(route('passport.authorizations.approve'), $render($stranger));
+        $denied = $render($stranger);
+        $this->assertStringNotContainsString('No podrá cambiar nada', $denied);
+        $this->assertSame(1, substr_count($denied, 'name="auth_token"'), 'Only the deny form.');
     }
 }
