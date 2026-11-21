@@ -11,7 +11,7 @@ use Symfony\Component\Process\Process;
  * tesseract; docs/DEPENDENCIES.md). Runs in the ReadReceipt job, never in a web request.
  * Expected failures are ReceiptUnreadable, with a message for the person.
  */
-class ReceiptReader
+final class ReceiptReader implements ReadsReceipts
 {
     public const TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
 

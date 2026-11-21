@@ -2,15 +2,19 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ReadReceipt;
 use App\Models\PersonalTransaction;
 use App\Models\User;
 use App\Services\Finance\FinanceSummary;
 use App\Services\Storage\StoredBlob;
 use App\Support\Finance\MoneyFormat;
+use App\Support\Finance\ReadsReceipts;
 use App\Support\Finance\ReceiptReader;
 use App\Support\Finance\ReceiptUnreadable;
 use App\Support\Navigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Tests\Concerns\UsesPrivateStorage;
 use Tests\TestCase;
@@ -56,7 +60,7 @@ class PersonalFinanceTest extends TestCase
     public function test_an_unreadable_receipt_says_why_and_the_movement_can_be_typed(): void
     {
         $this->upload($this->owner, 'ticket.png', (string) file_get_contents(base_path('tests/Fixtures/finances/ticket.png')))->assertOk();
-        $this->app->instance(ReceiptReader::class, new class extends ReceiptReader
+        $this->app->instance(ReadsReceipts::class, new class implements ReadsReceipts
         {
             public function read(StoredBlob $blob, string $mime): array
             {
@@ -69,6 +73,29 @@ class PersonalFinanceTest extends TestCase
             ->set('amount', '9,99')->call('saveTransaction')->assertHasNoErrors();
         $this->assertDatabaseHas('personal_transactions', ['amount_minor' => 999]);
         $this->assertSame(['amount' => '1234.56', 'date' => '2026-03-01'], app(ReceiptReader::class)->suggest("Fecha 01/03/2026\nTOTAL 1.234,56 €"));
+    }
+
+    public function test_the_page_stops_waiting_when_no_reading_arrives(): void
+    {
+        $this->upload($this->owner, 'ticket.png', (string) file_get_contents(base_path('tests/Fixtures/finances/ticket.png')))->assertOk();
+        $this->app->instance(ReadsReceipts::class, new class implements ReadsReceipts
+        {
+            public function read(StoredBlob $blob, string $mime): array
+            {
+                return ['amount' => '', 'date' => ''];
+            }
+        });
+        Queue::fake(); // no worker: the job never runs
+        $id = $this->entry('ticket.png')->id;
+
+        $page = Livewire::withQueryParams(['receipt' => $id])->test('pages::finances')->call('startScan')->assertSet('scanning', true);
+        $this->travel(3)->minutes();
+        $page->call('checkScan')->assertSet('scanning', false)->assertHasErrors('receipt')->assertSee('La lectura no está disponible ahora');
+
+        Cache::forget(ReadReceipt::key($this->owner->id, $id)); // expired or cleared cache
+        $page->call('startScan')->assertSet('scanning', true);
+        Cache::forget(ReadReceipt::key($this->owner->id, $id));
+        $page->call('checkScan')->assertSet('scanning', false)->assertHasErrors('receipt');
     }
 
     public function test_the_year_adds_income_and_expenses_by_month_in_the_chosen_currency(): void

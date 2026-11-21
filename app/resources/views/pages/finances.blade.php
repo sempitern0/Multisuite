@@ -17,6 +17,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -52,6 +53,11 @@ new #[Title('Mis finanzas')] class extends Component {
     public string $entryKey = '';
     #[Locked]
     public bool $scanning = false;
+    /** When the current reading started: the page stops waiting after SCAN_WAIT seconds. */
+    #[Locked]
+    public ?int $scanStartedAt = null;
+
+    private const SCAN_WAIT = 120;
 
     public function mount(): void
     {
@@ -139,6 +145,8 @@ new #[Title('Mis finanzas')] class extends Component {
 
     public function saveSettings(): void
     {
+        Gate::authorize('use-finances');
+        $this->throttle('finances');
         $this->validate([
             'currency' => ['required', Rule::in(UserPreferences::OPTIONS['finance_currency'])],
             'format' => ['required', Rule::in(UserPreferences::OPTIONS['finance_format'])],
@@ -153,6 +161,7 @@ new #[Title('Mis finanzas')] class extends Component {
 
     public function saveLimit(SetMonthlyBudget $budgets): void
     {
+        Gate::authorize('use-finances');
         $this->throttle('finances');
         $minor = trim($this->limit) === '' ? null : $this->money->parse($this->limit);
         if (trim($this->limit) !== '' && $minor === null) {
@@ -167,7 +176,7 @@ new #[Title('Mis finanzas')] class extends Component {
 
     public function clearDraft(): void
     {
-        $this->reset('kind', 'category', 'description', 'amount', 'receipt', 'editing', 'editingCurrency', 'scanning');
+        $this->reset('kind', 'category', 'description', 'amount', 'receipt', 'editing', 'editingCurrency', 'scanning', 'scanStartedAt');
         $this->resetValidation();
         $this->date = now()->format('Y-m-d');
         $this->entryKey = (string) Str::uuid();
@@ -195,11 +204,13 @@ new #[Title('Mis finanzas')] class extends Component {
     public function startScan(): void
     {
         abort_if($this->receipt === null, 404);
+        Gate::authorize('use-finances');
         $this->throttle('receipt-ocr');
         $this->resetValidation('receipt');
         Cache::put(ReadReceipt::key((int) Auth::id(), $this->receipt), ['status' => 'pending'], now()->addMinutes(15));
         ReadReceipt::dispatch((int) Auth::id(), $this->receipt);
         $this->scanning = true;
+        $this->scanStartedAt = now()->getTimestamp();
         $this->checkScan(); // with a synchronous queue the result is already there
     }
 
@@ -209,10 +220,17 @@ new #[Title('Mis finanzas')] class extends Component {
             return;
         }
         $result = Cache::get(ReadReceipt::key((int) Auth::id(), $this->receipt));
-        if (! is_array($result) || ($result['status'] ?? null) === 'pending') {
+        $waiting = is_array($result) && ($result['status'] ?? null) === 'pending';
+        if ($waiting && now()->getTimestamp() - (int) $this->scanStartedAt < self::SCAN_WAIT) {
             return;
         }
-        $this->scanning = false;
+        $this->reset('scanning', 'scanStartedAt');
+        if (! is_array($result) || $waiting) {
+            // Nothing will arrive (no queue worker, cache cleared or result expired): stop polling.
+            $this->addError('receipt', 'La lectura no está disponible ahora. Escribe el movimiento a mano o inténtalo más tarde.');
+
+            return;
+        }
         if ($result['status'] !== 'done') {
             $this->addError('receipt', (string) ($result['error'] ?? 'No se ha podido leer la factura.'));
 
@@ -230,6 +248,7 @@ new #[Title('Mis finanzas')] class extends Component {
 
     public function saveTransaction(RecordTransaction $record): void
     {
+        Gate::authorize('use-finances');
         $this->throttle('finances');
         $this->validate([
             'kind' => ['required', Rule::in(array_keys(Categories::KINDS))],
@@ -260,6 +279,7 @@ new #[Title('Mis finanzas')] class extends Component {
 
     public function deleteTransaction(DeleteTransaction $delete, int $id): void
     {
+        Gate::authorize('use-finances');
         $this->throttle('finances');
         if (! $delete->handle(Auth::user(), $id)) {
             $this->toast('Ese movimiento ya no existe', 'warn');
@@ -317,17 +337,16 @@ new #[Title('Mis finanzas')] class extends Component {
                     <x-ui::notice tone="info">También tienes movimientos en {{ implode(', ', $summary['otherCurrencies']) }}. No se convierten: los totales solo suman {{ $money->currency }}.</x-ui::notice>
                 @endif
                 <x-ui::table :label="'Meses de '.$year">
-                    <x-slot:head><tr><th>Mes</th><th data-align="end">Ingresos</th><th data-align="end">Gastos</th><th data-align="end">Balance</th><th data-align="end"><x-ui::sr>Ver</x-ui::sr></th></tr></x-slot:head>
+                    <x-slot:head><tr><th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Balance</th></tr></x-slot:head>
                     @foreach ($summary['months'] as $number => $row)
-                        <tr wire:key="month-{{ $number }}" @if ($number === $month) aria-current="true" @endif>
-                            <x-ui::td label="Mes" primary>{{ $this->monthName($number) }}</x-ui::td>
-                            <x-ui::td label="Ingresos" align="end" nowrap>{{ $money->format($row['income']) }}</x-ui::td>
-                            <x-ui::td label="Gastos" align="end" nowrap>{{ $money->format($row['expense']) }}</x-ui::td>
-                            <x-ui::td label="Balance" align="end" nowrap>
-                                @if ($row['balance'] < 0)<x-ui::status tone="bad">{{ $money->format($row['balance']) }}</x-ui::status>@else{{ $money->format($row['balance']) }}@endif
+                        <tr wire:key="month-{{ $number }}">
+                            <x-ui::td label="Mes" primary>
+                                <x-ui::link wire:click="selectMonth({{ $number }})" :aria-current="$number === $month ? 'true' : null" :title="'Ver los movimientos de '.$this->monthName($number)">{{ $this->monthName($number) }}</x-ui::link>
                             </x-ui::td>
-                            <x-ui::td align="end">
-                                <x-ui::button variant="ghost" size="sm" wire:click="selectMonth({{ $number }})" :aria-pressed="$number === $month ? 'true' : 'false'">Ver movimientos</x-ui::button>
+                            <x-ui::td label="Ingresos" nowrap>{{ $money->format($row['income']) }}</x-ui::td>
+                            <x-ui::td label="Gastos" nowrap>{{ $money->format($row['expense']) }}</x-ui::td>
+                            <x-ui::td label="Balance" nowrap>
+                                @if ($row['balance'] < 0)<x-ui::status tone="bad">{{ $money->format($row['balance']) }}</x-ui::status>@else{{ $money->format($row['balance']) }}@endif
                             </x-ui::td>
                         </tr>
                     @endforeach
@@ -377,9 +396,10 @@ new #[Title('Mis finanzas')] class extends Component {
                         : 'Quedan '.$money->format($budget - $totals['expense'])),
                 ])" />
                 <x-ui::form wire:submit="saveLimit" inline>
-                    <x-ui::field name="limit" :label="'Presupuesto de gastos del mes ('.$money->currency.')'" wire:model="limit" inputmode="decimal" help="Déjalo vacío para no usar presupuesto." />
+                    <x-ui::field name="limit" :label="'Presupuesto de gastos del mes ('.$money->currency.')'" wire:model="limit" inputmode="decimal" />
                     <x-ui::button type="submit" variant="secondary">Guardar presupuesto</x-ui::button>
                 </x-ui::form>
+                <x-ui::text tone="muted">Déjalo vacío para no usar presupuesto en este mes.</x-ui::text>
                 <x-ui::table :label="'Movimientos de '.$this->monthName($month)" :paginator="$this->transactions">
                     <x-slot:head><tr><th>Fecha</th><th>Concepto</th><th>Categoría</th><th data-align="end">Importe</th><th data-align="end"><x-ui::sr>Acciones</x-ui::sr></th></tr></x-slot:head>
                     @forelse ($this->transactions as $transaction)

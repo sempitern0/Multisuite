@@ -5,7 +5,7 @@ namespace App\Jobs;
 use App\Models\User;
 use App\Models\UserFile;
 use App\Services\Files\PersonalFiles;
-use App\Support\Finance\ReceiptReader;
+use App\Support\Finance\ReadsReceipts;
 use App\Support\Finance\ReceiptUnreadable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -45,7 +45,7 @@ class ReadReceipt implements ShouldBeUnique, ShouldQueue
         return [10];
     }
 
-    public function handle(PersonalFiles $files, ReceiptReader $reader): void
+    public function handle(PersonalFiles $files, ReadsReceipts $reader): void
     {
         $user = User::find($this->userId);
         $file = $user === null ? null : UserFile::where('user_id', $user->id)->find($this->fileId);

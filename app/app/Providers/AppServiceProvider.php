@@ -13,6 +13,8 @@ use App\Policies\UserFilePolicy;
 use App\Policies\UserPolicy;
 use App\Services\Assistant\AssistantAccess;
 use App\Services\Files\PersonalFiles;
+use App\Support\Finance\ReadsReceipts;
+use App\Support\Finance\ReceiptReader;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -33,7 +35,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(ReadsReceipts::class, ReceiptReader::class);
     }
 
     /**
