@@ -82,21 +82,27 @@ class AssistantAccess
         return $user->role === 'owner' || AssistantMember::whereKey($user->id)->exists();
     }
 
-    public function toolEnabled(string $tool): bool
+    /**
+     * Single answer to "may this person use this tool now?": reason code from DENIALS, or
+     * null. Used to register MCP tools, to build the chat's tool list and inside handle().
+     */
+    public function toolDenial(?User $user, string $tool): ?string
     {
+        $denial = $this->denial($user);
+        if ($user === null || $denial !== null) {
+            return $denial ?? 'guest';
+        }
         $settings = AssistantSetting::current();
-        if ($tool === 'semantic_search') {
-            return $settings->content_allowed && $settings->semantic_enabled;
-        }
         if (in_array($tool, self::CONTENT_TOOLS, true)) {
-            return $settings->content_allowed;
+            return $tool === 'semantic_search' && $settings->content_allowed && ! $settings->semantic_enabled
+                ? 'semantic_off'
+                : $this->contentDenial($user);
         }
+        $enabled = array_key_exists($tool, self::WRITE_TOOLS)
+            ? in_array($tool, $settings->tools ?? [], true)
+            : array_key_exists($tool, self::TOOLS) && ($settings->tools === null || in_array($tool, $settings->tools, true));
 
-        if (array_key_exists($tool, self::WRITE_TOOLS)) {
-            return in_array($tool, $settings->tools ?? [], true);
-        }
-
-        return array_key_exists($tool, self::TOOLS) && ($settings->tools === null || in_array($tool, $settings->tools, true));
+        return $enabled ? null : 'tool';
     }
 
     /** Reason from DENIALS when the assistant may not read this person's file contents. */
@@ -127,12 +133,6 @@ class AssistantAccess
                 DB::table('assistant_indexed_files')->where('user_id', $user->id)->delete();
             });
         }
-    }
-
-    /** Whether this tool is on and, for content tools, whether this person allows it. */
-    public function toolAvailable(User $user, string $tool): bool
-    {
-        return $this->toolEnabled($tool) && (! in_array($tool, self::CONTENT_TOOLS, true) || $this->contentDenial($user) === null);
     }
 
     public function usedToday(User $user): int

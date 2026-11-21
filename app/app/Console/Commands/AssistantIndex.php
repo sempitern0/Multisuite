@@ -25,6 +25,9 @@ class AssistantIndex extends Command
                 $files += $index->sync($user);
             } catch (RuntimeException $exception) {
                 $this->warn('Persona '.$user->id.': '.$exception->getMessage());
+                if ($exception->getMessage() === 'semantic_unavailable') {
+                    break; // Same provider for everyone: the next pass retries.
+                }
             }
         }
         $this->info('Archivos preparados: '.$files.'.');

@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Ai\Embeddings;
 use Laravel\Ai\Prompts\EmbeddingsPrompt;
+use RuntimeException;
 use Tests\Concerns\UsesPrivateStorage;
 use Tests\TestCase;
 
@@ -40,7 +41,12 @@ class AssistantSemanticTest extends TestCase
         app(SetAssistantMember::class)->handle($this->owner, $this->member, true);
         app(UpdateAssistantSettings::class)->handle($this->owner, true, array_keys(AssistantAccess::TOOLS), 200, 1000000, true, true);
         app(SaveAssistantProvider::class)->handle($this->owner, null, 'gemini', 'gemini-3.8-flash', 'sk-test-0123456789abcdefWXYZ', 1, true);
-        // Deterministic "meaning": one axis per topic, so the closest text is predictable.
+        $this->fakeEmbeddings();
+    }
+
+    /** Deterministic "meaning": one axis per topic, so the closest text is predictable. */
+    private function fakeEmbeddings(): void
+    {
         Embeddings::fake(fn (EmbeddingsPrompt $prompt): array => array_map(function (string $text): array {
             $vector = array_fill(0, SemanticIndex::DIMENSIONS, 0.0);
             $vector[0] = str_contains(mb_strtolower($text), 'luz') || str_contains(mb_strtolower($text), 'electricidad') ? 1.0 : 0.0;
@@ -114,6 +120,26 @@ class AssistantSemanticTest extends TestCase
         app(UpdateAssistantSettings::class)->handle($this->owner, true, array_keys(AssistantAccess::TOOLS), 200, 1000000, true, false);
         $this->artisan('portal:assistant-index')->assertSuccessful();
         $this->assertSame(0, DB::table('assistant_chunks')->count());
+    }
+
+    public function test_a_provider_outage_leaves_files_pending_for_the_next_pass(): void
+    {
+        app(AssistantAccess::class)->setContentConsent($this->member, true);
+        $this->upload($this->member, 'luz.txt', 'Factura de la luz')->assertOk();
+        Embeddings::fake(fn (): array => throw new RuntimeException('Proveedor caído'));
+
+        try {
+            $this->index()->sync($this->member);
+            $this->fail('An outage must stop the pass, not skip the file.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('semantic_unavailable', $exception->getMessage());
+        }
+        $this->artisan('portal:assistant-index')->assertSuccessful();
+        $this->assertSame(0, DB::table('assistant_indexed_files')->count(), 'Nothing is marked as prepared.');
+
+        $this->fakeEmbeddings();
+        $this->assertSame(1, $this->index()->sync($this->member));
+        $this->assertSame('luz.txt', $this->index()->search($this->member, 'luz')[0]['name']);
     }
 
     public function test_it_needs_a_provider_that_offers_embeddings(): void

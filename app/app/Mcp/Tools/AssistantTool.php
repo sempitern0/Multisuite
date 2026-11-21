@@ -25,17 +25,13 @@ abstract class AssistantTool extends Tool
 
     public function shouldRegister(Request $request, AssistantAccess $access): bool
     {
-        $user = $this->actor($request);
-
-        return $user !== null && $access->denial($user) === null && $access->toolAvailable($user, $this->name());
+        return $access->toolDenial($this->actor($request), $this->name()) === null;
     }
 
     public function handle(Request $request, AssistantAccess $access): Response|ResponseFactory
     {
         $user = $this->actor($request);
-        $denial = $access->denial($user) ?? ($user !== null && in_array($this->name(), AssistantAccess::CONTENT_TOOLS, true)
-            ? $access->contentDenial($user)
-            : ($access->toolEnabled($this->name()) ? null : 'tool'));
+        $denial = $access->toolDenial($user, $this->name());
         if ($user === null || $denial !== null) {
             if ($user !== null) {
                 $access->record($user, $this->name(), 'denied');

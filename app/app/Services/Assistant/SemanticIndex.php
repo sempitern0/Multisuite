@@ -114,6 +114,10 @@ class SemanticIndex
                 $this->indexFile($user, $file, $provider);
                 $done++;
             } catch (RuntimeException $exception) {
+                if ($exception->getMessage() === 'semantic_unavailable') {
+                    // The provider failed, not the file: stop here and leave the rest pending for the next pass.
+                    throw $exception;
+                }
                 // A file that cannot be read (protected PDF, images only) is recorded with no chunks.
                 $this->dropFiles([$file->id]);
                 $this->markIndexed($user, $file, $provider['key'], 0);

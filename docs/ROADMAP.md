@@ -17,6 +17,7 @@ Pendiente de validar en el piloto: autologin musical con dos usuarios y un naveg
    - [ ] MCP-00 RFC (PR #42): decisiones D1–D4 tomadas, pendiente de fusionar.
    - [ ] MCP-01 a MCP-07 (PR #44, apilada sobre #42): implementados y validados en CI. Falta la QA del usuario con un proveedor real (MCP.md § Probar con un modelo real) y `composer audit`.
    - [ ] QA de clientes externos (MCP-05) con Claude/ChatGPT cuando exista P03.
+   - [ ] Límite de peticiones en `/oauth/register` y un único dueño del borrado del índice (`AssistantAccess::setContentConsent` duplica `SemanticIndex::forget`), pendientes de la revisión de calidad de #44.
    - [ ] MCP-08 Piloto: dos personas, dos dispositivos, red privada.
 3. **S04b** Publicación administrativa (tras MCP-04 o cuando el usuario decida las tres cuestiones).
 

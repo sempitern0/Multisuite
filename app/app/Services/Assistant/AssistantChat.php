@@ -8,6 +8,7 @@ use App\Models\User;
 use Closure;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Approvals\Decision;
@@ -47,7 +48,11 @@ class AssistantChat
         'failed' => 'No se ha podido obtener respuesta. Prueba de nuevo; si sigue pasando, avisa a quien administra Multisuite.',
         'pending' => 'Antes de seguir, aprueba o rechaza los cambios que ha propuesto el asistente.',
         'nothing' => 'No hay ningún cambio pendiente de aprobar en esta conversación.',
+        'busy' => 'El asistente aún está respondiendo en esta conversación. Espera a que termine.',
     ];
+
+    /** Longer than the answer timeout, so the lock outlives the request that holds it. */
+    private const LOCK_SECONDS = 120;
 
     public function __construct(private AssistantAccess $access, private AssistantProviders $providers, private ChangeDescriber $describer) {}
 
@@ -77,11 +82,17 @@ class AssistantChat
     public function send(User $user, ?string $conversationId, string $message, ?Closure $onDelta = null): array
     {
         $chain = $this->ready($user, $conversationId);
-        if ($conversationId !== null && $this->pending($user, $conversationId) !== []) {
-            throw new RuntimeException(self::ERRORS['pending']);
+        if ($conversationId === null) {
+            return $this->run($user, null, $message, $chain, $onDelta);
         }
 
-        return $this->run($user, $conversationId, $message, $chain, $onDelta);
+        return $this->exclusively($conversationId, function () use ($user, $conversationId, $message, $chain, $onDelta): array {
+            if ($this->pending($user, $conversationId) !== []) {
+                throw new RuntimeException(self::ERRORS['pending']);
+            }
+
+            return $this->run($user, $conversationId, $message, $chain, $onDelta);
+        });
     }
 
     /**
@@ -113,12 +124,35 @@ class AssistantChat
     public function decide(User $user, string $conversationId, bool $approve, ?Closure $onDelta = null): array
     {
         $chain = $this->ready($user, $conversationId);
-        if ($this->pending($user, $conversationId) === []) {
-            throw new RuntimeException(self::ERRORS['nothing']);
-        }
-        $decisions = $approve ? Decision::approveAll() : Decision::rejectAll('La persona no ha aprobado este cambio. No lo intentes de nuevo salvo que te lo pida.');
 
-        return $this->run($user, $conversationId, $decisions, $chain, $onDelta);
+        // Checked under the lock: a double click must not resolve (and run) the same change twice.
+        return $this->exclusively($conversationId, function () use ($user, $conversationId, $approve, $chain, $onDelta): array {
+            if ($this->pending($user, $conversationId) === []) {
+                throw new RuntimeException(self::ERRORS['nothing']);
+            }
+            $decisions = $approve ? Decision::approveAll() : Decision::rejectAll('La persona no ha aprobado este cambio. No lo intentes de nuevo salvo que te lo pida.');
+
+            return $this->run($user, $conversationId, $decisions, $chain, $onDelta);
+        });
+    }
+
+    /**
+     * One answer at a time per conversation: a second request while one runs is refused.
+     *
+     * @param  Closure(): array{conversation: string, text: string}  $callback
+     * @return array{conversation: string, text: string}
+     */
+    private function exclusively(string $conversationId, Closure $callback): array
+    {
+        $lock = Cache::lock('assistant-chat:'.$conversationId, self::LOCK_SECONDS);
+        if (! $lock->get()) {
+            throw new RuntimeException(self::ERRORS['busy']);
+        }
+        try {
+            return $callback();
+        } finally {
+            $lock->release();
+        }
     }
 
     /**

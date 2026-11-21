@@ -47,7 +47,7 @@ class MultisuiteAssistant implements Agent, Conversational, HasTools
         $tools = [];
         foreach (MultisuiteServer::TOOLS as $class) {
             $tool = app($class);
-            if ($access->toolAvailable($this->user, $tool->name())) {
+            if ($access->toolDenial($this->user, $tool->name()) === null) {
                 // Change tools pause for the person's approval in the chat.
                 $tools[] = array_key_exists($tool->name(), AssistantAccess::WRITE_TOOLS) ? new ApprovalRequiredTool($tool) : new McpServerTool($tool);
             }

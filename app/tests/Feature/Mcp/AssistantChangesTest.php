@@ -17,6 +17,7 @@ use App\Services\Assistant\AssistantChat;
 use App\Services\Assistant\ChangeDescriber;
 use App\Services\Storage\StorageReservations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Mcp\Request;
 use Livewire\Livewire;
@@ -121,6 +122,17 @@ class AssistantChangesTest extends TestCase
             $this->fail('Only the owner of the conversation decides.');
         } catch (RuntimeException $exception) {
             $this->assertSame(AssistantChat::ERRORS['conversation'], $exception->getMessage());
+        }
+        // A second click while the first decision is still running is refused, not run twice.
+        $running = Cache::lock('assistant-chat:'.$conversation, 120);
+        $this->assertTrue($running->get());
+        try {
+            $this->chat()->decide($this->owner, $conversation, true);
+            $this->fail('Only one decision at a time per conversation.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame(AssistantChat::ERRORS['busy'], $exception->getMessage());
+        } finally {
+            $running->release();
         }
         $this->assertNull($file->fresh()?->trashed_at);
 
