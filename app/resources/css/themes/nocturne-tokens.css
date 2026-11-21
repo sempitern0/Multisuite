@@ -1,51 +1,74 @@
+/*
+ * Nocturne palette (docs/design-system.md § Color). Values chosen in OKLCH:
+ * - Neutrals: cool slate (hue 255, chroma ≤ 0.015), split-complementary to the brand lime,
+ *   so the accent stands out by simultaneous contrast instead of sitting on green-grey.
+ * - Brand: chartreuse (hue 118). Dark yellow-greens turn olive, so accent tones that must be
+ *   dark (text on light, tinted surfaces on dark) shift towards green (hue 138).
+ * - Two accent roles: --ui-accent fills surfaces with --ui-accent-ink on top; --ui-accent-text
+ *   is for text, icons, borders and focus rings on the page background.
+ * Contrast (WCAG 2.2): text ≥ 4.5:1 on every panel, control borders and focus ≥ 3:1.
+ */
 :root {
-    --ui-bg: #0d100e;
-    --ui-bg-2: #111511;
-    --ui-panel: #171c18;
-    --ui-panel-2: #1e241e;
-    --ui-panel-3: #242b24;
-    --ui-line: #303a31;
-    --ui-text: #edf1e9;
-    --ui-sub: #a3afa3;
-    --ui-muted: #818e81; /* guide #778477, lifted to reach AA (4.5:1) on panels */
-    --ui-accent: #dfec70;
-    --ui-accent-ink: #192211;
-    --ui-accent-soft: #27301c;
-    --ui-ok: #a7d7ac;
-    --ui-warn: #e8cc85;
-    --ui-bad: #f1a499;
-    --ui-info: #a8c5f1;
+    color-scheme: dark;
+    --ui-bg: #0b0f13;
+    --ui-bg-2: #101317;
+    --ui-panel: #161a1e;
+    --ui-panel-2: #1e2226;
+    --ui-panel-3: #272a2f;
+    --ui-line: #383c42;
+    --ui-field: #676c73;
+    --ui-text: #eef0f3;
+    --ui-sub: #b5bbc2;
+    --ui-muted: #9a9fa6;
+    --ui-accent: #dbf368;
+    --ui-accent-text: #dbf368;
+    --ui-accent-ink: #1a2300;
+    --ui-accent-soft: #22331d;
+    --ui-ok: #9bdda8;
+    --ui-warn: #f2cc7a;
+    --ui-bad: #f8a59a;
+    --ui-info: #a1c7f8;
+    --ui-scrim: #04060ab3;
+    --ui-shadow: 0 24px 90px #0006;
+
+    /* Derived: follow the scheme automatically. */
+    --ui-line-soft: color-mix(in oklab, var(--ui-line) 55%, var(--ui-panel));
+    --ui-line-hover: color-mix(in oklab, var(--ui-accent-text) 45%, var(--ui-line));
+
     --ui-radius: 18px;
-    --ui-shadow: 0 24px 90px #0005;
     --ui-space-control: .75rem;
     --ui-radius-control: .625rem;
     --ui-hit: 2.75rem;
     --ui-speed: 180ms;
     --ui-ease: cubic-bezier(.2,.7,.2,1);
     --ui-layer-toast: 90;
-    color-scheme: dark;
+
+    /* flux:otp, the one remaining Flux control. */
+    --color-accent: var(--ui-accent);
+    --color-accent-content: var(--ui-accent-text);
+    --color-accent-foreground: var(--ui-accent-ink);
 }
 
 :root[data-scheme="light"] {
     color-scheme: light;
-    --ui-bg: #f7f8f3;
-    --ui-bg-2: #eff2e9;
+    --ui-bg: #f5f7f9;
+    --ui-bg-2: #edf0f4;
     --ui-panel: #fff;
-    --ui-panel-2: #f0f3eb;
-    --ui-panel-3: #e4e9de;
-    --ui-line: #a5b09f;
-    --ui-text: #19231b;
-    --ui-sub: #3e5042;
-    --ui-muted: #506052;
-    --ui-accent: #495d08;
-    --ui-accent-ink: #fff;
-    --ui-accent-soft: #e7efcd;
-    --ui-ok: #285b36;
-    --ui-warn: #754e0a;
-    --ui-bad: #922e22;
-    --ui-info: #234f80;
-    --ui-shadow: 0 20px 70px #2436221f;
-    --color-accent: var(--ui-accent);
-    --color-accent-content: var(--ui-accent);
-    --color-accent-foreground: var(--ui-accent-ink);
+    --ui-panel-2: #f0f3f7;
+    --ui-panel-3: #e3e7ec;
+    --ui-line: #c6cbd1;
+    --ui-field: #81878d;
+    --ui-text: #1b2026;
+    --ui-sub: #4d535b;
+    --ui-muted: #646971;
+    --ui-accent: #d1ea4b;
+    --ui-accent-text: #37741d;
+    --ui-accent-ink: #1a2300;
+    --ui-accent-soft: #e4f5dc;
+    --ui-ok: #21763c;
+    --ui-warn: #945f0e;
+    --ui-bad: #b6322b;
+    --ui-info: #2e64a6;
+    --ui-scrim: #1b202680;
+    --ui-shadow: 0 20px 60px #1b20261f;
 }

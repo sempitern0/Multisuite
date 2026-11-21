@@ -25,11 +25,26 @@ class DesignSystemTest extends TestCase
     {
         $this->actingAs($this->user('member'))->get(route('dashboard'))->assertOk()
             ->assertSee('data-layout="app"', false)
+            ->assertSee('data-scheme-toggle', false)
             ->assertSee('Servicios')
             ->assertSee(route('files.index'), false)
             ->assertDontSee('Administración')
             ->assertDontSee(route('users.index'), false)
             ->assertDontSee(route('storage.index'), false);
+    }
+
+    public function test_the_light_and_dark_switch_is_also_on_the_sign_in_page(): void
+    {
+        $this->get(route('login'))->assertOk()->assertSee('data-scheme-toggle', false);
+    }
+
+    public function test_theme_colours_come_from_the_tokens_so_both_schemes_work(): void
+    {
+        $css = (string) file_get_contents(resource_path('css/themes/nocturne.css'));
+        // The Flux scale in @theme is a fixed palette; image overlays, QR and PDF stay black or white.
+        preg_match_all('/#[0-9a-fA-F]{3,8}\b/', (string) preg_replace('/@theme \{.*?\n\}/s', '', $css), $matches);
+
+        $this->assertSame([], array_values(array_diff(array_unique($matches[0]), ['#fff', '#000', '#000a'])));
     }
 
     public function test_administrators_get_the_administration_group(): void

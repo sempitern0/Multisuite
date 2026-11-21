@@ -87,6 +87,7 @@
                 <header class="ui-topbar">
                     <button type="button" class="ui-iconbtn ui-menubtn" x-ref="menuTrigger" x-on:click="openNav()" aria-controls="portal-nav" x-bind:aria-expanded="navOpen.toString()" aria-label="Abrir el menú"><x-ui::icon name="menu" /></button>
                     <p class="ui-topbar-title">Multisuite @if (filled($title)) <span aria-hidden="true">/</span> <strong>{{ $title }}</strong>@endif</p>
+                    <x-ui::scheme-toggle class="ui-topbar-end" />
                 </header>
                 <main id="contenido" class="ui-content" tabindex="-1">
                     <p wire:offline class="ui-notice ui-notice-warn" role="status">Sin conexión. Vuelve a conectarte al NAS para guardar cambios.</p>

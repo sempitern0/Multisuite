@@ -6,6 +6,7 @@
         @include('partials.head')
     </head>
     <body class="antialiased">
+        <x-ui::scheme-toggle class="ui-auth-scheme" />
         <main class="ui-auth" data-layout="auth">
             <section class="ui-auth-card">
                 <a href="{{ $homeHref }}" class="ui-auth-logo" aria-label="Multisuite"><x-ui::icon name="diamond" /></a>

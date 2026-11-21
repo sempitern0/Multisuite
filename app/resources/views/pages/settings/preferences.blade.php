@@ -43,6 +43,7 @@ new #[Title('Preferencias')] class extends Component {
         <x-ui::select name="appearance" label="Tema de este dispositivo"
             x-data x-init="$el.value = window.multisuiteTheme.choice"
             x-on:change="window.multisuiteTheme.select($event.target.value)"
+            x-on:multisuite-scheme.window="$el.value = $event.detail.choice"
             :options="['system' => 'Según el sistema', 'light' => 'Claro', 'dark' => 'Oscuro']" />
         <x-ui::choice-group name="motion" label="Animaciones" wire:model.live="motion"
             help="«Según el sistema» respeta la opción de reducir movimiento de tu dispositivo."
