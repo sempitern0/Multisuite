@@ -35,6 +35,7 @@ class DesignSystemTest extends TestCase
 
     public function test_checkbox_rows_switches_and_role_badges_keep_their_accessible_contract(): void
     {
+        $this->withViewErrors([]);
         $this->blade('<x-ui::checkbox switch name="enabled" label="Activado" description="Nadie puede usarlo apagado." />')
             ->assertSee('role="switch"', false)
             ->assertSee('aria-describedby="chk-enabled-1-desc"', false)
