@@ -257,6 +257,50 @@ final class KomgaAccounts implements PersonalLibraries, ServiceProvisioner
     }
 
     /** @return array<string, mixed>|null */
+    /**
+     * Series and books matching $query that this account may read (MCP-06). The allowed
+     * libraries are the ones the portal assigned to the account, narrowed to what Komga
+     * currently shares with it; every result is filtered again by library, so a server
+     * that ignored the filter could never leak another person's library.
+     *
+     * @return array{series: list<array{title: string, books: int|null}>, books: list<array{title: string, series: string|null}>}
+     */
+    public function searchFor(ServiceAccount $account, string $query): array
+    {
+        $empty = ['series' => [], 'books' => []];
+        $result = $empty;
+        $this->guard(function () use ($account, $query, &$result, $empty): void {
+            $remote = $this->find($account) ?? throw new RuntimeException('unavailable');
+            $this->assertIdentity($account, $remote);
+            $allowed = array_values(array_map('strval', $account->library_ids ?? []));
+            if ($remote['sharedAllLibraries'] !== true) {
+                $allowed = array_values(array_intersect($allowed, array_map('strval', $remote['sharedLibrariesIds'])));
+            }
+            if ($allowed === []) {
+                $result = $empty;
+
+                return;
+            }
+            $filter = fn (array $item): bool => in_array((string) ($item['libraryId'] ?? ''), $allowed, true);
+            // Repeated library_id=… parameters (Spring reads them as a list), not PHP's library_id[0]=….
+            $params = 'search='.rawurlencode($query).'&size=20&'.implode('&', array_map(fn (string $id): string => 'library_id='.rawurlencode($id), $allowed));
+            $series = $this->check($this->client()->get('/api/v1/series?'.$params))->json('content');
+            $books = $this->check($this->client()->get('/api/v1/books?'.$params))->json('content');
+            $result = [
+                'series' => array_values(array_map(fn (array $item): array => [
+                    'title' => (string) ($item['metadata']['title'] ?? $item['name'] ?? ''),
+                    'books' => isset($item['booksCount']) ? (int) $item['booksCount'] : null,
+                ], array_filter(is_array($series) ? $series : [], fn ($item): bool => is_array($item) && $filter($item)))),
+                'books' => array_values(array_map(fn (array $item): array => [
+                    'title' => (string) ($item['metadata']['title'] ?? $item['name'] ?? ''),
+                    'series' => isset($item['seriesTitle']) ? (string) $item['seriesTitle'] : null,
+                ], array_filter(is_array($books) ? $books : [], fn ($item): bool => is_array($item) && $filter($item)))),
+            ];
+        });
+
+        return $result;
+    }
+
     private function find(ServiceAccount $account): ?array
     {
         if ($account->external_id === null) {

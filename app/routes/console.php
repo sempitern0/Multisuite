@@ -24,3 +24,5 @@ Schedule::command('portal:exports-run')->everyMinute()->withoutOverlapping()->ru
 Schedule::command('model:prune', ['--model' => [AssistantToolCall::class]])->dailyAt('04:10')->withoutOverlapping();
 // Assistant conversations untouched for 30 days (decision D4).
 Schedule::command('portal:assistant-prune')->dailyAt('04:20')->withoutOverlapping();
+// Search by meaning: new, changed and removed files of people who accepted it (MCP-07).
+Schedule::command('portal:assistant-index')->everyFifteenMinutes()->withoutOverlapping(30);

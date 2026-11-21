@@ -23,6 +23,8 @@ class AssistantAccess
         'files_list' => 'Carpetas y archivos de Mis archivos (nombres, tipos y tamaños; nunca el contenido)',
         'files_search' => 'Buscar en Mis archivos por nombre',
         'files_trash_list' => 'Ver qué hay en la papelera de cada persona',
+        'music_search' => 'Buscar álbumes y canciones en Música (lo que cada persona puede escuchar)',
+        'reading_search' => 'Buscar series y libros en Lectura (lo que cada persona puede leer)',
     ];
 
     /**
@@ -39,7 +41,7 @@ class AssistantAccess
     ];
 
     /** Tools that send file contents to the provider: governed by `content_allowed` and each person's consent (D3). */
-    public const CONTENT_TOOLS = ['files_read_excerpt'];
+    public const CONTENT_TOOLS = ['files_read_excerpt', 'semantic_search'];
 
     /** @var array<string, string> */
     public const DENIALS = [
@@ -54,6 +56,9 @@ class AssistantAccess
         'content_off' => 'Quien administra Multisuite no permite que el asistente lea el contenido de los archivos.',
         'content_consent' => 'Para leer el contenido de tus archivos, primero acéptalo en la página del asistente.',
         'approval' => 'Este cambio solo se hace con tu aprobación desde la página del asistente.',
+        'semantic_off' => 'La búsqueda por significado no está activada en Multisuite.',
+        'semantic_provider' => 'La búsqueda por significado necesita un proveedor de IA que la admita (OpenAI, Gemini, Mistral u OpenRouter).',
+        'semantic_unavailable' => 'La búsqueda por significado no está disponible ahora mismo. Prueba más tarde.',
     ];
 
     /** Reason code from DENIALS, or null when the person may use the assistant. */
@@ -80,6 +85,9 @@ class AssistantAccess
     public function toolEnabled(string $tool): bool
     {
         $settings = AssistantSetting::current();
+        if ($tool === 'semantic_search') {
+            return $settings->content_allowed && $settings->semantic_enabled;
+        }
         if (in_array($tool, self::CONTENT_TOOLS, true)) {
             return $settings->content_allowed;
         }
@@ -112,7 +120,12 @@ class AssistantAccess
         if ($accepted) {
             DB::table('assistant_consents')->insertOrIgnore(['user_id' => $user->id, 'content_accepted_at' => now()]);
         } else {
-            DB::table('assistant_consents')->where('user_id', $user->id)->delete();
+            DB::transaction(function () use ($user): void {
+                DB::table('assistant_consents')->where('user_id', $user->id)->delete();
+                // Withdrawing also removes what was prepared for search by meaning, at once.
+                DB::table('assistant_chunks')->where('user_id', $user->id)->delete();
+                DB::table('assistant_indexed_files')->where('user_id', $user->id)->delete();
+            });
         }
     }
 

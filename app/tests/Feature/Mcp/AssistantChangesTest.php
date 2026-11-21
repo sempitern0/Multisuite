@@ -18,6 +18,7 @@ use App\Services\Assistant\ChangeDescriber;
 use App\Services\Storage\StorageReservations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\Responses\Data\ToolCall;
+use Laravel\Mcp\Request;
 use Livewire\Livewire;
 use RuntimeException;
 use Tests\Concerns\UsesPrivateStorage;
@@ -83,10 +84,13 @@ class AssistantChangesTest extends TestCase
         $this->upload($this->owner, 'viejo.pdf', self::PDF)->assertOk();
         $file = $this->entry('viejo.pdf');
 
-        MultisuiteServer::actingAs($this->owner)->tool(FilesTrash::class, ['file_id' => $file->id])
-            ->assertHasErrors([AssistantAccess::DENIALS['approval']]);
-        MultisuiteServer::actingAs($this->owner)->tool(FolderCreate::class, ['name' => 'Colada'])
-            ->assertHasErrors([AssistantAccess::DENIALS['approval']]);
+        // Not even offered through the MCP server, and refused if called directly without approval.
+        MultisuiteServer::actingAs($this->owner)->tool(FilesTrash::class, ['file_id' => $file->id])->assertNotRegistered();
+        $this->actingAs($this->owner);
+        foreach ([[FilesTrash::class, ['file_id' => $file->id]], [FolderCreate::class, ['name' => 'Colada']]] as [$tool, $arguments]) {
+            $response = app($tool)->handle(new Request($arguments), app(AssistantAccess::class));
+            $this->assertSame(AssistantAccess::DENIALS['approval'], (string) $response->content());
+        }
 
         $this->assertNull($file->fresh()?->trashed_at);
         $this->assertSame(0, Folder::where('name', 'Colada')->count());

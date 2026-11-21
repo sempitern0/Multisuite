@@ -32,6 +32,10 @@ new #[Title('Asistente')] class extends Component {
 
     public bool $contentAllowed = false;
 
+    public bool $semanticEnabled = false;
+
+    public bool $externalEnabled = false;
+
     /** Provider form: null id = new provider. The key is cleared after every request. */
     public ?int $providerId = null;
 
@@ -66,6 +70,15 @@ new #[Title('Asistente')] class extends Component {
         $this->dailyCalls = $settings->daily_calls;
         $this->dailyTokens = $settings->daily_tokens;
         $this->contentAllowed = $settings->content_allowed;
+        $this->semanticEnabled = $settings->semantic_enabled;
+        $this->externalEnabled = $settings->external_enabled;
+    }
+
+    /** Whether some active provider can prepare search by meaning (OpenAI, Gemini, Mistral, OpenRouter). */
+    #[Computed]
+    public function semanticProvider(): bool
+    {
+        return AssistantProvider::where('enabled', true)->whereIn('driver', \App\Services\Assistant\SemanticIndex::EMBEDDING_DRIVERS)->exists();
     }
 
     /** @return array<int, string> */
@@ -166,7 +179,7 @@ new #[Title('Asistente')] class extends Component {
     {
         $this->throttle('admin');
         app(UpdateAssistantSettings::class)->handle(Auth::user(), $this->enabled,
-            array_values(array_map('strval', $this->tools)), (int) $this->dailyCalls, (int) $this->dailyTokens, $this->contentAllowed);
+            array_values(array_map('strval', $this->tools)), (int) $this->dailyCalls, (int) $this->dailyTokens, $this->contentAllowed, $this->semanticEnabled, $this->externalEnabled);
         $this->toast($this->enabled ? 'Asistente activado y guardado.' : 'Ajustes guardados. El asistente está desactivado.');
     }
 
@@ -230,6 +243,15 @@ new #[Title('Asistente')] class extends Component {
                 </fieldset>
                 <x-ui::checkbox name="contentAllowed" wire:model="contentAllowed" :checked="$contentAllowed" label="Permitir que el asistente lea el texto de los archivos de quien lo acepte" />
                 <p class="ui-help">Texto, Markdown, CSV, JSON y PDF, por partes. Cada persona decide en su página del asistente si lo permite para sus archivos; el texto leído se envía al proveedor de IA.</p>
+                <x-ui::checkbox name="semanticEnabled" wire:model="semanticEnabled" :checked="$semanticEnabled" label="Búsqueda por significado en los archivos de quien acepte la lectura" />
+                <p class="ui-help">
+                    Cada 15 minutos se prepara el texto de los archivos de esas personas para que el asistente encuentre cosas por lo que tratan. El texto se envía al proveedor para prepararlo y se guarda cifrado.
+                    @unless ($this->semanticProvider) Necesita un proveedor activo de OpenAI, Gemini, Mistral u OpenRouter (Anthropic no ofrece este servicio). @endunless
+                </p>
+                <x-ui::checkbox name="externalEnabled" wire:model="externalEnabled" :checked="$externalEnabled" label="Permitir conectar aplicaciones externas (Claude, ChatGPT…) por MCP" />
+                <p class="ui-help">
+                    Cada persona con acceso al asistente podrá conectar una aplicación desde ella con su cuenta de Multisuite. Solo consultas, nunca cambios. Actívalo solo si Multisuite es accesible por la red privada (VPN y HTTPS). Dirección: {{ url('/mcp') }}
+                </p>
                 <x-ui::select name="dailyCalls" label="Consultas a Multisuite" :options="$this->limits" wire:model="dailyCalls" :value="$dailyCalls"
                     help="Cada vez que el asistente mira tus archivos, tu espacio o tus servicios cuenta una consulta." />
                 <x-ui::select name="dailyTokens" label="Uso del proveedor de IA por persona y día" :options="$this->tokenLimits" wire:model="dailyTokens" :value="$dailyTokens"

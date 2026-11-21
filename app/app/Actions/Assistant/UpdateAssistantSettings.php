@@ -21,7 +21,7 @@ class UpdateAssistantSettings
     public function __construct(private AdminAudit $audit) {}
 
     /** @param list<string> $tools */
-    public function handle(User $actor, bool $enabled, array $tools, int $dailyCalls, ?int $dailyTokens = null, ?bool $contentAllowed = null): void
+    public function handle(User $actor, bool $enabled, array $tools, int $dailyCalls, ?int $dailyTokens = null, ?bool $contentAllowed = null, ?bool $semanticEnabled = null, ?bool $externalEnabled = null): void
     {
         $known = [...array_keys(AssistantAccess::TOOLS), ...array_keys(AssistantAccess::WRITE_TOOLS)];
         $unknown = array_diff($tools, $known);
@@ -36,7 +36,7 @@ class UpdateAssistantSettings
             throw ValidationException::withMessages(['dailyTokens' => 'Elige un límite de uso válido.']);
         }
 
-        DB::transaction(function () use ($actor, $enabled, $tools, $known, $dailyCalls, $dailyTokens, $contentAllowed): void {
+        DB::transaction(function () use ($actor, $enabled, $tools, $known, $dailyCalls, $dailyTokens, $contentAllowed, $semanticEnabled, $externalEnabled): void {
             [$actor] = LockedUsers::pair($actor->id, $actor->id);
             Gate::forUser($actor)->authorize('manage-assistant');
             $settings = AssistantSetting::current();
@@ -48,6 +48,12 @@ class UpdateAssistantSettings
             }
             if ($contentAllowed !== null) {
                 $settings->content_allowed = $contentAllowed;
+            }
+            if ($semanticEnabled !== null) {
+                $settings->semantic_enabled = $semanticEnabled;
+            }
+            if ($externalEnabled !== null) {
+                $settings->external_enabled = $externalEnabled;
             }
             if (! $settings->isDirty()) {
                 return;

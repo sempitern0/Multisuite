@@ -11,6 +11,7 @@ use App\Support\Bytes;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use Laravel\Passport\Passport;
 use RuntimeException;
 use Throwable;
 
@@ -44,6 +45,10 @@ class DevBootstrap extends Command
         }
         if (config('nas.encrypt_files') && $this->call('portal:files-key') !== self::SUCCESS) {
             return self::FAILURE;
+        }
+        // OAuth signing keys for external MCP clients (MCP-05), created once and never versioned.
+        if (! is_file(Passport::keyPath('oauth-private.key')) && ! config('passport.private_key')) {
+            $this->call('passport:keys');
         }
         // Lectura is optional: a failure is reported but never blocks the rest of the environment.
         if (config('provisioning.reading.enabled')) {

@@ -107,6 +107,19 @@ class PersonalFiles
     }
 
     /**
+     * The person's current files (not trashed, not older versions) with their MIME and size,
+     * newest first, for the assistant's search index.
+     *
+     * @return Collection<int, UserFile>
+     */
+    public function current(User $user, int $limit): Collection
+    {
+        return $this->visible($user)->whereNull('user_files.version_of_id')
+            ->orderByDesc('user_files.updated_at')->orderByDesc('user_files.id')->limit($limit)
+            ->get(['user_files.*', 'private_uploads.mime as mime', 'storage_reservations.actual_bytes as size']);
+    }
+
+    /**
      * Paged, owner-scoped listing for the assistant (docs/MCP.md): one folder's contents,
      * or files and folders matching a name anywhere in the person's tree. Folders come
      * on the first page only (at most 200); files in name order, $perPage at a time.

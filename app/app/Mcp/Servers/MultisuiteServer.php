@@ -11,6 +11,9 @@ use App\Mcp\Tools\FilesTrash;
 use App\Mcp\Tools\FilesTrashList;
 use App\Mcp\Tools\FolderCreate;
 use App\Mcp\Tools\IdentityMe;
+use App\Mcp\Tools\MusicSearch;
+use App\Mcp\Tools\ReadingSearch;
+use App\Mcp\Tools\SemanticSearch;
 use App\Mcp\Tools\ServicesList;
 use App\Mcp\Tools\StorageMyUsage;
 use Laravel\Mcp\Server;
@@ -35,7 +38,10 @@ class MultisuiteServer extends Server
         FilesList::class,
         FilesSearch::class,
         FilesReadExcerpt::class,
+        SemanticSearch::class,
         FilesTrashList::class,
+        MusicSearch::class,
+        ReadingSearch::class,
         FolderCreate::class,
         FilesRename::class,
         FilesTrash::class,

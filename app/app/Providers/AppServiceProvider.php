@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -44,9 +45,13 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(UserFile::class, UserFilePolicy::class);
         Gate::policy(Folder::class, FolderPolicy::class);
+        // External MCP clients (MCP-05): our own consent screen, short access tokens.
+        Passport::authorizationView(fn (array $parameters) => view('pages.oauth-authorize', $parameters));
+        Passport::tokensExpireIn(now()->addHour());
+        Passport::refreshTokensExpireIn(now()->addDays(30));
         // Named limiters: unnamed `throttle:N,1` share one counter per user across every
         // route (and nested ones count twice), so each area gets its own key.
-        foreach (['files' => 120, 'uploads' => 60, 'upload-chunks' => 1200, 'file-exports' => 10, 'invitation-accept' => 10, 'account-change' => 5, 'admin' => 10, 'admin-storage' => 60, 'assistant' => 20] as $name => $perMinute) {
+        foreach (['files' => 120, 'uploads' => 60, 'upload-chunks' => 1200, 'file-exports' => 10, 'invitation-accept' => 10, 'account-change' => 5, 'admin' => 10, 'admin-storage' => 60, 'assistant' => 20, 'assistant-mcp' => 60] as $name => $perMinute) {
             RateLimiter::for($name, fn (Request $request) => Limit::perMinute($perMinute)->by($name.':'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
         }
         // Registered here (no app/Listeners) so event discovery cannot attach it twice.

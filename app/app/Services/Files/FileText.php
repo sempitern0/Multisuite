@@ -32,6 +32,20 @@ class FileText
         return in_array($mime, self::TEXT_MIMES, true) || $mime === 'application/pdf';
     }
 
+    /** Up to $maxBytes of a file's text from the start, slice by slice (for the search index). */
+    public function upTo(User $user, UserFile $file, int $maxBytes): string
+    {
+        $text = '';
+        $offset = 0;
+        while ($offset !== null && strlen($text) < $maxBytes) {
+            $slice = $this->slice($user, $file, $offset);
+            $text .= $slice['text'];
+            $offset = $slice['next_offset'];
+        }
+
+        return mb_strcut($text, 0, $maxBytes, 'UTF-8');
+    }
+
     /**
      * @return array{text: string, offset: int, next_offset: int|null, total_bytes: int, format: string}
      */

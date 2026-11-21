@@ -20,6 +20,12 @@ abstract class ChangeTool extends AssistantTool
 {
     abstract protected function change(User $user, Request $request): ResponseFactory;
 
+    /** Never offered through the MCP endpoint: changes are approved only in the portal chat. */
+    public function shouldRegister(Request $request, AssistantAccess $access): bool
+    {
+        return false;
+    }
+
     protected function run(User $user, Request $request): Response|ResponseFactory
     {
         if (! ApprovedChange::active()) {

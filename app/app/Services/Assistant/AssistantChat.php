@@ -209,10 +209,16 @@ class AssistantChat
 
     private function recordUsage(User $user, int $input, int $output): void
     {
+        $this->recordTokens($user, $input, $output, 1);
+    }
+
+    /** Adds to the person's daily usage; also used by the search index for embeddings. */
+    public function recordTokens(User $user, int $input, int $output, int $prompts = 0): void
+    {
         $key = ['user_id' => $user->id, 'day' => now()->toDateString()];
         // Insert-or-ignore then increment: safe when two answers finish at the same time.
         DB::table('assistant_usage')->insertOrIgnore($key + ['prompts' => 0, 'input_tokens' => 0, 'output_tokens' => 0]);
-        DB::table('assistant_usage')->where($key)->incrementEach(['prompts' => 1, 'input_tokens' => max(0, $input), 'output_tokens' => max(0, $output)]);
+        DB::table('assistant_usage')->where($key)->incrementEach(['prompts' => max(0, $prompts), 'input_tokens' => max(0, $input), 'output_tokens' => max(0, $output)]);
     }
 
     private function owned(User $user): Builder

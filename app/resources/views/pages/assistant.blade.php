@@ -5,6 +5,8 @@ use App\Livewire\Concerns\ThrottlesActions;
 use App\Models\AssistantSetting;
 use App\Services\Assistant\AssistantAccess;
 use App\Services\Assistant\AssistantChat;
+use App\Services\Assistant\SemanticIndex;
+use Laravel\Passport\Token;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -91,6 +93,46 @@ new #[Title('Asistente')] class extends Component {
         return app(AssistantAccess::class)->hasAcceptedContent(Auth::user()) ? 'on' : 'ask';
     }
 
+    /** @return array{files: int, chunks: int}|null Prepared files, when search by meaning applies to this person. */
+    #[Computed]
+    public function semantic(): ?array
+    {
+        $index = app(SemanticIndex::class);
+
+        return $index->denial(Auth::user()) === null ? $index->stats(Auth::user()) : null;
+    }
+
+    /**
+     * External apps this person connected (MCP-05), one line per app.
+     *
+     * @return list<array{client: string, name: string, last: string|null}>
+     */
+    #[Computed]
+    public function apps(): array
+    {
+        $apps = [];
+        foreach (Auth::user()->tokens()->with('client')->where('revoked', false)->where('expires_at', '>', now()->subDays(30))->latest()->get() as $token) {
+            $client = (string) $token->client_id;
+            $apps[$client] ??= ['client' => $client, 'name' => Str::limit((string) ($token->client?->name ?? 'Aplicación'), 60), 'last' => $token->created_at?->diffForHumans()];
+        }
+
+        return array_values($apps);
+    }
+
+    /** Disconnects an app: every access and refresh token of this person for it is revoked. */
+    public function disconnect(string $clientId): void
+    {
+        $this->throttle('assistant');
+        $tokens = Auth::user()->tokens()->where('client_id', $clientId)->get();
+        foreach ($tokens as $token) {
+            /** @var Token $token */
+            $token->revoke();
+            $token->refreshToken?->revoke();
+        }
+        unset($this->apps);
+        $this->toast('Aplicación desconectada.');
+    }
+
     public function setContent(bool $accepted): void
     {
         $this->throttle('assistant');
@@ -164,11 +206,29 @@ new #[Title('Asistente')] class extends Component {
 
     @if ($this->contentState === 'ask')
         <x-ui::notice tone="info">
-            ¿Quieres que el asistente pueda leer el texto de tus archivos (texto, Markdown, CSV, JSON y PDF) cuando se lo pidas? Lo que lea se envía al proveedor de IA que usa Multisuite. Puedes retirarlo cuando quieras.
+            ¿Quieres que el asistente pueda leer el texto de tus archivos (texto, Markdown, CSV, JSON y PDF) cuando se lo pidas{{ \App\Models\AssistantSetting::current()->semantic_enabled ? ' y prepararlos para buscar por lo que tratan' : '' }}? Lo que lea se envía al proveedor de IA que usa Multisuite. Puedes retirarlo cuando quieras.
             <x-ui::button size="sm" wire:click="setContent(true)">Permitir que lea mis archivos</x-ui::button>
         </x-ui::notice>
     @elseif ($this->contentState === 'on')
-        <p class="ui-help">El asistente puede leer el texto de tus archivos cuando se lo pidas. <x-ui::link wire:click="setContent(false)">Dejar de permitirlo</x-ui::link></p>
+        <p class="ui-help">
+            El asistente puede leer el texto de tus archivos cuando se lo pidas.
+            @if ($this->semantic !== null)
+                Búsqueda por significado: {{ $this->semantic['files'] }} {{ $this->semantic['files'] === 1 ? 'archivo preparado' : 'archivos preparados' }} (se actualiza cada 15 minutos).
+            @endif
+            <x-ui::link wire:click="setContent(false)">Dejar de permitirlo</x-ui::link>
+        </p>
+    @endif
+
+    @if ($this->apps !== [])
+        <x-ui::panel>
+            <x-ui::heading :level="3">Aplicaciones conectadas</x-ui::heading>
+            @foreach ($this->apps as $app)
+                <x-ui::row wire:key="app-{{ $app['client'] }}">
+                    <span>{{ $app['name'] }} <span class="ui-help">· conectada {{ $app['last'] }}</span></span>
+                    <x-ui::button size="sm" variant="ghost" wire:click="disconnect('{{ $app['client'] }}')">Desconectar</x-ui::button>
+                </x-ui::row>
+            @endforeach
+        </x-ui::panel>
     @endif
 
     <x-ui::chat-layout>
