@@ -145,8 +145,8 @@ new #[Title('Archivo')] class extends Component {
     <x-ui::page-header :title="$file->name" :back="$file->trashed_at !== null ? route('files.trash') : $folderCrumb['href']" :back-label="$file->trashed_at !== null ? 'Papelera' : $folderCrumb['label']" :description="$p['error'] === null ? $fmt($p['size']).' · '.$p['mime'] : null">
         @if ($p['error'] === null)
             <x-slot:actions>
-                @if ($file->isCurrent() && in_array($p['mime'], \App\Support\ReceiptReader::TYPES, true))
-                    <x-ui::button variant="secondary" :href="route('budgets.index', ['receipt' => $file->id])">Registrar como gasto</x-ui::button>
+                @if ($file->isCurrent() && in_array($p['mime'], \App\Support\Finance\ReceiptReader::TYPES, true))
+                    @can('use-finances')<x-ui::button variant="secondary" :href="route('finances.index', ['receipt' => $file->id])">Registrar en Mis finanzas</x-ui::button>@endcan
                 @endif
                 <x-ui::button icon="download" :href="route('files.content', ['fileId' => $file->id, 'download' => 1])">Descargar</x-ui::button>
                 @if ($p['kind'] !== 'none')

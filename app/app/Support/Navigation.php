@@ -22,7 +22,7 @@ class Navigation
         ['group' => null, 'items' => [
             ['route' => 'dashboard', 'label' => 'Servicios', 'icon' => 'grid', 'gate' => null, 'active' => ['dashboard']],
             ['route' => 'files.index', 'label' => 'Mis archivos', 'icon' => 'folder', 'gate' => null, 'active' => ['files.*']],
-            ['route' => 'budgets.index', 'label' => 'Mis gastos', 'icon' => 'activity', 'gate' => null, 'active' => ['budgets.*']],
+            ['route' => 'finances.index', 'label' => 'Mis finanzas', 'icon' => 'wallet', 'gate' => 'use-finances', 'active' => ['finances.*']],
             ['route' => 'assistant.index', 'label' => 'Asistente', 'icon' => 'diamond', 'gate' => 'use-assistant', 'active' => ['assistant.index']],
         ]],
         ['group' => 'Administración', 'items' => [

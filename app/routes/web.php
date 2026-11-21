@@ -52,7 +52,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('{key}', [PrivateUploadController::class, 'update'])->whereUuid('key')->middleware('throttle:upload-chunks');
         Route::delete('{key}', [PrivateUploadController::class, 'destroy'])->whereUuid('key')->middleware('throttle:uploads');
     });
-    Route::livewire('budgets', 'pages::budgets')->middleware('throttle:files')->name('budgets.index');
+    Route::livewire('finances', 'pages::finances')->middleware(['can:use-finances', 'throttle:files'])->name('finances.index');
     Route::get('dashboard', DashboardController::class)->name('dashboard');
     // Profile photos from the private disk; never under /storage/ (Nginx public disk).
     Route::get('avatars/{user}/{hash}', AvatarController::class)->whereNumber('user')->where('hash', '[a-f0-9]{20}')->name('avatars.show');

@@ -1,20 +1,25 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Finance;
 
 use App\Services\Storage\StoredBlob;
-use RuntimeException;
+use Symfony\Component\Process\Exception\RuntimeException as ProcessFailed;
 use Symfony\Component\Process\Process;
 
-final class ReceiptReader
+/**
+ * Suggests the date and total of a receipt with local tools only (pdftotext, pdftoppm,
+ * tesseract; docs/DEPENDENCIES.md). Runs in the ReadReceipt job, never in a web request.
+ * Expected failures are ReceiptUnreadable, with a message for the person.
+ */
+class ReceiptReader
 {
     public const TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
 
-    /** @return array{amount: string, date: string} */
+    /** @return array{amount: string, date: string} amount as a plain decimal ("1234.56") or '' */
     public function read(StoredBlob $blob, string $mime): array
     {
         if (! in_array($mime, self::TYPES, true) || $blob->size() > 12 * 1024 * 1024) {
-            throw new RuntimeException('La lectura automática admite JPG, PNG o PDF de hasta 12 MiB. Puedes introducir el gasto a mano.');
+            throw new ReceiptUnreadable('La lectura automática admite JPG, PNG o PDF de hasta 12 MiB. Puedes introducir el movimiento a mano.');
         }
         $bytes = $blob->prefix($blob->size());
         if ($mime === 'application/pdf') {
@@ -26,7 +31,7 @@ final class ReceiptReader
         }
         $size = @getimagesizefromstring($bytes);
         if ($size === false || $size[0] * $size[1] > 20000000) {
-            throw new RuntimeException('La imagen es demasiado grande o ilegible. Puedes introducir el gasto a mano.');
+            throw new ReceiptUnreadable('La imagen es demasiado grande o ilegible. Puedes introducir el movimiento a mano.');
         }
 
         return $this->suggest($this->run(['tesseract', 'stdin', 'stdout', '-l', 'spa+eng'], $bytes));
@@ -38,8 +43,8 @@ final class ReceiptReader
         $process = new Process($command, null, ['OMP_THREAD_LIMIT' => '1'], $input, 12);
         try {
             $process->mustRun();
-        } catch (RuntimeException) {
-            throw new RuntimeException('No se ha podido leer la factura. Puedes completar el gasto a mano.');
+        } catch (ProcessFailed) {
+            throw new ReceiptUnreadable('No se ha podido leer la factura. Puedes completar el movimiento a mano.');
         }
 
         return $process->getOutput();
@@ -52,7 +57,8 @@ final class ReceiptReader
         $date = '';
         if (preg_match_all('/^\h*(?:importe\h+total|total(?:\h+a\h+pagar)?)\h*[:€]?\h*(?:EUR\h*)?(\d+(?:\.\d{3})*[,\.]\d{2})\h*(?:€|EUR)?\h*$/imu', $text, $matches)) {
             $last = $matches[1][array_key_last($matches[1])];
-            $amount = str_contains($last, ',') ? str_replace('.', '', $last) : $last;
+            // "1.234,56" → "1234.56"; "1234.56" stays.
+            $amount = str_contains($last, ',') ? str_replace(',', '.', str_replace('.', '', $last)) : $last;
         }
         if (preg_match('~\b(\d{2})[/-](\d{2})[/-](\d{4})\b~', $text, $parts) && checkdate((int) $parts[2], (int) $parts[1], (int) $parts[3])) {
             $date = $parts[3].'-'.$parts[2].'-'.$parts[1];
