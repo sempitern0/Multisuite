@@ -25,6 +25,9 @@ Pendiente de validar en el piloto: autologin musical con dos usuarios y un naveg
 - [ ] Tras validar su lector: aprovisionamiento, bibliotecas privadas por usuario, escaneo servidor a servidor y acceso Komga con passkeys. El puente de contraseña para cuentas existentes ya está en main.
 - [ ] Adaptar copia y recuperación al lector elegido.
 
+## Presupuestos personales
+- [ ] Validar con una foto móvil y un PDF escaneado el flujo de [Mis gastos](PERSONAL_BUDGETS.md).
+
 ## Después
 - **P03** — Red privada (VPN/TLS), segundo dispositivo y vinculación de cuentas existentes (prerrequisito de MCP-05).
 - **P05** — Despliegue reproducible y piloto familiar.

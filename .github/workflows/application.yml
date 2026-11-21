@@ -48,7 +48,7 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
       - name: Install file tools (photo metadata removal, PDF text for the assistant)
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libimage-exiftool-perl poppler-utils
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libimage-exiftool-perl poppler-utils tesseract-ocr tesseract-ocr-spa tesseract-ocr-eng
       - name: Install locked dependencies
         id: dependencies
         run: |
