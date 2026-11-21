@@ -167,7 +167,7 @@
     .ui-status::before { content: ""; width: 7px; height: 7px; border-radius: 100%; background: currentColor; flex: none; }
     .ui-status-warn { color: var(--ui-warn); }
     .ui-status-bad { color: var(--ui-bad); }
-    .ui-status-muted { color: #8f9a8b; }
+    .ui-status-muted { color: var(--ui-muted); }
     .ui-tag { font-size: 11px; font-weight: 750; color: #d4e4ad; background: #303d28; border: 1px solid #465641; border-radius: 99px; padding: 3px 8px; display: inline-block; }
     .ui-tag-grey { color: #c1c8c0; background: #2b322c; border-color: #3d463e; }
     .ui-tag-red { background: #3e2929; border-color: #6a3b3b; color: #ffc1b9; }
@@ -203,11 +203,19 @@
     .ui-service-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 17px; }
     .ui-service-tile { position: relative; overflow: hidden; isolation: isolate; min-height: 228px; border-radius: 20px; background: linear-gradient(145deg, var(--ui-panel-2), var(--ui-panel)); border: 1px solid var(--ui-line); color: var(--ui-text); padding: 26px; display: grid; grid-template-rows: auto auto auto 1fr auto; justify-items: start; gap: 10px; transition: transform .2s ease; }
     .ui-tile-art { position: absolute; right: 0; bottom: 0; width: 78%; height: 100%; z-index: -1; color: var(--ui-accent); opacity: .16; pointer-events: none; -webkit-mask-image: linear-gradient(105deg, transparent 8%, #000 55%); mask-image: linear-gradient(105deg, transparent 8%, #000 55%); transition: opacity .25s ease, transform .2s ease; }
-    a.ui-service-tile:hover .ui-tile-art { opacity: .26; transform: translate(-4px, -3px); }
+    a.ui-service-tile:focus-visible {
+        outline: 3px solid var(--ui-accent);
+        outline-offset: 3px;
+    }
+    @media (hover: hover) {
+        a.ui-service-tile:hover { border-color: var(--ui-accent); }
+    }
+    a.ui-service-tile:is(:hover, :focus-visible) .ui-tile-arrow {
+        background: var(--ui-accent);
+        color: var(--ui-accent-ink);
+    }
     .ui-service-tile[data-status="pending"] .ui-tile-art, .ui-service-tile[data-status="soon"] .ui-tile-art { color: var(--ui-muted); }
-    a.ui-service-tile:hover { transform: translateY(-3px); border-color: #7a8c58; box-shadow: 0 14px 35px #0002; }
-    .ui-service-tile[data-status="pending"], .ui-service-tile[data-status="soon"], .ui-service-tile[data-status="offline"] { opacity: .85; }
-    .ui-tile-icon { width: 66px; height: 66px; border-radius: 19px; background: var(--ui-accent-soft); display: grid; place-items: center; color: var(--ui-accent); border: 1px solid #45583c; }
+    .ui-tile-icon { width: 66px; height: 66px; border-radius: 19px; background: var(--ui-accent-soft); display: grid; place-items: center; color: var(--ui-accent); border: 1px solid var(--ui-line); }
     .ui-tile-icon svg { width: 32px; height: 32px; stroke-width: 1.7; }
     .ui-tile-title { grid-row: 2; margin-top: 8px; font-size: 23px; font-weight: 750; letter-spacing: -.035em; line-height: 1.15; }
     .ui-tile-note { grid-row: 3; display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.4; color: var(--ui-sub); }
@@ -606,9 +614,25 @@
         .ui-auth { display: flex; justify-content: center; padding: 35px 22px; }
         .ui-h1 { font-size: 30px; }
     }
+    @media (max-width: 35rem) {
+        .ui-service-grid { grid-template-columns: minmax(0, 1fr); }
+        .ui-service-tile, html[data-density="compact"] .ui-service-tile {
+            min-height: auto;
+            grid-template-columns: auto minmax(0, 1fr);
+            grid-template-rows: auto auto auto;
+            align-content: center;
+            gap: .25rem .875rem;
+            padding: 1rem;
+        }
+        .ui-tile-art { width: 42%; opacity: .1; }
+        .ui-tile-icon { grid-column: 1; grid-row: 1 / -1; align-self: start; }
+        .ui-tile-title, .ui-tile-note, .ui-tile-bottom { grid-column: 2; }
+        .ui-tile-title { grid-row: 1; margin: 0; }
+        .ui-tile-note { grid-row: 2; font-size: .8125rem; overflow-wrap: anywhere; }
+        .ui-tile-detail { word-break: normal; }
+        .ui-tile-bottom { grid-row: 3; }
+    }
     @media (max-width: 420px) {
-        .ui-service-tile { min-height: 163px; padding: 13px; }
-        .ui-tile-title { font-size: 18px; }
         .ui-auth-title { font-size: 30px; }
     }
     /* Motion: data-motion on <html> comes from the person's preferences (system | on | off). */

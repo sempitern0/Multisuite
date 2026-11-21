@@ -13,10 +13,12 @@
     <x-ui::tile-art :name="$icon" />
     <span class="ui-tile-icon"><x-ui::icon :name="$icon" /></span>
     <span class="ui-tile-title">{{ $name }}</span>
-    <span class="ui-tile-note">
-        @if ($note)<span>{{ $note }}</span>@endif
-        @if ($detail)<span class="ui-tile-detail">{{ $detail }}</span>@endif
-    </span>
+    @if ($note || $detail)
+        <span class="ui-tile-note">
+            @if ($note)<span>{{ $note }}</span>@endif
+            @if ($detail)<span class="ui-tile-detail">{{ $detail }}</span>@endif
+        </span>
+    @endif
     <span class="ui-tile-bottom">
         <x-ui::status :tone="$tone">{{ $statusLabel }}</x-ui::status>
         @if ($href !== null)<span class="ui-tile-arrow"><x-ui::icon name="arrow-right" /></span>@endif
