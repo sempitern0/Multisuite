@@ -83,6 +83,10 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 | `service-grid` | `label` | Rejilla de tarjetas (3 / 2 columnas). |
 | `service-tile` | `name`, `icon`, `status` ready/pending/soon/offline, `status-label`, `href`, `note`, `detail` | Sin `href` es informativa (no se puede abrir). El título queda alineado entre tarjetas. |
 | `empty-state` | `icon`, `title` | |
+| `textarea` | `name`, `label`, `help`, `rows` | Campo de varias líneas con su error. |
+| `chat-layout` | slot `aside`, slot | Lista de conversaciones junto a la conversación; se apila en pantallas estrechas. |
+| `dock` | `open`, `title`, `toggle`, `close`, slots `tools`, `composer` | Botón flotante abajo a la derecha con panel no modal; Escape cierra. |
+| `chat-message` | `role` user/assistant, `author` | Un turno de conversación; el slot ya es HTML seguro (texto escapado o Markdown saneado). |
 | `nav-item` | `href`, `icon`, `active` | |
 | `icon` | `name` | Iconos SVG propios (sin peticiones externas); ver lista en el componente. |
 

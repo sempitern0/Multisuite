@@ -17,6 +17,8 @@ new #[Title('Preferencias')] class extends Component {
 
     public string $per_page = '25';
 
+    public string $assistant_button = 'on';
+
     public function mount(): void
     {
         $this->fill(array_intersect_key(Auth::user()->preferences()->toArray(), UserPreferences::rules()));
@@ -57,5 +59,11 @@ new #[Title('Preferencias')] class extends Component {
         <x-ui::choice-group name="per_page" label="Elementos por página" wire:model.live="per_page"
             help="En listas como Personas, Invitaciones y Actividad."
             :options="[10 => '10', 25 => '25', 50 => '50']" />
+
+        @can('use-assistant')
+            <x-ui::choice-group name="assistant_button" label="Botón del asistente" wire:model.live="assistant_button"
+                help="Un botón redondo abajo a la derecha abre el asistente en cualquier página. Si te molesta, ocúltalo: el asistente sigue en el menú."
+                :options="['on' => 'Mostrar', 'off' => 'Ocultar']" />
+        @endcan
     </x-ui::stack>
 </x-pages::settings.layout>

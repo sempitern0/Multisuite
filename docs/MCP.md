@@ -1,6 +1,8 @@
 # Asistente y puente MCP
 
-RFC del hito MCP-00 (2026-11-20). Parte del *Estudio de integración MCP* del 15 de noviembre de 2026, que se hizo sobre `main` en `f633d5d` (PR #35). Este documento lo sustituye y lo pone al día con el estado actual (PR #41) y con las librerías estables publicadas desde entonces. **Todavía no hay nada implementado.**
+RFC del hito MCP-00 (2026-11-20), que sustituye al *Estudio de integración MCP* del 15 de noviembre de 2026 (hecho sobre `f633d5d`, PR #35) y lo pone al día con el estado actual y las librerías estables publicadas desde entonces.
+
+**Estado:** MCP-01 a MCP-07 implementados y validados en CI (§ Implementado, PR #44). Falta la QA del usuario con un proveedor real; la de clientes externos (MCP-05) la hará más adelante, cuando exista la red privada (P03).
 
 ## Objetivo
 - Conectar uno o varios modelos de proveedores externos que puedan **consultar y actuar sobre Multisuite** como chatbot dentro del portal y, más adelante, desde clientes MCP externos (Claude, ChatGPT, clientes locales).
@@ -21,26 +23,26 @@ RFC del hito MCP-00 (2026-11-20). Parte del *Estudio de integración MCP* del 15
 
 ## Arquitectura
 ```
-Chat Livewire ──► laravel/ai (agente, proveedor elegido por el owner)
-                        │ herramientas
+Chat Livewire ──► laravel/ai (agente, proveedor elegido por el owner)   [MCP-02]
+                        │ herramientas en el mismo proceso
                         ▼
-              Capacidades del asistente (app/Assistant)  ◄── laravel/mcp (servidor /mcp, después)
-                        │ autorización + auditoría + límites
+      Herramientas laravel/mcp (app/Mcp/Tools)  ◄── cliente externo → /mcp + OAuth   [MCP-05]
+                        │ AssistantAccess: acceso + interruptor + límite + registro
                         ▼
      PersonalFiles · StorageOverview · ServiceTiles · ServiceAccounts · Actions/*
 ```
-- **Una sola definición por herramienta.** Cada capacidad (esquema, permisos, ejecución) vive una vez y tiene dos adaptadores finos: herramienta de `laravel/ai` para el chat y herramienta de `laravel/mcp` para clientes externos. Ninguna contiene SQL de negocio: llaman a los mismos servicios y Actions que Livewire.
-- **El chat no se llama a sí mismo por HTTP.** `laravel/ai` puede usar herramientas de un servidor `laravel/mcp` (cliente MCP). *Hipótesis a comprobar en MCP-01:* si las usa en el mismo proceso sin red, el servidor MCP es la definición única; si no, se mantiene el doble adaptador.
+- **Una sola definición por herramienta**, como herramienta de `laravel/mcp`, usada por el chat y por clientes externos. Ninguna contiene SQL de negocio: llaman a los mismos servicios y Actions que Livewire.
+- **El chat no se llama a sí mismo por HTTP.** Comprobado en el código de `laravel/ai` v1.4.1 (`Tools/McpServerTool`): un agente acepta instancias de herramientas de `laravel/mcp` y llama a su `handle()` en el mismo proceso. Las herramientas de `app/Mcp/Tools` son por tanto la definición única; como ese camino no pasa por `shouldRegister()`, cada herramienta repite en `handle()` la comprobación de acceso, interruptor y presupuesto.
 - **El servidor MCP no necesita modelo.** Funciona aunque no haya chat ni proveedor configurado.
 - **Sin acceso directo** a volúmenes, base de datos, credenciales de servicio, socket Docker ni shell. El asistente no recibe rutas físicas ni URLs arbitrarias.
 
 ## Configuración (solo `owner`)
 Página *Administración › Asistente*, protegida con el gate `manage-assistant` (solo `owner`) en cada petición:
 - Activar o desactivar el asistente.
-- **Proveedores y modelos**: alta, prueba, orden de conmutación por error y baja desde la página (D2). Solo proveedores externos (D3).
-- **Personas**: quién puede usar el chat (por defecto, solo el propietario) y presupuesto diario de tokens y de llamadas por persona.
+- **Proveedores y modelos** (MCP-02): alta, prueba, orden de conmutación por error y baja desde la página (D2). Solo proveedores externos (D3).
+- **Personas**: quién puede usarlo (el propietario siempre) y límite diario de consultas por persona; el de tokens llega con el chat.
 - **Herramientas**: las de lectura activas; las de escritura se activan una a una. Las administrativas no existen en el MVP.
-- **Privacidad**: si se permite enviar *contenido* de archivos a proveedores en la nube (D3) y la retención del historial.
+- **Privacidad** (MCP-02/03): si se permite enviar *contenido* de archivos al proveedor (D3) y la retención del historial.
 
 ## Autorización
 Cada llamada a una herramienta exige:
@@ -58,16 +60,18 @@ autenticado ∧ verificado ∧ no suspendido ∧ contraseña inicial cambiada
 - Revocar la concesión, suspender a la persona, quitarle el asistente o desactivarlo corta la siguiente petición, sin esperar a que caduque el token.
 
 ## Catálogo de herramientas
+Nombres con guion bajo: los proveedores (Anthropic, OpenAI) no admiten puntos en los nombres de herramienta.
+
 | Herramienta | Tipo | Hito | Base existente |
 | --- | --- | --- | --- |
-| `identity.me` | lectura | MCP-01 | usuario, rol y estado; sin secretos |
-| `services.list` | lectura | MCP-01 | `ServiceTiles` + elegibilidad |
-| `storage.my_usage` | lectura | MCP-01 | cuota y uso; nunca rutas montadas |
-| `files.list` / `files.search` | lectura | MCP-01 | `PersonalFiles` con cursor opaco propio (hoy `browse` corta en 2.000) |
-| `files.read_excerpt` | lectura de contenido | MCP-03 | `PersonalFiles::readable` + `StoredBlob`; lista de tipos, máximo 32 KiB por llamada |
-| `files.folder.create`, `files.rename`, `files.trash`, `files.restore` | escritura reversible | MCP-04 | métodos homónimos de `PersonalFiles`, con aprobación |
-| `music.search`, `reading.search` | lectura de catálogo | MCP-06 | adaptadores nuevos para Navidrome y Komga con credenciales de la persona, nunca las administrativas |
-| `files.purge`, cuotas, acceso a servicios, invitaciones | destructiva o administrativa | sin fecha | fuera del MVP; si llegan: owner, verificación adicional y aprobación |
+| `identity_me` | lectura | MCP-01 | usuario, rol y estado; sin secretos |
+| `services_list` | lectura | MCP-01 | `ServiceTiles` + elegibilidad |
+| `storage_my_usage` | lectura | MCP-01 | cuota y uso; nunca rutas montadas |
+| `files_list` / `files_search` | lectura | MCP-01 | `PersonalFiles` con cursor opaco propio (hoy `browse` corta en 2.000) |
+| `files_read_excerpt` | lectura de contenido | MCP-03 | `PersonalFiles::readable` + `StoredBlob`; lista de tipos, máximo 32 KiB por llamada |
+| `files_folder_create`, `files_rename`, `files_trash`, `files_restore` (+ `files_trash_list`, lectura) | escritura reversible | MCP-04 | métodos homónimos de `PersonalFiles`, con aprobación |
+| `music_search`, `reading_search` | lectura de catálogo | MCP-06 | adaptadores nuevos para Navidrome y Komga con credenciales de la persona, nunca las administrativas |
+| `files_purge`, cuotas, acceso a servicios, invitaciones | destructiva o administrativa | sin fecha | fuera del MVP; si llegan: owner, verificación adicional y aprobación |
 
 Prompts previstos: `organize_my_files`, `explain_storage_usage`, `summarize_document`. Una plantilla no concede permisos.
 
@@ -84,13 +88,85 @@ Prompts previstos: `organize_my_files`, `explain_storage_usage`, `summarize_docu
 | Extracción masiva | Límites de bytes, llamadas y tokens por persona y día; auditoría | Petición grande rechazada y registrada |
 | Éxito inventado | La herramienta solo responde éxito tras confirmar el cambio | Un fallo remoto se muestra como fallo |
 | Disponibilidad | Tiempos máximos, colas y servicios opcionales | Un servicio o proveedor caído no bloquea el portal |
-| Fuga al proveedor | Contenido de archivos solo con permiso del owner y aceptación de la persona (D3) | Sin permiso, `read_excerpt` se niega |
+| Fuga al proveedor | Contenido de archivos solo con permiso del owner y aceptación de la persona (D3) | Sin permiso, `files_read_excerpt` se niega |
+
+## Implementado (MCP-01)
+- `laravel/mcp` v1.2.1. Servidor `App\Mcp\Servers\MultisuiteServer` sin ruta: se prueba con `MultisuiteServer::actingAs($user)->tool(...)`.
+- Herramientas de solo lectura: `identity_me`, `services_list`, `storage_my_usage`, `files_list` (por carpeta, 50 archivos por página) y `files_search` (por nombre en todo Mis archivos). Devuelven datos estructurados; nunca contenido, rutas, identificadores de subida, correo ni direcciones de servicios.
+- Base `AssistantTool`: la persona es siempre el usuario de la sesión, releído en cada llamada; comprueba asistente activo, correo verificado, no suspendido, contraseña inicial cambiada, acceso concedido por el owner y herramienta activa; reserva una consulta del límite diario bajo bloqueo; registra el resultado (`ok`, `error`, `denied`, `budget`). Un ID de otra persona responde «No existe o no es tuyo.».
+- *Administración › Asistente* (solo owner, con confirmación de contraseña): activar, herramientas activas, límite diario por persona (50–1000) y quién puede usarlo, con consultas del día. Cambios en *Actividad*.
+- Pruebas (`tests/Feature/Mcp/AssistantToolsTest`): sin activar no hay herramientas; solo el owner y las personas elegidas; A no ve archivos de B ni el owner los de nadie; suspensión y contraseña inicial cortan la siguiente llamada; herramienta desactivada y límite diario; argumentos inválidos como fallo; paginación; un admin no configura ni concede acceso.
+
+## Implementado (MCP-02)
+- `laravel/ai` v1.4.1. Agente `App\Ai\Agents\MultisuiteAssistant`: instrucciones en español, aviso de que los nombres de archivos son datos y no órdenes, y las herramientas activas de MCP-01 envueltas con `McpServerTool` (mismo proceso, mismas comprobaciones).
+- Proveedores desde *Administración › Asistente* (D2): lista cerrada de controladores con dirección oficial fija, modelo recomendado editable, clave cifrada de solo escritura («…abcd»), orden de conmutación por error, pausa, **Probar** y baja. `config/ai.php` no tiene proveedores: cada conversación los construye con `AiManager::build()`.
+- Página **Asistente** (`/assistant`, gate `use-assistant`): respuesta progresiva (`wire:stream`, cada trozo escapado antes de insertarse), historial a la izquierda, borrar conversación, Intro para enviar. La respuesta final se muestra como Markdown saneado y la página no carga imágenes remotas (CSP `img-src 'self' data:`), para que una respuesta manipulada no pueda llamar a un servidor externo.
+- `AssistantChat`: comprueba acceso, propiedad de la conversación (también al leer y borrar), límite diario de tokens y que haya proveedores; los fallos del proveedor se muestran como fallo con un mensaje claro, y en el registro solo queda el tipo de error.
+- Historial: tablas de `laravel/ai`, sin títulos generados por el modelo; `portal:assistant-prune` borra a diario lo que lleve 30 días sin uso (D4). Uso por persona y día en `assistant_usage`.
+- Pruebas (`tests/Feature/Mcp/AssistantChatTest`, proveedores simulados): clave cifrada, oculta y fuera de la auditoría; solo el owner gestiona proveedores; orden y pausa; prueba de conexión; conversaciones privadas (otra persona no lee, continúa ni borra); respuesta escapada al llegar; rechazos claros sin acceso, sin proveedores o sin presupuesto; fallo del proveedor sin respuesta inventada; purga a 30 días; página solo con acceso y con CSP.
+
+### Probar con un modelo real
+1. `make rebuild` (añade `pdftotext` a la imagen; solo hace falta para PDF), `make composer CMD="install"`, `make artisan CMD="migrate"` y entra como owner.
+2. *Administración › Ajustes del asistente*: marca «Asistente activado» y guarda.
+3. «Añadir proveedor»: por ejemplo Anthropic con una clave creada en su consola; deja el modelo recomendado y pulsa **Probar**.
+4. Abre **Asistente** en el menú y pregunta «¿Cuánto espacio me queda?» o «Busca mis PDF».
+5. Para que cambie cosas: activa en los ajustes lo que puede cambiar y pide, por ejemplo, «Crea una carpeta Facturas 2026»; aprueba la tarjeta.
+6. Para que lea contenido: marca el permiso en los ajustes, pulsa «Permitir que lea mis archivos» en la página del asistente y pide «Resume el archivo …».
+7. Para que otra persona lo use, pulsa **Permitir** en su fila.
+8. Búsqueda por significado: marca su casilla en los ajustes (con un proveedor de OpenAI, Gemini, Mistral u OpenRouter), acepta la lectura en la página del asistente y espera a la siguiente pasada (o `make artisan CMD="portal:assistant-index"`).
+9. Clientes externos (cuando haya red privada): marca «Permitir conectar aplicaciones externas» y añade `https://tu-dominio/mcp` como conector en el cliente.
+
+## Implementado (MCP-03)
+- Herramienta `files_read_excerpt(file_id, offset)`: texto de un archivo propio y vigente (no en la papelera ni versiones antiguas), 32 KB por llamada sin partir caracteres, con `next_offset` para seguir. Formatos: texto, Markdown, CSV, JSON y PDF. Se devuelve en `untrusted_content` con un aviso, y las instrucciones del agente le prohíben seguir órdenes que aparezcan en él.
+- `Services/Files/FileText`: lee a través de `StoredBlob` (descifra si hace falta). Los PDF (hasta 25 MB, primeras 300 páginas) se convierten con `pdftotext` de poppler en un proceso aparte, con tiempo máximo de 30 s, sin shell, desde una copia temporal privada (0600) que se borra siempre. No se guarda nada del texto.
+- D3: solo funciona si el owner marca «Permitir que el asistente lea el texto de los archivos de quien lo acepte» (`assistant_settings.content_allowed`) **y** la persona lo acepta en su página del asistente (`assistant_consents`); puede retirarlo cuando quiera. Si falta cualquiera de los dos, la herramienta no se ofrece al modelo y, si se llama igualmente, responde por qué.
+- La prueba de proveedor muestra también el código HTTP que devolvió (p. ej. 503 en «saturado»); en el registro solo quedan tipo y código.
+- Pruebas (`tests/Feature/Mcp/AssistantContentTest`): permiso del owner y consentimiento; solo archivos propios (tampoco para el owner) y no en la papelera; lectura por partes sin cortar caracteres; formatos no admitidos; PDF real extraído sin dejar copia; PDF que falla como fallo; aceptar y retirar desde la página, y el agente deja de tener la herramienta.
+
+## Implementado (MCP-04)
+- Herramientas de cambio: `files_folder_create`, `files_rename` (archivos), `files_trash` y `files_restore`, más `files_trash_list` (lectura) para encontrar qué restaurar. Solo cambios reversibles: nada de borrado definitivo, cuotas, permisos ni nada fuera de Mis archivos.
+- Apagadas por defecto: el owner activa cada una en *Ajustes del asistente* («Qué puede cambiar en Mis archivos»).
+- En el chat cada una va envuelta en `Ai/Tools/ApprovalRequiredTool` (aprobaciones de `laravel/ai`): el modelo propone, la conversación se pausa y aparece una tarjeta «El asistente quiere hacer este cambio» con **Sí, hazlo** / **No, déjalo**. La descripción la genera `ChangeDescriber` con los datos propios de la persona (un id ajeno se muestra como «un archivo que no existe o no es tuyo»); del modelo solo se usa el nombre nuevo. Mientras hay cambios pendientes no se puede enviar otra pregunta, y cada conversación responde de una en una (bloqueo `assistant-chat:{id}`): un doble clic en «Sí, hazlo» no ejecuta el cambio dos veces.
+- `AssistantChat::decide` comprueba acceso, propiedad de la conversación, presupuesto y proveedores, y continúa la conversación con la decisión. Rechazar no cambia nada y se le dice al modelo que no insista.
+- Defensa en profundidad: `Mcp/Tools/ChangeTool` solo actúa dentro de `ApprovedChange`, que abre únicamente el envoltorio del chat al ejecutar un cambio aprobado. Llamar a la herramienta por cualquier otra vía (el servidor MCP, por ejemplo) responde «Este cambio solo se hace con tu aprobación…» y no toca nada. Los clientes MCP externos tendrán su propia aprobación en MCP-05.
+- Pruebas (`tests/Feature/Mcp/AssistantChangesTest`, proveedor simulado que pide usar herramientas): apagadas por defecto y envueltas al activarlas; ninguna otra vía cambia nada; el cambio espera a la aprobación, bloquea nuevas preguntas, rechaza una segunda decisión simultánea, solo lo decide quien es dueño de la conversación y después se hace; rechazar no cambia nada; tarjetas solo con datos propios; la página muestra el cambio y sus botones.
+
+## Implementado (MCP-05) — clientes MCP externos
+- `laravel/passport` 13 (OAuth 2.1, PKCE S256, tokens de 1 hora y renovación de 30 días). `routes/ai.php`: `Mcp::oauthRoutes()` (metadatos `/.well-known/oauth-*` y registro dinámico de clientes) y `POST /mcp` con `auth:api`, scope `mcp:use`, `EnsureExternalAssistant` y límite de 60 peticiones/minuto.
+- **Cambio respecto al RFC:** `laravel/mcp` no implementa en servidor los Client ID Metadata Documents, así que se usa el registro dinámico que trae, limitado a los dominios de retorno de `MCP_REDIRECT_DOMAINS` (por defecto claude.ai, claude.com, chatgpt.com y localhost). Registrar un cliente no da acceso: hace falta iniciar sesión en Multisuite y aceptar.
+- Interruptor del owner «Permitir conectar aplicaciones externas» (`assistant_settings.external_enabled`, apagado). `EnsureExternalAssistant` comprueba en cada petición ese interruptor y el acceso de la persona (verificada, no suspendida, contraseña inicial cambiada, acceso concedido): un token anterior deja de valer en cuanto algo cambia.
+- Pantalla de consentimiento propia (`pages/oauth-authorize`, componentes `x-ui::`): explica qué podrá hacer la aplicación; sin acceso no muestra el botón de conectar.
+- Solo consultas: las herramientas de cambio no se ofrecen nunca por `/mcp` (`ChangeTool::shouldRegister` = falso) y, aunque se llamen, exigen la aprobación del chat. La lectura de contenido y la búsqueda por significado siguen necesitando el consentimiento de la persona.
+- La página Asistente lista las **aplicaciones conectadas** y permite desconectarlas (revoca los tokens de acceso y renovación de ese cliente).
+- Claves OAuth: `portal:dev-bootstrap` las crea en desarrollo; en producción, `PASSPORT_PRIVATE_KEY`/`PASSPORT_PUBLIC_KEY` o `passport:keys` una vez. Solo debe exponerse por la red privada (P03).
+- Pruebas (`AssistantExternalTest`): metadatos OAuth; sin token, 401; interruptor del owner, suspensión y retirada de acceso cortan la siguiente petición; sin scope `mcp:use`, 403; las herramientas de cambio no aparecen; la pantalla de consentimiento solo ofrece conectar con acceso. La prueba con clientes reales queda para el usuario.
+
+## Implementado (MCP-06) — búsqueda en Música y Lectura
+- `music_search` (Navidrome: álbumes y canciones) y `reading_search` (Komga: series y libros), activables en los ajustes. Solo nombres, artistas y títulos; para escuchar o leer, la persona abre el servicio desde la portada.
+- **Cambio respecto al RFC:** el portal no guarda las contraseñas de las personas en los servicios, así que consulta con la cuenta de servicio del operador **y** con las bibliotecas que el propio servicio asigna a esa persona: Navidrome `GET /api/user/{id}/library`; Komga, las bibliotecas que el portal asignó a la cuenta acotadas a las que Komga comparte con ella ahora. La búsqueda se limita a esas bibliotecas (`library_id` repetido) y cada resultado se vuelve a filtrar por biblioteca, de modo que un servidor que ignorase el filtro tampoco devolvería nada ajeno.
+- Pruebas (`AssistantCatalogTest`, servicios simulados): solo bibliotecas propias aunque el servicio devuelva otras; la consulta no menciona bibliotecas ajenas; sin servicio o sin cuenta lista, mensaje claro; servicio caído, sin detalles.
+
+## Implementado (MCP-07) — búsqueda por significado
+- `semantic_search`: fragmentos de los archivos propios más parecidos en significado a la pregunta, con su archivo y carpeta; el agente puede seguir con `files_read_excerpt`.
+- Solo con el interruptor del owner «Búsqueda por significado» (`semantic_enabled`) **y** el consentimiento de lectura de la persona (D3), y con un proveedor activo que ofrezca embeddings (OpenAI, Gemini, Mistral u OpenRouter; Anthropic no los ofrece).
+- `Services/Assistant/SemanticIndex` + `portal:assistant-index` (cada 15 minutos): trocea el texto (hasta 256 KB por archivo, 120 fragmentos de 1.500 caracteres con solape), pide embeddings de 768 dimensiones y guarda el **texto cifrado** (`APP_KEY`) con su vector. Reindexa lo que cambia y retira lo borrado; los vectores llevan la marca proveedor:modelo:dimensiones y se rehacen si cambia el proveedor. Un archivo ilegible queda registrado sin fragmentos; si falla el proveedor, la pasada se corta sin marcar nada y la siguiente lo reintenta.
+- **Decisión:** sin pgvector (la imagen `postgres:17-alpine` no lo trae y cambiarla afecta a todo el despliegue). Los vectores se comparan en PHP con un límite de 6.000 fragmentos y 2.000 archivos por persona, suficiente para un hogar. Si se queda corto, migrar a pgvector.
+- Archivos en la papelera desaparecen de los resultados al momento (la consulta solo une archivos vigentes) y del índice en la siguiente pasada. Retirar el consentimiento borra el índice de esa persona al instante; apagar la función lo borra en la siguiente pasada.
+- Los vectores también describen el contenido: se tratan como datos personales (solo con consentimiento, por persona, borrables).
+- Pruebas (`AssistantSemanticTest`, embeddings simulados): encuentra por significado y guarda el texto cifrado; no reindexa lo que no cambia; nadie más alcanza el índice; la papelera lo saca; retirar el consentimiento o apagarlo lo borra; sin proveedor compatible, mensaje claro.
+
+## Botón flotante del asistente
+- Un botón redondo pequeño abajo a la derecha (`x-ui::dock`) abre un panel no modal con la misma conversación en cualquier página (`pages/assistant-dock`). La conversación abierta se recuerda en la sesión, así que sigue al cambiar de página; desde el panel se puede empezar otra, abrir la pantalla completa y aprobar o rechazar cambios.
+- Para que no moleste: solo aparece a quien puede usar el asistente, nunca en la página Asistente, se esconde mientras se ve la bandeja de subidas, aparta los avisos hacia arriba, no hace consultas mientras está cerrado y cada persona lo oculta desde el propio panel o en *Preferencias › Botón del asistente* (preferencia `assistant_button`). Escape lo cierra y el foco entra en el campo al abrirlo.
+- Las respuestas se muestran sin imágenes en el panel y en la página (el panel vive en páginas sin la CSP de Asistente): una respuesta manipulada no puede hacer que el navegador llame a una dirección externa.
+- La lógica de conversación es común a la página y al panel (`Livewire/Concerns/ChatsWithAssistant`).
+- Pruebas (`AssistantDockTest`): visible solo con acceso y fuera de la página Asistente; se oculta y vuelve desde Preferencias; abre la conversación en curso y no muestra la de otra persona; sin imágenes.
 
 ## Datos nuevos
 - Tablas de `laravel/ai` para conversaciones (`agent_conversations`, `agent_conversation_messages`), con retención configurable y borrado por la persona.
-- `assistant_settings` (una fila) y `assistant_members` (persona, presupuesto).
+- `assistant_settings` (una fila: activo, herramientas, límite diario) y `assistant_members` (persona y quién concedió el acceso).
 - `assistant_providers` (MCP-02): proveedor, modelo, orden, activo, clave cifrada y sus últimos 4 caracteres para reconocerla (D2).
-- `assistant_tool_calls`: auditoría con lista blanca (correlación, herramienta, persona, cliente, resultado, duración, contadores). Nunca argumentos completos, contenido, nombres de archivo, rutas ni respuestas del modelo.
+- `assistant_tool_calls`: herramienta, persona, resultado, duración y fecha; sirve de límite diario y de registro, y se purga a los 90 días (`model:prune`). Nunca argumentos, contenido, nombres de archivo, rutas ni respuestas del modelo. El cliente (chat o externo) se añadirá con MCP-05.
 - MCP-05: `agent_clients`, `agent_grants`, `agent_approvals`.
 - Todas entran en la copia de seguridad de la base de datos; las claves van cifradas y no se pueden leer sin `APP_KEY`, que no está en la copia.
 
@@ -100,13 +176,13 @@ Cada hito tiene su rama y su PR (apilada si la anterior no está fusionada), Pin
 | Hito | Alcance | Se cierra cuando |
 | --- | --- | --- |
 | **MCP-00** | Este RFC, prioridad en el ROADMAP, evaluación de dependencias | Decisiones D1–D4 tomadas (2026-11-20) |
-| **MCP-01** Núcleo | `laravel/mcp` y `laravel/ai`; gate `manage-assistant` y página de configuración; capas de autorización y auditoría; herramientas de lectura de metadatos; servidor MCP probado con `Server::actingAs`, sin ruta pública | Las pruebas de A/B, owner sin acceso ajeno, suspensión y no-owner que no configura pasan en CI |
-| **MCP-02** Chat | Página *Asistente* con respuesta en streaming, proveedores del owner, conmutación por error, historial propio (30 días) y presupuesto | Pruebas con los *fakes* de `laravel/ai`; QA visual del usuario con un proveedor real |
-| **MCP-03** Contenido | `files.read_excerpt` (texto, Markdown y PDF con extractor aislado) y permiso de nube | Ninguna lectura supera los límites ni sale a la nube sin permiso |
-| **MCP-04** Escritura | Crear carpeta, renombrar, papelera y restaurar con aprobación en el chat | Idempotencia y auditoría probadas; rechazar no cambia nada |
-| **MCP-05** Clientes externos | Passport + `Mcp::oauthRoutes`, pantalla de consentimiento con `x-ui::`, concesiones, revocación y límites; compatibilidad 2026-07-28 y 2025-11-25 | Necesita P03 (VPN/TLS); probado con Claude y otro cliente |
-| **MCP-06** Catálogos | Búsqueda en Navidrome y Komga con permisos reales de la persona | Sin duplicar catálogos; ACL real verificada en CI |
-| **MCP-07** Búsqueda semántica | Indexado opcional por persona, embeddings del proveedor con el permiso de D3, eventos de cambio | Borrar o mandar a la papelera retira del índice; copia y restauración probadas |
+| **MCP-01** Núcleo ✅ | `laravel/mcp`; gate `manage-assistant` y página de configuración; autorización, presupuesto y auditoría; herramientas de lectura de metadatos; servidor MCP probado con `Server::actingAs`, sin ruta pública | Las pruebas de A/B, owner sin acceso ajeno, suspensión y no-owner que no configura pasan en CI |
+| **MCP-02** Chat ✅ | `laravel/ai`; página *Asistente* con respuesta en streaming, proveedores del owner, conmutación por error, historial propio (30 días) y presupuesto | Pruebas con los *fakes* de `laravel/ai`; QA visual del usuario con un proveedor real |
+| **MCP-03** Contenido ✅ | `files_read_excerpt` (texto, Markdown y PDF con extractor aislado) y permiso de nube | Ninguna lectura supera los límites ni sale a la nube sin permiso |
+| **MCP-04** Escritura ✅ | Crear carpeta, renombrar, papelera y restaurar con aprobación en el chat | Idempotencia y auditoría probadas; rechazar no cambia nada |
+| **MCP-05** Clientes externos ✅ | Passport + `Mcp::oauthRoutes`, pantalla de consentimiento con `x-ui::`, concesiones, revocación y límites; compatibilidad 2026-07-28 y 2025-11-25 | Necesita P03 (VPN/TLS); probado con Claude y otro cliente |
+| **MCP-06** Catálogos ✅ | Búsqueda en Navidrome y Komga con permisos reales de la persona | Sin duplicar catálogos; ACL real verificada en CI |
+| **MCP-07** Búsqueda semántica ✅ | Indexado opcional por persona, embeddings del proveedor con el permiso de D3, eventos de cambio | Borrar o mandar a la papelera retira del índice; copia y restauración probadas |
 | **MCP-08** Piloto | Dos personas, dos dispositivos, red privada | QA real y vuelta atrás ensayada |
 
 

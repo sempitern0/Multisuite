@@ -214,6 +214,52 @@ class NavidromeAccounts implements PersonalLibraries, ServiceProvisioner
         }
     }
 
+    /**
+     * Albums and songs matching $query in the libraries Navidrome gives this account (MCP-06).
+     * The query is restricted to those libraries and every result is filtered again by library,
+     * so nothing from another person's library can come back.
+     *
+     * @return array{albums: list<array{title: string, artist: string|null, year: int|null}>, songs: list<array{title: string, artist: string|null, album: string|null}>}
+     */
+    public function searchFor(ServiceAccount $account, string $query): array
+    {
+        try {
+            $client = $this->client();
+            $this->verify($client, $account, $account->username);
+            $libraries = $client->get('/api/user/'.$account->remote_id.'/library');
+            if (! $libraries->successful() || ! is_array($libraries->json())) {
+                throw new RuntimeException('unavailable');
+            }
+            $allowed = array_values(array_filter(array_map(fn ($library) => is_array($library) && isset($library['id']) ? (int) $library['id'] : null, $libraries->json())));
+            if ($allowed === []) {
+                return ['albums' => [], 'songs' => []];
+            }
+            $filter = fn ($item): bool => is_array($item) && in_array((int) ($item['libraryId'] ?? 0), $allowed, true);
+            // Repeated library_id=… parameters (Navidrome reads them as a list), not PHP's library_id[0]=….
+            $libraryQuery = implode('&', array_map(fn (int $id): string => 'library_id='.$id, $allowed));
+            $albums = $client->get('/api/album?name='.rawurlencode($query).'&'.$libraryQuery.'&_start=0&_end=20');
+            $songs = $client->get('/api/song?title='.rawurlencode($query).'&'.$libraryQuery.'&_start=0&_end=20');
+            if (! $albums->successful() || ! $songs->successful()) {
+                throw new RuntimeException('unavailable');
+            }
+        } catch (ConnectionException) {
+            throw new RuntimeException('unavailable');
+        }
+
+        return [
+            'albums' => array_values(array_map(fn (array $item): array => [
+                'title' => (string) ($item['name'] ?? ''),
+                'artist' => isset($item['albumArtist']) ? (string) $item['albumArtist'] : null,
+                'year' => isset($item['maxYear']) && (int) $item['maxYear'] > 0 ? (int) $item['maxYear'] : null,
+            ], array_filter((array) $albums->json(), $filter))),
+            'songs' => array_values(array_map(fn (array $item): array => [
+                'title' => (string) ($item['title'] ?? ''),
+                'artist' => isset($item['artist']) ? (string) $item['artist'] : null,
+                'album' => isset($item['album']) ? (string) $item['album'] : null,
+            ], array_filter((array) $songs->json(), $filter))),
+        ];
+    }
+
     private function client(): PendingRequest
     {
         $url = ServiceUrl::validated((string) config('provisioning.music.url'));

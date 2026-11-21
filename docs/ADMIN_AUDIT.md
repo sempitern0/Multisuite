@@ -11,7 +11,7 @@ El menú **Actividad** muestra las altas manuales, modificaciones y eliminacione
 - El flujo remoto de baja sigue sin ser una transacción distribuida: si Navidrome se elimina y falla la transacción local, se conserva el usuario local para reintentar. El evento registra la baja local confirmada, no los intentos remotos fallidos.
 
 ## Activación
-`make artisan CMD="migrate --force"` (incremental, no inventa historial). Tests: `make test CMD="--filter=AdminAuditTest"`. Registra también cambios de almacenamiento (`storage.*`, solo tamaños e ID de disco; ver STORAGE.md).
+`make artisan CMD="migrate --force"` (incremental, no inventa historial). Tests: `make test CMD="--filter=AdminAuditTest"`. Registra también cambios de almacenamiento (`storage.*`, solo tamaños e ID de disco; ver STORAGE.md) y la configuración del asistente (`assistant.updated`, `assistant.member_added`, `assistant.member_removed`, `assistant.provider_saved`, `assistant.provider_removed`, sin detalles ni claves; ver MCP.md). Las consultas del propio asistente no van aquí: tienen su tabla `assistant_tool_calls`.
 
 ## Límites y continuación
 Este incremento audita únicamente el CRUD administrativo. Invitaciones/aceptación, autoeliminación, consola, cambios personales, intentos fallidos, permisos por servicio y vinculación de cuentas preexistentes siguen fuera. No hay purga automática: no se destruye historial sin una política acordada. Continuación en ROADMAP (P03).

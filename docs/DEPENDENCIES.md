@@ -86,8 +86,8 @@ Imagen `gotson/komga:1.30.1`, licencia MIT, lector mantenido de EPUB/PDF/CBZ/CBR
 
 Fuentes: https://github.com/gotson/komga/releases/tag/1.30.1 · https://github.com/gotson/komga/blob/1.30.1/LICENSE · https://komga.org/docs/installation/docker/ · https://komga.org/docs/openapi/komga-api/
 
-## D017 — Asistente y MCP: evaluación (2026-11-20, MCP-00; sin instalar)
-Propuesta para MCP-01 y MCP-05 (docs/MCP.md). Se instalan y fijan en sus PR, con lockfiles.
+## D017 — Asistente y MCP (2026-11-20, MCP-00/MCP-01)
+`laravel/mcp` v1.2.1 y `laravel/ai` v1.4.1 **instalados** (MCP-01 y MCP-02, PR #44; composer.json y lock). `laravel/ai` añade `symfony/yaml` v8.1.11 (MIT, de Symfony, ya en su ecosistema). `laravel/passport` v13.12.0 instalado en MCP-05 con sus dependencias: `league/oauth2-server` 9.5.0, `lcobucci/jwt` 5.7.0, `firebase/php-jwt` 7.2.2, `phpseclib/phpseclib` 4.0.4, `defuse/php-encryption` 2.4.0, `league/event` 3.0.3, `paragonie/random_compat` 9.99.100, `php-http/discovery` 1.20.0, `psr/http-server-handler` y `psr/http-server-middleware` 1.0.2 y `symfony/psr-http-message-bridge` 8.1.9 (todas MIT o BSD-3-Clause; la pila OAuth estándar de Laravel). Sus migraciones se copiaron a `database/migrations` (2026_11_24_000001-5). Su migración de conversaciones se copió a `database/migrations` y `config/ai.php` deja la lista de proveedores vacía (D2).
 | Paquete | Versión / licencia | Uso | Mantenimiento |
 | --- | --- | --- | --- |
 | `laravel/mcp` | v1.2.1 (17-nov-2026), MIT; PHP ^8.2, Illuminate ^12.41.1\|^13.0 | Servidor MCP con herramientas, recursos y prompts; revisión 2026-07-28 con respuesta a clientes 2025-11-25/2025-06-18; pruebas con `Server::actingAs` | Primera parte de Laravel; 1.0 estable el 15-sep-2026 y cinco versiones desde octubre |
@@ -95,6 +95,10 @@ Propuesta para MCP-01 y MCP-05 (docs/MCP.md). Se instalan y fijan en sus PR, con
 | `laravel/passport` | v13.12.0 (12-nov-2026), MIT; `league/oauth2-server` ^9.2 | OAuth 2.1 para clientes MCP externos (MCP-05, tras P03) | Primera parte, versiones mensuales |
 
 Descartados: `mcp/sdk` (oficial pero anterior a 1.0 y duplicaría `laravel/mcp`), paquetes MCP de terceros con poca adopción (`opgginc/laravel-mcp-server`, `php-mcp/laravel`, solo hasta la revisión 2025-03-26) y un adaptador LLM propio. Sanctum no se añade: el chat usa la sesión web y los clientes externos, OAuth.
-Pendiente al instalar: avisos de seguridad (`composer audit`), dependencias transitivas y comprobar si `laravel/ai` usa herramientas de `laravel/mcp` en el mismo proceso.
+`laravel/mcp` no añade dependencias transitivas nuevas (solo `illuminate/console`, `illuminate/support` e `illuminate/json-schema`, ya incluidos en el framework). `composer audit` no se pudo ejecutar en el entorno del agente (API de avisos bloqueada): pendiente de ejecutar con `make composer CMD="audit --locked"`. Comprobado en el código de `laravel/ai` v1.4.1 que usa las herramientas de `laravel/mcp` en el mismo proceso (`Tools/McpServerTool`).
 
 Fuentes (consultadas 2026-11-20): https://repo.packagist.org/p2/laravel/mcp.json · https://repo.packagist.org/p2/laravel/ai.json · https://repo.packagist.org/p2/laravel/passport.json · https://laravel-news.com/laravel-mcp-1-0 · https://laravel.com/blog/introducing-laravel-ai-sdk-v1 · https://laravel.com/docs/13.x/mcp · https://laravel.com/docs/13.x/ai-sdk
+
+## D018 — poppler-utils (`pdftotext`) para que el asistente lea PDF (2026-11-20, MCP-03)
+Paquete de Debian `poppler-utils` en la imagen PHP (`docker/php/Dockerfile`) y en CI. Poppler es la biblioteca PDF de referencia en Linux (GPL-2.0, mantenida por freedesktop.org, versiones mensuales); se usa como programa externo, no se enlaza con el portal. Elegido frente a un parser PDF en PHP porque convierte en un proceso aparte con tiempo máximo: un PDF malicioso o enorme no consume la memoria de PHP-FPM. Sin dependencias PHP/JS nuevas. Sin `pdftotext`, los PDF dan un error claro y el resto del asistente sigue funcionando. Retirada: quitar el paquete y `FileText::pdfText`.
+Fuentes (2026-11-20): https://poppler.freedesktop.org/ · https://packages.debian.org/bookworm/poppler-utils

@@ -10,9 +10,12 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "laravel/ai": "^1.4.1",
         "laravel/chisel": "^0.1.0",
         "laravel/fortify": "^1.37.2",
         "laravel/framework": "^13.17",
+        "laravel/mcp": "^1.2.1",
+        "laravel/passport": "^13.12",
         "laravel/tinker": "^3.0",
         "livewire/blaze": "^1.0",
         "livewire/flux": "^2.13.1",

@@ -95,6 +95,7 @@
             </div>
         </div>
 
+        {{ $dock ?? '' }}
         <x-ui::toasts :flash="$flash" />
 
         @fluxScripts

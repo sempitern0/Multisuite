@@ -17,6 +17,7 @@ parameters:
         -
             identifier: trait.unused
             paths:
+                - app/Livewire/Concerns/ChatsWithAssistant.php
                 - app/Livewire/Concerns/NotifiesInterface.php
                 - app/Livewire/Concerns/ForgetsSecrets.php
                 - app/Livewire/Concerns/ManagesOwnFiles.php

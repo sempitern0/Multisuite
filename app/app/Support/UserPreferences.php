@@ -21,12 +21,14 @@ final class UserPreferences
         'per_page' => [25, 10, 50],
         // How Mis archivos shows a folder; changed from that page, not from the Preferences form.
         'files_view' => ['details', 'list', 'gallery'],
+        // Floating assistant button on every page (only shown to people who can use the assistant).
+        'assistant_button' => ['on', 'off'],
     ];
 
     /** Keys chosen elsewhere than the Preferences form. */
     private const OUTSIDE_FORM = ['sidebar', 'files_view'];
 
-    /** @param array{motion: string, density: string, sidebar: string, start: string, per_page: int, files_view: string} $values */
+    /** @param array{motion: string, density: string, sidebar: string, start: string, per_page: int, files_view: string, assistant_button: string} $values */
     private function __construct(private readonly array $values) {}
 
     /** @param array<string, mixed>|null $stored */
@@ -87,13 +89,18 @@ final class UserPreferences
         return $this->values['files_view'];
     }
 
+    public function assistantButton(): bool
+    {
+        return $this->values['assistant_button'] === 'on';
+    }
+
     /** Same preferences with one value changed (invalid values fall back to the default). */
     public function with(string $key, mixed $value): self
     {
         return self::from([$key => $value] + $this->values);
     }
 
-    /** @return array{motion: string, density: string, sidebar: string, start: string, per_page: int, files_view: string} */
+    /** @return array{motion: string, density: string, sidebar: string, start: string, per_page: int, files_view: string, assistant_button: string} */
     public function toArray(): array
     {
         return $this->values;
