@@ -70,6 +70,7 @@ class JellyfinProvisioningTest extends TestCase
         $this->assertNotSame($this->server['keys'][0]['AccessToken'], $connection->getRawOriginal('secret'), 'The key is stored encrypted.');
         $this->assertSame('qsv', $this->server['encoding']['HardwareAccelerationType'], 'Intel host: Quick Sync by default.');
         $this->assertSame('/usr/lib/jellyfin-ffmpeg/ffmpeg', $this->server['encoding']['EncoderAppPath'], 'Other settings are kept.');
+        $this->assertStringContainsString('Multisuite', $this->server['branding']['LoginDisclaimer']);
         $this->assertContains('video', app(ServiceAccounts::class)->available());
         $this->assertSame(ServiceAccounts::AWAITING_PASSWORD, ServiceAccount::where('user_id', $member->id)->where('service', 'video')->value('status'));
         $this->assertSame('videos', array_key_last(ConnectedFolders::CONNECTIONS));
@@ -131,6 +132,43 @@ class JellyfinProvisioningTest extends TestCase
 
         app(JellyfinAccounts::class)->remove($account->fresh());
         $this->assertArrayNotHasKey((string) $account->external_id, $this->server['users']);
+    }
+
+    public function test_existing_people_get_their_account_automatically_at_their_next_sign_in(): void
+    {
+        $member = User::factory()->create(['role' => 'member', 'username' => 'marta', 'service_access' => []]);
+        $this->connect();
+        $this->withoutDefer();
+
+        app(ServiceAccounts::class)->resume($member->fresh(), 'marta-password-123');
+
+        $this->assertContains('video', $member->fresh()->service_access, 'A service added to the portal joins at sign-in.');
+        $account = ServiceAccount::where('user_id', $member->id)->where('service', 'video')->sole();
+        $this->assertSame('ready', $account->status);
+        $this->assertSame('marta-password-123', $this->server['users'][$account->external_id]['password']);
+        $this->assertNull($account->pending_password, 'The password is not kept after success.');
+    }
+
+    public function test_an_account_left_half_created_cannot_be_used_and_can_still_be_locked(): void
+    {
+        $this->connect();
+        $member = User::factory()->create(['role' => 'member', 'username' => 'eva', 'service_access' => ['video']]);
+        $this->server['failLibraries'] = true;
+        app(ServiceAccounts::class)->enroll($member, ['video'], 'eva-password-123');
+        app(ServiceAccounts::class)->syncUser($member);
+
+        $account = ServiceAccount::where('user_id', $member->id)->where('service', 'video')->sole();
+        $this->assertSame('pending', $account->status, 'Retried later.');
+        $remote = $this->server['users'][$account->external_id];
+        $this->assertTrue($remote['Policy']['EnableAllFolders'], 'Jellyfin default before the policy.');
+        $this->assertNotSame('eva-password-123', $remote['password'], 'Nobody can sign in to the half-created account.');
+        $this->assertSame(401, app(JellyfinAccounts::class)->http()->post('/Users/AuthenticateByName', ['Username' => 'eva', 'Pw' => 'eva-password-123'])->status());
+
+        // Revocation does not depend on creating libraries.
+        app(JellyfinAccounts::class)->lock($account);
+        $this->assertTrue($this->server['users'][$account->external_id]['Policy']['IsDisabled']);
+        $this->assertSame([], $this->server['users'][$account->external_id]['Policy']['EnabledFolders']);
+        $this->assertFalse($this->server['users'][$account->external_id]['Policy']['EnableAllFolders']);
     }
 
     public function test_a_native_account_with_the_same_name_is_never_adopted(): void
@@ -210,6 +248,15 @@ class JellyfinProvisioningTest extends TestCase
 
             return Http::response(['Items' => $this->server['keys']]);
         }
+        if ($path === '/System/Configuration/branding') {
+            if ($method === 'POST') {
+                $this->server['branding'] = $body;
+
+                return Http::response('', 204);
+            }
+
+            return Http::response($this->server['branding'] ?? ['CustomCss' => '']);
+        }
         if ($path === '/System/Configuration/encoding') {
             if ($method === 'POST') {
                 $this->server['encoding'] = $body;
@@ -249,6 +296,9 @@ class JellyfinProvisioningTest extends TestCase
             return Http::response('', 204);
         }
         if ($path === '/Library/VirtualFolders') {
+            if ($method === 'POST' && ($this->server['failLibraries'] ?? false)) {
+                return Http::response('', 500);
+            }
             if ($method === 'POST') {
                 $id = 'lib-'.count($this->server['folders']);
                 $this->server['folders'][$id] = ['Name' => $query['name'], 'ItemId' => $id, 'Locations' => [$query['paths']], 'CollectionType' => $query['collectionType']];

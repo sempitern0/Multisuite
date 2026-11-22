@@ -37,6 +37,7 @@ class JellyfinAccountsTest extends TestCase
         // Re-authorising an already configured server reuses its administrator.
         $jellyfin->connect($owner, 'multisuite-admin', 'disposable-admin-password');
         $this->assertSame('none', $jellyfin->acceleration());
+        $this->assertStringContainsString('Multisuite', (string) $jellyfin->client()->get('/System/Configuration/branding')->json('LoginDisclaimer'));
 
         $people = [];
         foreach (['ana' => 12, 'bruno' => null] as $username => $rating) {

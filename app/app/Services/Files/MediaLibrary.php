@@ -140,13 +140,18 @@ class MediaLibrary
         }
     }
 
+    /** Folder under .multisuite-media a service reads: Komga reuses Kavita's «reading» tree. */
+    public static function namespace(string $service): string
+    {
+        return $service === 'komga' ? 'reading' : $service;
+    }
+
     /** Directory of one person's library, created on demand (0755: the service reads it). */
     public function directory(string $service, ServiceAccount $account, ?string $section): string
     {
         [$private] = $this->uploads->privateArea();
         $identity = $service === 'komga' ? ($account->media_id ?? $account->remote_id) : $account->remote_id;
-        $namespace = $service === 'komga' ? 'reading' : $service;
-        $path = dirname($private).'/.multisuite-media/'.$namespace.'/'.strtolower($identity).($section === null ? '' : '/'.$section);
+        $path = dirname($private).'/.multisuite-media/'.self::namespace($service).'/'.strtolower($identity).($section === null ? '' : '/'.$section);
         if (! is_dir($path) && ! mkdir($path, 0755, true) && ! is_dir($path)) {
             throw new RuntimeException('No se puede preparar la carpeta del servicio.');
         }

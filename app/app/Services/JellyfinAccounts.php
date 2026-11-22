@@ -9,6 +9,7 @@ use App\Models\ServiceConnection;
 use App\Models\User;
 use App\Services\Files\MediaLibrary;
 use App\Services\Provisioning\CommonLibraries;
+use App\Services\Provisioning\NeedsConnection;
 use App\Services\Provisioning\PersonalLibraries;
 use App\Services\Provisioning\ServiceProvisioner;
 use App\Services\Provisioning\ServiceUrl;
@@ -19,6 +20,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -28,7 +30,7 @@ use RuntimeException;
  * API key. Each person gets a non-administrator account that sees only their private library, the
  * operator's common folder and what was published for everyone, with their parental limit.
  */
-final class JellyfinAccounts implements CommonLibraries, PersonalLibraries, ServiceProvisioner
+final class JellyfinAccounts implements CommonLibraries, NeedsConnection, PersonalLibraries, ServiceProvisioner
 {
     /** Operator's common folder inside the container (compose.video.yaml, read-only). */
     public const OPERATOR_COMMON = '/common';
@@ -152,9 +154,27 @@ final class JellyfinAccounts implements CommonLibraries, PersonalLibraries, Serv
                     app(AdminAudit::class)->recordService($locked, $locked, 'video', ServiceAuditAction::AccountLinked);
                 });
                 $this->applyAcceleration(array_key_first(self::accelerationChoices()));
+                $this->brand();
             });
         });
         $this->reserveExisting();
+    }
+
+    /**
+     * Jellyfin's sign-in page tells people which credentials to use. Cosmetic: a failure is only
+     * logged (the look itself comes from the gateway, docker/video-proxy).
+     */
+    public function brand(): void
+    {
+        try {
+            $branding = $this->check($this->client()->get('/System/Configuration/branding'))->json();
+            $branding = is_array($branding) ? $branding : [];
+            $branding['LoginDisclaimer'] = 'Entra con tu usuario y contraseña de Multisuite.';
+            $branding['SplashscreenEnabled'] = false;
+            $this->check($this->client()->post('/System/Configuration/branding', $branding));
+        } catch (ConnectionException|RuntimeException $exception) {
+            Log::warning('video branding not applied', ['reason' => $exception->getMessage()]);
+        }
     }
 
     /** Existing people activate their account on their next sign-in (Laravel hashes cannot be replayed). */
@@ -225,7 +245,9 @@ final class JellyfinAccounts implements CommonLibraries, PersonalLibraries, Serv
                 if ($this->users()->contains(fn (array $row): bool => strcasecmp((string) $row['Name'], $name) === 0)) {
                     throw new RuntimeException('conflict');
                 }
-                $remote = $this->check($this->client()->post('/Users/New', ['Name' => $name, 'Password' => $password]))->json();
+                // Created with a discarded random password: Jellyfin gives new accounts every library,
+                // so nobody can sign in until the policy below is saved and verified.
+                $remote = $this->check($this->client()->post('/Users/New', ['Name' => $name, 'Password' => Str::random(64)]))->json();
                 if (! is_array($remote) || ! is_string($remote['Id'] ?? null)) {
                     throw new RuntimeException('unavailable');
                 }
@@ -235,10 +257,11 @@ final class JellyfinAccounts implements CommonLibraries, PersonalLibraries, Serv
                 $account->save();
             }
             $this->assertIdentity($account, $remote, [$account->username, $name]);
-            // Libraries and policy come first: the account never exists with access to everything.
+            // Libraries and policy come first; the person's password only after they are verified.
             app(MediaLibrary::class)->directory('video', $account, null);
+            $this->libraries($account);
             $this->policy($account, false);
-            $this->check($this->client()->post('/Users/Password?userId='.rawurlencode((string) $account->external_id), ['NewPw' => $password, 'ResetPassword' => false]));
+            $this->password($account, $password);
             if ($remote['Name'] !== $name) {
                 $this->rename($account, $name);
             }
@@ -281,8 +304,9 @@ final class JellyfinAccounts implements CommonLibraries, PersonalLibraries, Serv
                 return;
             }
             $this->assertIdentity($account, $remote, [$account->username]);
+            // Revocation never depends on anything else: password first, then the disabled policy.
+            $this->password($account, Str::random(64));
             $this->policy($account, true);
-            $this->check($this->client()->post('/Users/Password?userId='.rawurlencode((string) $account->external_id), ['NewPw' => Str::random(64), 'ResetPassword' => false]));
         });
     }
 
@@ -304,6 +328,7 @@ final class JellyfinAccounts implements CommonLibraries, PersonalLibraries, Serv
     public function ensurePersonalLibrary(ServiceAccount $account, ?string $section, string $label): void
     {
         $this->whileReady($account, function (ServiceAccount $locked): void {
+            $this->libraries($locked);
             $this->policy($locked, false);
             $this->refresh($locked->library_ids['personal'] ?? null);
         });
@@ -343,19 +368,30 @@ final class JellyfinAccounts implements CommonLibraries, PersonalLibraries, Serv
         });
     }
 
+    /** Finds or creates the person's library and the operator's common one (library_ids). */
+    private function libraries(ServiceAccount $account): void
+    {
+        $ids = $account->library_ids ?? [];
+        $ids['personal'] = $this->library(PersonalLibraries::MOUNT.'/'.strtolower($account->remote_id), 'Mis vídeos · '.substr($account->remote_id, 0, 8), 'homevideos');
+        $ids['operator'] = $this->library(self::OPERATOR_COMMON, 'Vídeos para todos', 'movies');
+        $account->library_ids = $ids;
+    }
+
+    private function password(ServiceAccount $account, #[\SensitiveParameter] string $password): void
+    {
+        $this->check($this->client()->post('/Users/Password?userId='.rawurlencode((string) $account->external_id), ['NewPw' => $password, 'ResetPassword' => false]));
+    }
+
     /**
-     * Non-administrator policy with exactly the person's libraries and parental limit. Merged into
-     * the current policy so Jellyfin's own fields survive; verified after saving.
+     * Non-administrator policy with exactly the libraries in library_ids (none when disabled) and
+     * the parental limit. Writes only the policy: it never creates libraries. Merged into the
+     * current policy so Jellyfin's own fields survive; verified after saving.
      */
     private function policy(ServiceAccount $account, bool $disabled): void
     {
         $remote = $this->find($account) ?? throw new RuntimeException('unavailable');
         $user = User::findOrFail($account->user_id);
-        $ids = $account->library_ids ?? [];
-        $ids['personal'] = $this->library(PersonalLibraries::MOUNT.'/'.strtolower($account->remote_id), 'Mis vídeos · '.substr($account->remote_id, 0, 8), 'homevideos');
-        $ids['operator'] = $this->library(self::OPERATOR_COMMON, 'Vídeos para todos', 'movies');
-        $account->library_ids = $ids;
-        $folders = array_values(array_unique(array_map('strval', $disabled ? [] : $ids)));
+        $folders = array_values(array_unique(array_map('strval', $disabled ? [] : ($account->library_ids ?? []))));
         sort($folders);
         $limit = $user->video_max_rating;
         $policy = [

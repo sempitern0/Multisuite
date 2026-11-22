@@ -24,6 +24,17 @@ class ServiceProvisioners
         return array_key_exists($service, self::ADAPTERS);
     }
 
+    /** Supported and, when it needs the owner's one-off connection, already connected. */
+    public function ready(string $service): bool
+    {
+        if (! $this->supports($service)) {
+            return false;
+        }
+        $adapter = self::ADAPTERS[$service];
+
+        return ! is_subclass_of($adapter, NeedsConnection::class) || $adapter::connected();
+    }
+
     public function for(string $service): ServiceProvisioner
     {
         if (! $this->supports($service)) {

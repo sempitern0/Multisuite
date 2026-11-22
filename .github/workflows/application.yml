@@ -101,12 +101,13 @@ jobs:
             sleep 1
           done
           KOMGA_TEST_URL=http://127.0.0.1:25600 MEDIA_TEST_ROOT=/tmp/nas-ci-komga php artisan test tests/Integration/KomgaAccountsTest.php
-      - name: Jellyfin account integration
+      - name: Jellyfin account integration and gateway
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: |
           mkdir -p /tmp/nas-ci-video/.multisuite-media/video /tmp/nas-ci-video/common
-          trap 'docker logs --tail=200 jellyfin-ci; docker rm -f jellyfin-ci >/dev/null 2>&1' EXIT
-          docker run -d --name jellyfin-ci --user "$(id -u):$(id -g)" -p 127.0.0.1:8096:8096 \
+          docker network create video-ci-net
+          trap 'docker logs --tail=200 jellyfin-ci; docker logs video-gateway-ci 2>/dev/null; docker rm -f video-gateway-ci portal-stub-ci jellyfin-ci >/dev/null 2>&1; docker network rm video-ci-net >/dev/null' EXIT
+          docker run -d --name jellyfin-ci --network video-ci-net --network-alias jellyfin --user "$(id -u):$(id -g)" -p 127.0.0.1:8096:8096 \
             -v /tmp/nas-ci-video/.multisuite-media/video:/personal:ro \
             -v /tmp/nas-ci-video/common:/common:ro jellyfin/jellyfin:10.11.11
           for attempt in $(seq 1 120); do
@@ -115,6 +116,29 @@ jobs:
             sleep 1
           done
           JELLYFIN_TEST_URL=http://127.0.0.1:8096 MEDIA_TEST_ROOT=/tmp/nas-ci-video php artisan test tests/Integration/JellyfinAccountsTest.php
+          # Gateway: Multisuite look and return link in the web shell only; API and portal route intact.
+          docker run -d --name portal-stub-ci --network video-ci-net --network-alias multisuite-portal-web nginx:1.27-alpine
+          docker run -d --name video-gateway-ci --network video-ci-net -p 127.0.0.1:8097:8080 \
+            -v "$PWD/../docker/video-proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
+            -v "$PWD/../docker/video-proxy/public:/usr/share/nginx/html:ro" nginx:1.27-alpine
+          for attempt in $(seq 1 30); do curl -fsS http://127.0.0.1:8097/_multisuite/video.css >/dev/null && break; sleep 1; done
+          curl -fsSL http://127.0.0.1:8097/web/ | grep -q '/_multisuite/video.mjs'
+          curl -fsS http://127.0.0.1:8097/System/Info/Public | grep -q StartupWizardCompleted
+          if curl -fsS http://127.0.0.1:8097/System/Info/Public | grep -q '_multisuite'; then echo 'JSON must not be rewritten'; exit 1; fi
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8097/_multisuite/portal)" = 404  # answered by the portal stub
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8097/_multisuite/other)" = 404
+          mkdir -p /tmp/video-screens
+          for size in 1280,800 390,844; do
+            google-chrome --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=15000 \
+              --window-size="$size" --screenshot="/tmp/video-screens/login-${size%,*}.png" http://127.0.0.1:8097/web/ || true
+          done
+      - name: Jellyfin screenshots
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: jellyfin-screens
+          path: /tmp/video-screens
+          if-no-files-found: ignore
       - name: Navidrome account integration
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: |

@@ -103,8 +103,7 @@ class CommonLibrary
     private function directory(string $service, ?string $section): string
     {
         [$private] = $this->uploads->privateArea();
-        $namespace = $service === 'komga' ? 'reading' : $service;
-        $path = dirname($private).'/.multisuite-media/'.$namespace.'/'.CommonLibraries::DIRECTORY.($section === null ? '' : '/'.$section);
+        $path = dirname($private).'/.multisuite-media/'.MediaLibrary::namespace($service).'/'.CommonLibraries::DIRECTORY.($section === null ? '' : '/'.$section);
         if (! is_dir($path) && ! mkdir($path, 0755, true) && ! is_dir($path)) {
             throw new RuntimeException('No se puede preparar la biblioteca común.');
         }
