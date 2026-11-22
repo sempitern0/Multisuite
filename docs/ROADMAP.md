@@ -1,6 +1,6 @@
 # Roadmap de Multisuite
 
-Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_STATUS.md) y en git. Revisión 2026-11-21.
+Solo trabajo **pendiente**; lo terminado está en [PROJECT_STATUS.md](PROJECT_STATUS.md) y en git. Revisión 2026-11-22.
 
 ## Contrato del producto (no cambia sin decisión explícita del usuario)
 - Portal Laravel/Livewire privado para propietario, familia y amistades: portada de servicios, invitaciones, cuentas, almacenamiento y auditoría.
@@ -25,9 +25,6 @@ Pendiente de validar en el piloto: autologin musical con dos usuarios y un naveg
 - [ ] Tras validar su lector: aprovisionamiento, bibliotecas privadas por usuario, escaneo servidor a servidor y acceso Komga con passkeys. El puente de contraseña para cuentas existentes ya está en main.
 - [ ] Adaptar copia y recuperación al lector elegido.
 
-## Mis finanzas
-- [ ] QA del usuario con una foto móvil y un PDF escaneado ([PERSONAL_FINANCES.md](PERSONAL_FINANCES.md)), con el worker de colas en marcha.
-
 ## Después
 - **P03** — Red privada (VPN/TLS), segundo dispositivo y vinculación de cuentas existentes (prerrequisito de MCP-05).
 - **P05** — Despliegue reproducible y piloto familiar.
@@ -40,7 +37,7 @@ Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúm
 - [ ] P04.4 Notas/documentos con interfaz web, adjuntos y exportación.
 - [ ] Ideas sin decidir: automatizaciones, invitados temporales con caducidad.
 
-## S04a — Puente Mis archivos → servicios (en revisión, PR #36)
+## S04a — Puente Mis archivos → servicios (fusionado en PR #36)
 - [ ] QA del usuario: subir un MP3, un EPUB y un CBZ a sus carpetas, verlos en Navidrome y Kavita con su cuenta, comprobar que otra persona no los ve y que la papelera los retira.
 - [ ] Vídeos → Jellyfin cuando llegue P04.2.
 - [ ] Producción con discos reales: generar el montaje de `.multisuite-media/{servicio}` como `/personal` en los compose de cada servicio (hoy solo en desarrollo) → P05.
