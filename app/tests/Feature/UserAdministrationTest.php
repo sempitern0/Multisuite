@@ -201,6 +201,13 @@ class UserAdministrationTest extends TestCase
         $this->page($member)->call('setSuspended', true)->assertHasNoErrors();
 
         $this->assertTrue($member->fresh()->isSuspended());
+        $this->assertSame(ServiceAccounts::LOCK_PENDING, ServiceAccount::firstOrFail()->status);
+        $this->remoteDown = true;
+        $this->artisan('portal:sync-accounts')->assertSuccessful();
+        $this->assertSame(ServiceAccounts::LOCK_PENDING, ServiceAccount::firstOrFail()->status);
+        $this->remoteDown = false;
+        $this->travel(6)->minutes();
+        $this->artisan('portal:sync-accounts')->assertSuccessful();
         $this->assertSame(ServiceAccounts::LOCKED, ServiceAccount::firstOrFail()->status);
         $this->actingAs($member->fresh())->get(route('dashboard'))->assertRedirect(route('login'));
         $this->assertGuest();

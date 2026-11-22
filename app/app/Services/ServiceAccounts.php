@@ -20,6 +20,8 @@ use function Illuminate\Support\defer;
 class ServiceAccounts
 {
     /** Disabled or suspended: the remote password was replaced and is waiting for access to return. */
+    public const LOCK_PENDING = 'lock_pending';
+
     public const LOCKED = 'locked';
 
     /** Access granted again (or for the first time): the next sign-in with a password activates it. */
@@ -213,7 +215,7 @@ class ServiceAccounts
             $account = $accounts->get($service);
             if ($account === null) {
                 $this->reserve($locked, $service);
-            } elseif ($account->status === self::LOCKED) {
+            } elseif (in_array($account->status, [self::LOCKED, self::LOCK_PENDING], true)) {
                 $account->status = self::AWAITING_PASSWORD;
                 $account->save();
             }
@@ -254,6 +256,19 @@ class ServiceAccounts
     {
         DB::transaction(function () use ($id): void {
             $account = ServiceAccount::whereKey($id)->lockForUpdate()->first();
+            if ($account !== null && $account->status === self::LOCK_PENDING) {
+                $user = User::find($account->user_id);
+                if ($user !== null && ! $this->entitled($user, $account->service)) {
+                    try {
+                        $this->lock($account);
+                    } catch (RuntimeException) {
+                        $account->retry_at = now()->addMinutes(5);
+                        $account->save();
+                    }
+                }
+
+                return;
+            }
             if ($account === null || $account->pending_password === null) {
                 return;
             }

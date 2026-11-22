@@ -16,7 +16,7 @@ class SyncServiceAccounts extends Command
     public function handle(ServiceAccounts $accounts): int
     {
         app(KomgaAccounts::class)->reserveExisting();
-        ServiceAccount::whereNotNull('pending_password')
+        ServiceAccount::where(fn ($query) => $query->whereNotNull('pending_password')->orWhere('status', ServiceAccounts::LOCK_PENDING))
             ->where(function ($query) {
                 $query->where('retry_at', '<=', now())->orWhere('credential_expires_at', '<=', now());
             })->chunkById(50, function ($rows) use ($accounts): void {

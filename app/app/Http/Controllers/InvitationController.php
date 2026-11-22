@@ -40,6 +40,11 @@ class InvitationController extends Controller
             'services' => ['prohibited'],
         ]);
         $user = DB::transaction(function () use ($data, $token): User {
+            // Same lock order as issuance and suspension: issuer, then invitation.
+            $hash = hash('sha256', $token);
+            $issuerId = Invitation::where('token_hash', $hash)->value('invited_by');
+            abort_if($issuerId === null, 404);
+            User::whereKey($issuerId)->lockForUpdate()->firstOrFail();
             $invitation = Invitation::where('token_hash', hash('sha256', $token))->lockForUpdate()->firstOrFail();
             abort_unless($invitation->isAcceptable(), 410);
             abort_if(User::where('email', $invitation->email)->exists(), 410);
