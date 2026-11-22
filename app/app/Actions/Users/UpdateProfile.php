@@ -6,13 +6,13 @@ use App\Concerns\ProfileValidationRules;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
-/** A person changes their own name or email; a new email must be verified again. */
+/** Updates the display name. Recovery email changes have a separate confirmation flow. */
 class UpdateProfile
 {
     use ProfileValidationRules;
 
     /** @return array<string, array<int, mixed>> */
-    public function rules(User $user): array
+    public function rules(): array
     {
         return ['name' => $this->nameRules()];
     }

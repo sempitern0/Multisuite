@@ -40,6 +40,7 @@ class SetSuspension
                 $target->remember_token = Str::random(60);
                 $target->save();
                 Password::broker()->deleteToken($target);
+                DB::table('pending_email_changes')->where('user_id', $target->id)->delete();
                 if (config('session.driver') === 'database') {
                     DB::table((string) config('session.table', 'sessions'))->where('user_id', $target->id)->delete();
                 }

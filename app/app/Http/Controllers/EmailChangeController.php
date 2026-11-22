@@ -4,9 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Concerns\ProfileValidationRules;
 use App\Models\User;
-use Illuminate\Contracts\View\View;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -34,16 +35,17 @@ class EmailChangeController extends Controller
         Mail::raw("Confirma tu nuevo correo en Multisuite. El enlace caduca en 30 minutos.\n\n".$url,
             fn (Message $message) => $message->to($email)->subject('Confirma tu nuevo correo en Multisuite'));
 
-        return redirect()->route('profile.edit')->with('status', 'Revisa tu nuevo correo para confirmar el cambio.');
+        return redirect()->route('profile.edit')->with('toast', 'Revisa tu nuevo correo para confirmar el cambio.');
     }
 
-    public function show(Request $request, string $token): View
+    public function show(Request $request, string $token): Response
     {
         $pending = DB::table('pending_email_changes')->where('user_id', $request->user()->id)
             ->where('token_hash', hash('sha256', $token))->where('previous_email', $request->user()->email)->first();
         abort_if($pending === null, 410);
 
-        return view('settings.confirm-email-change', ['email' => $pending->email]);
+        return response()->view('settings.confirm-email-change', ['email' => $pending->email])
+            ->header('Referrer-Policy', 'no-referrer')->header('Cache-Control', 'no-store');
     }
 
     public function confirm(Request $request, string $token): RedirectResponse
@@ -61,7 +63,11 @@ class EmailChangeController extends Controller
             $user->email = $row->email;
             Password::broker()->deleteToken($user);
             $user->email_verified_at = now();
-            $user->save();
+            try {
+                $user->save();
+            } catch (UniqueConstraintViolationException) {
+                throw ValidationException::withMessages(['email' => 'Ese correo ya está en uso.']);
+            }
             $pending->delete();
 
             return $previous;
@@ -69,6 +75,6 @@ class EmailChangeController extends Controller
         Mail::raw('Se ha cambiado el correo de tu cuenta Multisuite. Si no lo solicitaste, contacta con quien administra el portal.',
             fn (Message $message) => $message->to($previous)->subject('Cambio de correo en Multisuite'));
 
-        return redirect()->route('profile.edit')->with('status', 'Nuevo correo confirmado.');
+        return redirect()->route('profile.edit')->with('toast', 'Nuevo correo confirmado.');
     }
 }

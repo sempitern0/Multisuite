@@ -37,7 +37,7 @@ new #[Title('Perfil')] class extends Component {
     public function updateProfileInformation(UpdateProfile $update): void
     {
         /** @var array{name: string} $data */
-        $data = $this->validate($update->rules(Auth::user()));
+        $data = $this->validate($update->rules());
         $update->handle(Auth::user(), $data);
         $this->toast('Perfil actualizado');
     }
