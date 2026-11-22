@@ -175,6 +175,13 @@ new #[Title('Mis archivos')] class extends Component {
         $this->toast('Carpeta «'.$folder->name.'» creada');
     }
 
+    public function setAssistantExcluded(bool $excluded): void
+    {
+        app(\App\Services\Assistant\AssistantAccess::class)->setFolderExcluded(Auth::user(), (int) $this->folderId, $excluded);
+        unset($this->folder);
+        $this->toast('Preferencia de privacidad guardada');
+    }
+
     public function renameFolder(PersonalFiles $files): void
     {
         $this->throttle('files');
@@ -276,6 +283,11 @@ new #[Title('Mis archivos')] class extends Component {
             @endif
         </x-slot:actions>
     </x-ui::page-header>
+    @if ($folder !== null && \App\Models\AssistantSetting::current()->content_allowed)
+        <x-ui::button variant="ghost" wire:click="setAssistantExcluded({{ $folder->assistant_excluded ? 'false' : 'true' }})">
+            {{ $folder->assistant_excluded ? 'Quitar exclusión de contenido en esta carpeta' : 'Excluir contenido de esta carpeta y subcarpetas del asistente' }}
+        </x-ui::button>
+    @endif
     @if ($this->connection)
         @php
             $serviceName = config('portal.services.'.$this->connection['service'].'.name');

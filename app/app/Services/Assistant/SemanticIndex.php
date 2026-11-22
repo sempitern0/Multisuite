@@ -86,14 +86,16 @@ class SemanticIndex
      */
     public function sync(User $user, int $maxFiles = 40): int
     {
-        if ($this->denial($user) !== null) {
+        $user = $user->fresh() ?? throw new RuntimeException('guest');
+        if ($this->access->denial($user) !== null || $this->denial($user) !== null) {
             $this->forget($user);
 
             return 0;
         }
         $provider = $this->provider() ?? throw new RuntimeException('semantic_provider');
+        $excluded = $this->access->excludedFolders($user);
         $current = $this->files->current($user, self::MAX_FILES_PER_PERSON)
-            ->filter(fn (UserFile $file): bool => FileText::supports($file->mime));
+            ->filter(fn (UserFile $file): bool => FileText::supports($file->mime) && ! in_array($file->folder_id, $excluded, true));
         $currentIds = $current->pluck('id')->all();
 
         // Drop what is no longer a current file, or was indexed with another model.
@@ -114,6 +116,9 @@ class SemanticIndex
                 $this->indexFile($user, $file, $provider);
                 $done++;
             } catch (RuntimeException $exception) {
+                if ($exception->getMessage() === 'privacy_changed') {
+                    break;
+                }
                 if ($exception->getMessage() === 'semantic_unavailable') {
                     // The provider failed, not the file: stop here and leave the rest pending for the next pass.
                     throw $exception;
@@ -135,7 +140,8 @@ class SemanticIndex
      */
     public function search(User $user, string $query, int $limit = 8): array
     {
-        $denial = $this->denial($user);
+        $user = $user->fresh() ?? throw new RuntimeException('guest');
+        $denial = $this->access->denial($user) ?? $this->denial($user);
         if ($denial !== null) {
             throw new RuntimeException($denial);
         }
@@ -146,6 +152,7 @@ class SemanticIndex
         // Join on current files: a trashed file disappears from results at once, before the next pass.
         $rows = DB::table('assistant_chunks')->join('user_files', 'user_files.id', '=', 'assistant_chunks.user_file_id')
             ->where('assistant_chunks.user_id', $user->id)->where('user_files.user_id', $user->id)
+            ->where(fn ($query) => $query->whereNull('user_files.folder_id')->orWhereNotIn('user_files.folder_id', $this->access->excludedFolders($user)))
             ->where('assistant_chunks.model', $provider['key'])
             ->whereNull('user_files.trashed_at')->whereNull('user_files.version_of_id')
             ->select(['assistant_chunks.id', 'assistant_chunks.user_file_id', 'assistant_chunks.embedding'])->cursor();
@@ -179,6 +186,8 @@ class SemanticIndex
             ];
         }
 
+        $this->checkConsent($user);
+
         return $results;
     }
 
@@ -206,9 +215,12 @@ class SemanticIndex
         $chunks = self::chunks($this->text->upTo($user, $file, self::MAX_TEXT_BYTES));
         $vectors = [];
         foreach (array_chunk($chunks, self::BATCH) as $batch) {
+            $this->checkConsent($user, $file);
             array_push($vectors, ...$this->embed($batch, $provider, $user));
         }
         DB::transaction(function () use ($user, $file, $provider, $chunks, $vectors): void {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $this->checkConsent($user, $file);
             $this->dropFiles([$file->id]);
             foreach ($chunks as $position => $chunk) {
                 DB::table('assistant_chunks')->insert([
@@ -240,6 +252,23 @@ class SemanticIndex
         app(AssistantChat::class)->recordTokens($user, $response->usage->inputTokens, 0);
 
         return array_values(array_map(fn (array $vector): array => array_values(array_map('floatval', $vector)), $response->embeddings));
+    }
+
+    private function checkConsent(User $snapshot, ?UserFile $file = null): void
+    {
+        $user = $snapshot->fresh();
+        if ($user === null || $user->assistant_content_revision !== $snapshot->assistant_content_revision
+            || $this->access->denial($user) !== null || $this->access->contentDenial($user) !== null
+            || ! AssistantSetting::current()->semantic_enabled) {
+            throw new RuntimeException('privacy_changed');
+        }
+        if ($file !== null) {
+            $current = $file->fresh();
+            if ($current === null || ! $current->isCurrent() || $current->upload_id !== $file->upload_id
+                || in_array($current->folder_id, $this->access->excludedFolders($user), true)) {
+                throw new RuntimeException('privacy_changed');
+            }
+        }
     }
 
     /** @return list<string> */

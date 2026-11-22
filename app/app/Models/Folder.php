@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $user_id
  * @property int|null $parent_id
+ * @property bool $assistant_excluded
  * @property string $name
  * @property string|null $media_link
  */
