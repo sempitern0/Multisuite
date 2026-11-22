@@ -47,6 +47,7 @@ class JellyfinProvisioningTest extends TestCase
 
     protected function tearDown(): void
     {
+        $this->removeTree($this->root.'/.multisuite-media');
         $this->tearDownPrivateStorage();
         parent::tearDown();
     }
@@ -142,6 +143,19 @@ class JellyfinProvisioningTest extends TestCase
 
         $this->assertSame('conflict', ServiceAccount::where('user_id', $member->id)->where('service', 'video')->value('status'));
         $this->assertSame('theirs', $this->server['users']['native']['password']);
+    }
+
+    private function removeTree(string $path): void
+    {
+        if (! is_dir($path)) {
+            return;
+        }
+        foreach (scandir($path) ?: [] as $name) {
+            if ($name !== '.' && $name !== '..') {
+                is_dir($path.'/'.$name) && ! is_link($path.'/'.$name) ? $this->removeTree($path.'/'.$name) : unlink($path.'/'.$name);
+            }
+        }
+        rmdir($path);
     }
 
     private function connect(): void

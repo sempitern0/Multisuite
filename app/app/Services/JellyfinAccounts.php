@@ -381,7 +381,11 @@ final class JellyfinAccounts implements CommonLibraries, PersonalLibraries, Serv
             'PasswordResetProviderId' => $remote['Policy']['PasswordResetProviderId'] ?? self::RESET_PROVIDER,
         ];
         $this->check($this->client()->post('/Users/'.rawurlencode((string) $account->external_id).'/Policy', $policy));
-        $saved = (array) (($this->find($account) ?? throw new RuntimeException('unavailable'))['Policy'] ?? []);
+        $verified = $this->find($account);
+        if ($verified === null || ! is_array($verified['Policy'] ?? null)) {
+            throw new RuntimeException('unavailable');
+        }
+        $saved = $verified['Policy'];
         $enabled = array_map('strval', $saved['EnabledFolders'] ?? []);
         sort($enabled);
         if (($saved['IsAdministrator'] ?? true) !== false || ($saved['EnableAllFolders'] ?? true) !== false
