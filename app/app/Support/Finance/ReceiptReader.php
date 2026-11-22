@@ -27,10 +27,10 @@ final class ReceiptReader implements ReadsReceipts
             if (trim($text) !== '') {
                 return $this->suggest($text);
             }
-            $bytes = $this->run(['pdftoppm', '-f', '1', '-l', '1', '-singlefile', '-scale-to', '2000', '-png', '-'], $bytes);
+            $bytes = $this->run(['pdftoppm', '-f', '1', '-l', '1', '-singlefile', '-scale-to', '2000', '-png', '-'], $bytes, 16 * 1024 * 1024);
         }
         $size = @getimagesizefromstring($bytes);
-        if ($size === false || $size[0] * $size[1] > 20000000) {
+        if ($size === false || $size[0] * $size[1] > ($mime === 'image/webp' ? 4000000 : 20000000)) {
             throw new ReceiptUnreadable('La imagen es demasiado grande o ilegible. Puedes introducir el movimiento a mano.');
         }
         if ($mime === 'image/webp') {
@@ -53,16 +53,31 @@ final class ReceiptReader implements ReadsReceipts
     }
 
     /** @param list<string> $command */
-    private function run(array $command, string $input): string
+    private function run(array $command, string $input, int $limit = 131072): string
     {
-        $process = new Process($command, null, ['OMP_THREAD_LIMIT' => '1'], $input, 12);
+        $process = new Process(['prlimit', '--as=536870912', '--cpu=12', '--', ...$command], null, ['OMP_THREAD_LIMIT' => '1'], $input, 12);
         try {
-            $process->mustRun();
+            $output = '';
+            $errors = 0;
+            $process->mustRun(function (string $type, string $chunk) use ($process, $limit, &$errors, &$output): void {
+                if ($type === Process::ERR) {
+                    $process->clearErrorOutput();
+                    $errors += strlen($chunk);
+                } else {
+                    $process->clearOutput();
+                    $output .= $chunk;
+                }
+                if (strlen($output) > $limit || $errors > 16384) {
+                    throw new ReceiptUnreadable('La factura supera el límite de lectura. Puedes completar el movimiento a mano.');
+                }
+            });
         } catch (ProcessFailed) {
             throw new ReceiptUnreadable('No se ha podido leer la factura. Puedes completar el movimiento a mano.');
+        } finally {
+            $process->stop(0);
         }
 
-        return $process->getOutput();
+        return $output;
     }
 
     /** @return array{amount: string, date: string} */
