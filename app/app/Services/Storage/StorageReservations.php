@@ -2,6 +2,7 @@
 
 namespace App\Services\Storage;
 
+use App\Enums\ReservationState;
 use App\Models\StoragePool;
 use App\Models\StorageReservation;
 use App\Models\StorageSetting;
@@ -75,7 +76,7 @@ class StorageReservations
             $reservation->pool_id = $poolId;
             $reservation->bytes = $bytes;
             $reservation->charges_user = $chargeUser;
-            $reservation->state = 'reserved';
+            $reservation->state = ReservationState::Reserved->value;
             $reservation->expires_at = now()->addMinutes($ttlMinutes);
             $reservation->save();
 
@@ -88,7 +89,7 @@ class StorageReservations
     {
         $actualBytes = $this->validateBytes($actualBytes, true);
 
-        return $this->transition($user, $key, 'committed', $actualBytes);
+        return $this->transition($user, $key, ReservationState::Committed->value, $actualBytes);
     }
 
     /** Pushes back the expiry of a live reservation (an upload still receiving chunks). */
@@ -97,7 +98,7 @@ class StorageReservations
         DB::transaction(function () use ($user, $key, $minutes): void {
             $reservation = StorageReservation::whereKey($key)->lockForUpdate()->firstOrFail();
             $this->owns($reservation, $user);
-            if ($reservation->state !== 'reserved' || $reservation->expires_at->isPast()) {
+            if ($reservation->state !== ReservationState::Reserved->value || $reservation->expires_at->isPast()) {
                 throw new RuntimeException('La reserva ya no está activa.');
             }
             $reservation->expires_at = now()->addMinutes(max(1, $minutes));
@@ -108,7 +109,7 @@ class StorageReservations
     // Trusted cleanup only: caller must establish no writer or temporary file remains.
     public function release(User $user, string $key): StorageReservation
     {
-        return $this->transition($user, $key, 'released', null);
+        return $this->transition($user, $key, ReservationState::Released->value, null);
     }
 
     private function transition(User $user, string $key, string $state, ?int $actual): StorageReservation
@@ -124,10 +125,10 @@ class StorageReservations
             if ($reservation->state === $state && $reservation->actual_bytes === $actual) {
                 return $reservation;
             }
-            if ($reservation->state !== 'reserved') {
+            if ($reservation->state !== ReservationState::Reserved->value) {
                 throw new RuntimeException('La operación ya está finalizada.');
             }
-            if ($state === 'committed' && ($quota === null || $reservation->expires_at->isPast() || $actual === null || $actual > $reservation->bytes)) {
+            if ($state === ReservationState::Committed->value && ($quota === null || $reservation->expires_at->isPast() || $actual === null || $actual > $reservation->bytes)) {
                 throw new RuntimeException('Reserva caducada, temporal o con tamaño final fuera de la reserva.');
             }
             if ($pool->reserved_bytes < $reservation->bytes || ($quota !== null && $quota->reserved_bytes < $reservation->bytes)) {
@@ -162,18 +163,18 @@ class StorageReservations
             $pool = StoragePool::whereKey($lookup->pool_id)->lockForUpdate()->firstOrFail();
             $quota = UserStorageQuota::whereKey($user->id)->lockForUpdate()->firstOrFail();
             $reservation = StorageReservation::whereKey($key)->lockForUpdate()->firstOrFail();
-            if ($reservation->state === 'purged') {
+            if ($reservation->state === ReservationState::Purged->value) {
                 return $reservation;
             }
             $bytes = (int) $reservation->actual_bytes;
-            if ($reservation->state !== 'committed' || $pool->used_bytes < $bytes || $quota->used_bytes < $bytes) {
+            if ($reservation->state !== ReservationState::Committed->value || $pool->used_bytes < $bytes || $quota->used_bytes < $bytes) {
                 throw new RuntimeException('Contabilidad inconsistente: requiere reconciliación.');
             }
             $pool->used_bytes = $this->nonnegative($pool->used_bytes - $bytes);
             $quota->used_bytes = $this->nonnegative($quota->used_bytes - $bytes);
             $pool->save();
             $quota->save();
-            $reservation->state = 'purged';
+            $reservation->state = ReservationState::Purged->value;
             $reservation->save();
 
             return $reservation;
@@ -262,7 +263,7 @@ class StorageReservations
         DB::transaction(function () use ($user): void {
             User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             // Temporary copies (exports) are not in the quota counters but still hold disk space.
-            if (StorageReservation::where('user_id', $user->id)->where('state', 'reserved')->exists()) {
+            if (StorageReservation::where('user_id', $user->id)->where('state', ReservationState::Reserved->value)->exists()) {
                 throw ValidationException::withMessages(['deletion' => 'La cuenta tiene operaciones de almacenamiento en curso (subidas o descargas ZIP). Espera a que terminen o caduquen.']);
             }
             $quota = UserStorageQuota::whereKey($user->id)->lockForUpdate()->first();

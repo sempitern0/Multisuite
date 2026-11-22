@@ -183,11 +183,13 @@ class SemanticIndex
     }
 
     /** Removes everything indexed for a person (consent withdrawn, feature off, account gone). */
-    public function forget(User $user): void
+    /** The one place that deletes a person's index (also on AssistantContentConsentWithdrawn). */
+    public function forget(User|int $user): void
     {
-        DB::transaction(function () use ($user): void {
-            DB::table('assistant_chunks')->where('user_id', $user->id)->delete();
-            DB::table('assistant_indexed_files')->where('user_id', $user->id)->delete();
+        $id = $user instanceof User ? $user->id : $user;
+        DB::transaction(function () use ($id): void {
+            DB::table('assistant_chunks')->where('user_id', $id)->delete();
+            DB::table('assistant_indexed_files')->where('user_id', $id)->delete();
         });
     }
 

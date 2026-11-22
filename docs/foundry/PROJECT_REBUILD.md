@@ -31,7 +31,7 @@ local hosts and explicitly trusting the new device's CA using `make https-setup`
 | `make reset-project` | Existing typed confirmation is required. Removes app, local env, portable configuration and project volumes. Backups remain. Commit the manifest deletion if resetting the product in Git is intended. |
 
 The manifest contains only an allowlist of project choices: starter identity,
-project name, DB/queue/mail engine, service UI, ports, HTTPS and tenancy blueprint.
+project name, DB/queue/mail engine, service UI, ports and HTTPS.
 It does not contain passwords, SMTP credentials, APP_KEY, UID/GID or runtime data.
 Existing configured local `.env` values take precedence over the manifest. A
 fresh machine gets new local DB credentials and its own Laravel key. SMTP login
@@ -115,8 +115,8 @@ make status
 ```
 
 El informe incluye proyecto, starter, base de datos, nombre de la base,
-motor de colas, correo, panel de administración de BD, HTTPS, tenancy
-(únicamente blueprint), perfiles y estado *running* de los servicios.
+motor de colas, correo, panel de administración de BD, HTTPS,
+perfiles y estado *running* de los servicios.
 Muestra URLs solo cuando el servicio correspondiente está funcionando:
 
 - Laravel HTTP: `http://localhost:HTTP_PORT`; HTTPS con Caddy:

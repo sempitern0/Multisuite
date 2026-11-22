@@ -56,6 +56,24 @@ class AssistantExternalTest extends TestCase
             ->assertJsonPath('code_challenge_methods_supported', ['S256']);
     }
 
+    public function test_client_registration_needs_the_owner_switch_and_is_throttled(): void
+    {
+        $client = ['client_name' => 'Prueba', 'redirect_uris' => ['https://claude.ai/api/mcp/auth_callback']];
+        $this->settings(false);
+        $this->postJson('/oauth/register', $client)->assertForbidden();
+        $this->getJson('/.well-known/oauth-authorization-server')->assertOk()->assertJsonPath('registration_endpoint', url('/oauth/register'));
+
+        $this->settings(true);
+        $statuses = [];
+        for ($i = 0; $i < 10; $i++) {
+            $statuses[] = $this->postJson('/oauth/register', $client)->status();
+        }
+        // 10 requests a minute per address across discovery and registration (two used above).
+        $this->assertNotSame(429, $statuses[0]);
+        $this->assertNotContains(403, $statuses);
+        $this->assertSame(429, end($statuses));
+    }
+
     public function test_requests_without_a_token_are_rejected(): void
     {
         $this->settings(true);

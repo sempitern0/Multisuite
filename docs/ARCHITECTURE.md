@@ -4,7 +4,7 @@ Guía rápida para personas y agentes de IA. Si algo aquí contradice al código
 
 ## Vista general
 ```
-Navegador ──► Caddy/Nginx ──► Laravel 13 + Livewire 4 + Flux 2 (app/, PHP ≥ 8.3)
+Navegador ──► Caddy/Nginx ──► Laravel 13 + Livewire 4 (app/, PHP ≥ 8.3)
                                    │  DB: SQLite (dev/tests) · PostgreSQL (concurrencia real)
                                    │  scheduler: portal:sync-accounts (1 min), portal:exports-run (1 min), portal:uploads-cleanup (10 min), portal:files-purge (diario)
                                    ├──► API nativa de Navidrome (aprovisionamiento de cuentas)
@@ -97,3 +97,6 @@ Motor: PostgreSQL 17 en desarrollo y producción; SQLite en los tests (CI ejecut
 ## Lectura con Komga
 
 `KomgaAccounts` implementa aprovisionamiento y bibliotecas privadas. `ServiceConnection` guarda una clave API cifrada, autorizada por el propietario en `pages::admin.komga-connection`. `KomgaSession` entrega la cookie nativa mediante pase breve; `pages::komga-confirm` renueva sesiones. El espejo reutiliza el espacio `reading` mediante `ServiceAccount.media_id`. Ver [KOMGA.md](KOMGA.md).
+
+## Roles y estados
+`app/Enums` (`Role`, `ReservationState`, `UploadState`, `ExportState`, `ServiceAccountStatus`) define los valores válidos; las columnas siguen siendo texto y PostgreSQL los impone con `CHECK` (migración `2026_11_27_000000_add_state_checks`, `tests/Integration/StateChecksTest`). En el código se compara con `->value`; no hay cast a enum porque cambiaría el significado de cada `===` existente y PHPStan no analiza las vistas Blade.

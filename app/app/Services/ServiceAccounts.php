@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ServiceAccountStatus;
 use App\Enums\ServiceAuditAction;
 use App\Models\ServiceAccount;
 use App\Models\User;
@@ -20,10 +21,10 @@ use function Illuminate\Support\defer;
 class ServiceAccounts
 {
     /** Disabled or suspended: the remote password was replaced and is waiting for access to return. */
-    public const LOCKED = 'locked';
+    public const LOCKED = ServiceAccountStatus::Locked->value;
 
     /** Access granted again (or for the first time): the next sign-in with a password activates it. */
-    public const AWAITING_PASSWORD = 'awaiting_password';
+    public const AWAITING_PASSWORD = ServiceAccountStatus::AwaitingPassword->value;
 
     public function __construct(private ServiceProvisioners $provisioners) {}
 
@@ -239,7 +240,7 @@ class ServiceAccounts
         $account->pending_password = $password;
         $account->credential_expires_at = now()->addHour();
         $account->retry_at = now();
-        $account->status = 'pending';
+        $account->status = ServiceAccountStatus::Pending->value;
         $account->save();
     }
 
@@ -271,7 +272,7 @@ class ServiceAccounts
             if ($account->credential_expires_at === null || $account->credential_expires_at->isPast()) {
                 $account->pending_password = null;
                 $account->credential_expires_at = null;
-                $account->status = 'expired';
+                $account->status = ServiceAccountStatus::Expired->value;
                 $account->save();
 
                 return;
@@ -281,15 +282,15 @@ class ServiceAccounts
                     throw new RuntimeException('configuration');
                 }
                 $this->provisioners->for($account->service)->synchronize($account, $account->pending_password);
-                $account->status = 'ready';
+                $account->status = ServiceAccountStatus::Ready->value;
                 // The account exists now: its connected folders can get their personal library.
                 app(MediaLibrary::class)->changed($user);
                 $account->pending_password = null;
                 $account->credential_expires_at = null;
                 $account->retry_at = null;
             } catch (RuntimeException $exception) {
-                $account->status = in_array($exception->getMessage(), ['conflict', 'configuration'], true)
-                    ? $exception->getMessage() : 'pending';
+                $account->status = in_array($exception->getMessage(), [ServiceAccountStatus::Conflict->value, ServiceAccountStatus::Configuration->value], true)
+                    ? $exception->getMessage() : ServiceAccountStatus::Pending->value;
                 $account->retry_at = now()->addMinutes(5);
             }
             $account->save();

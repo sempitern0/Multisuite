@@ -18,7 +18,7 @@ if (-not (Test-Path -LiteralPath $envPath)) {
 # Read only known, non-secret settings. Never dot-source .env or echo secrets.
 $allowed = @('PROJECT_NAME','APP_LABEL','SETUP_CONFIGURED','DB_ENGINE','DB_DATABASE',
     'QUEUE_ENGINE','MAIL_ENGINE','DB_UI','HTTP_PORT','HTTPS_ENABLED','HTTPS_PORT',
-    'LOCAL_DOMAIN','VITE_PORT','DB_UI_PORT','MAILPIT_PORT','TENANCY_MODE',
+    'LOCAL_DOMAIN','VITE_PORT','DB_UI_PORT','MAILPIT_PORT',
     'COMPOSE_PROFILES')
 $settings = @{}
 foreach ($line in [System.IO.File]::ReadAllLines($envPath)) {
@@ -128,7 +128,6 @@ $https = (Setting 'HTTPS_ENABLED' '0') -eq '1'
 $httpPort = Setting 'HTTP_PORT' '8080'
 $httpsPort = Setting 'HTTPS_PORT' '443'
 $domain = Setting 'LOCAL_DOMAIN' 'foundry.test'
-$tenancy = Setting 'TENANCY_MODE' 'none'
 $profiles = Setting 'COMPOSE_PROFILES' '(sin perfiles)'
 $starterPath = Join-Path $Root 'app/.letsgo-starter'
 $starter = if (Test-Path -LiteralPath $starterPath) {
@@ -165,7 +164,7 @@ Section 'Configuration'
 Item 'Database' ("{0} / {1}" -f $db,$dbName)
 Item 'Queue / Mail' ("{0} / {1}" -f $queue,$mail)
 Item 'Database UI' $ui
-Item 'HTTPS / Tenancy' ("{0} / {1}" -f $(if ($https) { 'enabled' } else { 'disabled' }),$tenancy)
+Item 'HTTPS' $(if ($https) { 'enabled' } else { 'disabled' })
 Item 'Profiles' $profiles
 
 Section 'Services'
@@ -185,9 +184,6 @@ if ($ui -ne 'none') { Show-Service $ui $ui }
 Section 'Next steps'
 if ($https) {
     Write-Host ('  [INFO] Point {0} to 127.0.0.1; run make https-setup to trust your local CA.' -f $domain) -ForegroundColor Yellow
-}
-if ($tenancy -ne 'none') {
-    Write-Host '  [INFO] Tenancy routing does not provide tenant data isolation. Test it in Laravel.' -ForegroundColor Yellow
 }
 Write-Host '  Run make up-wait for startup checks, or make doctor for host diagnostics.' -ForegroundColor Gray
 Write-Host '  HEALTHY means Docker healthcheck passed; RUNNING only means started.' -ForegroundColor DarkGray

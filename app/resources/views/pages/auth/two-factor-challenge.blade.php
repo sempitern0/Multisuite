@@ -29,8 +29,7 @@
 
             <x-ui::form :action="route('two-factor.login.store')">
                 <div x-show="! showRecoveryInput" x-ref="otp">
-                    <flux:otp x-model="code" length="6" name="code" label="Código de verificación" label:sr-only />
-                    @error('code')<x-ui::notice tone="bad">{{ $message }}</x-ui::notice>@enderror
+                    <x-ui::otp name="code" label="Código de verificación" x-model="code" x-bind:required="! showRecoveryInput" />
                 </div>
                 <div x-show="showRecoveryInput">
                     <x-ui::field name="recovery_code" label="Código de recuperación" x-ref="recovery_code" x-bind:required="showRecoveryInput" autocomplete="one-time-code" x-model="recovery_code" />

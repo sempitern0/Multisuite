@@ -16,7 +16,6 @@ Pendiente de validar en el piloto: autologin musical con dos usuarios y un naveg
 2. **Asistente y puente MCP** ([MCP.md](MCP.md)), siguiente integración por decisión del usuario:
    - [ ] QA del usuario de MCP-01 a MCP-07 (fusionados en #42 y #44) con un proveedor real (MCP.md § Probar con un modelo real) y `composer audit`.
    - [ ] QA de clientes externos (MCP-05) con Claude/ChatGPT cuando exista P03.
-   - [ ] Límite de peticiones en `/oauth/register` y un único dueño del borrado del índice (`AssistantAccess::setContentConsent` duplica `SemanticIndex::forget`), pendientes de la revisión de calidad de #44 (sin PR propia; ir con el siguiente incremento del asistente).
    - [ ] MCP-08 Piloto: dos personas, dos dispositivos, red privada.
 3. **S04b** Publicación administrativa (tras MCP-04 o cuando el usuario decida las tres cuestiones).
 
@@ -65,10 +64,8 @@ Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúm
 - [ ] Opcional: foto anterior/siguiente en el visor; miniaturas en el servidor si la galería se vuelve lenta.
 
 ## Deuda técnica
-- [ ] Enums PHP respaldados (`Role`, `ReservationState`, `UploadState`, `ExportState`, `ServiceAccountStatus`) con casts y `CHECK` en PostgreSQL.
-- [ ] Sustituir `flux:otp` por un campo propio del tema y retirar Flux.
+- [ ] Usar `App\Enums\Role` en las comparaciones de rol que aún escriben el texto (políticas, permisos y vistas); los estados ya usan sus enums.
 - [ ] Resumen de administración con métricas reales.
-- [ ] Retirar el andamiaje SaaS heredado de Foundry (`wizard`, `tenancy-check`, `Caddyfile.saas`, docs/foundry/SAAS.md y sus pasos de CI): Multisuite no es multi-inquilino.
 
 ## QA pendiente del usuario (lo que CI no puede comprobar)
 - [ ] Tras `make rebuild`: foto de perfil (encuadrar, guardar, quitar; también en móvil); cambiar el usuario de alguien con Música; desactivar/activar Música; suspender/reactivar una cuenta de prueba (USER_MANAGEMENT.md § QA).

@@ -7,13 +7,11 @@ case "$mode" in run|setup) :;; *) echo 'Expected run or setup.' >&2; exit 2;; es
 val() { sed -n "s/^$1=//p" .env | tail -n 1 | tr -d '\r' | sed 's/^"//;s/"$//'; }
 name=$(val PROJECT_NAME); db=$(val DB_ENGINE); queue=$(val QUEUE_ENGINE)
 mail=$(val MAIL_ENGINE); ui=$(val DB_UI); https=$(val HTTPS_ENABLED)
-tenancy=$(val TENANCY_MODE); tenancy=${tenancy:-none}
 case "$name" in ''|[!a-z]*|*[!a-z0-9_-]*) echo '[ERROR] Invalid PROJECT_NAME.' >&2; exit 1;; esac
 case "$db" in postgres|mariadb|mysql|sqlite) :;; *) echo '[ERROR] Invalid DB_ENGINE; run make reconfigure.' >&2;exit 1;; esac
 case "$queue" in sync|database|redis) :;; *) echo '[ERROR] Invalid QUEUE_ENGINE; run make reconfigure.' >&2;exit 1;; esac
 case "$mail" in mailpit|log|smtp) :;; *) echo '[ERROR] Invalid MAIL_ENGINE; run make reconfigure.' >&2;exit 1;; esac
 case "$ui" in none|pgweb|phpmyadmin|adminer) :;; *) echo '[ERROR] Invalid DB_UI; run make reconfigure.' >&2;exit 1;; esac
-case "$tenancy" in none|shared-db|database-per-tenant) :;; *) echo '[ERROR] Invalid TENANCY_MODE; run make reconfigure.' >&2;exit 1;; esac
 case "$https" in 0|1) :;; *) echo '[ERROR] Invalid HTTPS_ENABLED; run make reconfigure.' >&2;exit 1;; esac
 if { [ "$db" = sqlite ] && [ "$ui" != none ]; } || { [ "$ui" = pgweb ] && [ "$db" != postgres ]; } || { [ "$ui" = phpmyadmin ] && [ "$db" != mysql ] && [ "$db" != mariadb ]; }; then
  echo '[ERROR] Database UI is incompatible with DB_ENGINE.' >&2;exit 1

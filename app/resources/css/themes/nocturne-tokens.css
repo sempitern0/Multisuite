@@ -42,11 +42,6 @@
     --ui-speed: 180ms;
     --ui-ease: cubic-bezier(.2,.7,.2,1);
     --ui-layer-toast: 90;
-
-    /* flux:otp, the one remaining Flux control. */
-    --color-accent: var(--ui-accent);
-    --color-accent-content: var(--ui-accent-text);
-    --color-accent-foreground: var(--ui-accent-ink);
 }
 
 :root[data-scheme="light"] {

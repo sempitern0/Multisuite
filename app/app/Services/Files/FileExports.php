@@ -2,6 +2,7 @@
 
 namespace App\Services\Files;
 
+use App\Enums\ExportState;
 use App\Models\FileExport;
 use App\Models\Folder;
 use App\Models\User;
@@ -65,7 +66,7 @@ class FileExports
 
         $export = DB::transaction(function () use ($user, $items, $name, $root, $pool, $location, $estimate, $key): FileExport {
             User::whereKey($user->id)->lockForUpdate()->firstOrFail();
-            if (FileExport::where('user_id', $user->id)->whereIn('state', ['queued', 'building', 'ready'])->count() >= self::MAX_ACTIVE) {
+            if (FileExport::where('user_id', $user->id)->whereIn('state', [ExportState::Queued->value, ExportState::Building->value, ExportState::Ready->value])->count() >= self::MAX_ACTIVE) {
                 throw new RuntimeException('Ya tienes '.self::MAX_ACTIVE.' descargas ZIP activas. Descarga o elimina alguna antes de pedir otra.');
             }
             // Lasts longer than the download window so cleanup, not expiry, ends it.
@@ -73,7 +74,7 @@ class FileExports
             $export = new FileExport;
             $export->id = $key;
             $export->user_id = $user->id;
-            $export->state = 'queued';
+            $export->state = ExportState::Queued->value;
             $export->name = $name;
             $export->location_id = $location;
             $export->root_hash = hash('sha256', $root);
@@ -95,7 +96,7 @@ class FileExports
     public function build(string $id): void
     {
         // Atomic claim: only one process ever builds a given export.
-        if (FileExport::whereKey($id)->where('state', 'queued')->update(['state' => 'building', 'updated_at' => now()]) !== 1) {
+        if (FileExport::whereKey($id)->where('state', ExportState::Queued->value)->update(['state' => ExportState::Building->value, 'updated_at' => now()]) !== 1) {
             return;
         }
         $export = FileExport::findOrFail($id);
@@ -134,13 +135,13 @@ class FileExports
             if (! rename($part, $final)) {
                 throw new RuntimeException('No se pudo publicar el ZIP.');
             }
-            $export->state = 'ready';
+            $export->state = ExportState::Ready->value;
             $export->bytes = $zipBytes;
             $export->cipher = $cipher === null ? null : FileCipher::FORMAT;
             $export->expires_at = now()->addHours(max(1, (int) config('nas.export_ttl_hours')));
             $export->save();
         } catch (Throwable $exception) {
-            $export->state = 'failed';
+            $export->state = ExportState::Failed->value;
             $export->error = $exception instanceof RuntimeException
                 ? Str::limit($exception->getMessage(), 250)
                 : 'Error inesperado al generar el ZIP.';
@@ -148,7 +149,7 @@ class FileExports
             $export->expires_at = now()->addHours(max(1, (int) config('nas.export_ttl_hours')));
             $export->save();
             try {
-                $this->cleanupOne($export, 'failed'); // Deletes leftovers, then releases the space.
+                $this->cleanupOne($export, ExportState::Failed); // Deletes leftovers, then releases the space.
             } catch (Throwable) {
                 // Volume unavailable: space stays reserved and run() retries.
             }
@@ -159,7 +160,7 @@ class FileExports
     public function download(User $user, string $id): StoredBlob
     {
         $export = FileExport::where('user_id', $user->id)->findOrFail($id);
-        if ($export->state !== 'ready' || $export->expires_at === null || $export->expires_at->isPast()) {
+        if ($export->state !== ExportState::Ready->value || $export->expires_at === null || $export->expires_at->isPast()) {
             throw new RuntimeException('Esta descarga ya no está disponible.');
         }
         [, $final] = $this->paths($export);
@@ -174,16 +175,16 @@ class FileExports
     public function discard(User $user, string $id): void
     {
         $export = FileExport::where('user_id', $user->id)->findOrFail($id);
-        if (in_array($export->state, ['queued', 'building'], true)) {
+        if (in_array($export->state, [ExportState::Queued->value, ExportState::Building->value], true)) {
             throw new RuntimeException('Espera a que termine de prepararse para eliminarlo.');
         }
-        $this->cleanupOne($export, 'cleaned');
+        $this->cleanupOne($export, ExportState::Cleaned);
     }
 
     /** @return Collection<int, FileExport> */
     public function forUser(User $user): Collection
     {
-        return FileExport::where('user_id', $user->id)->where('state', '!=', 'cleaned')->orderByDesc('created_at')->get();
+        return FileExport::where('user_id', $user->id)->where('state', '!=', ExportState::Cleaned->value)->orderByDesc('created_at')->get();
     }
 
     /**
@@ -193,23 +194,23 @@ class FileExports
     public function run(): int
     {
         $failures = 0;
-        FileExport::where('state', 'building')->where('updated_at', '<', now()->subHours(6))
-            ->update(['state' => 'failed', 'error' => 'La preparación se interrumpió.', 'updated_at' => now()]);
+        FileExport::where('state', ExportState::Building->value)->where('updated_at', '<', now()->subHours(6))
+            ->update(['state' => ExportState::Failed->value, 'error' => 'La preparación se interrumpió.', 'updated_at' => now()]);
         // Failed exports are retried until their space is released; expired ones disappear.
-        $stale = FileExport::where(fn ($query) => $query->where('state', 'failed')
-            ->orWhere(fn ($ready) => $ready->where('state', 'ready')->where('expires_at', '<', now())))->get();
+        $stale = FileExport::where(fn ($query) => $query->where('state', ExportState::Failed->value)
+            ->orWhere(fn ($ready) => $ready->where('state', ExportState::Ready->value)->where('expires_at', '<', now())))->get();
         foreach ($stale as $export) {
             try {
                 $expired = $export->expires_at === null || $export->expires_at->isPast();
                 // Only failed exports reach this point unexpired (ready ones are selected expired).
-                $this->cleanupOne($export, $expired ? 'cleaned' : 'failed');
+                $this->cleanupOne($export, $expired ? ExportState::Cleaned : ExportState::Failed);
             } catch (Throwable) {
                 $failures++;
             }
         }
-        foreach (FileExport::where('state', 'queued')->orderBy('created_at')->pluck('id') as $id) {
+        foreach (FileExport::where('state', ExportState::Queued->value)->orderBy('created_at')->pluck('id') as $id) {
             $this->build((string) $id);
-            $failures += FileExport::whereKey($id)->where('state', 'failed')->exists() ? 1 : 0;
+            $failures += FileExport::whereKey($id)->where('state', ExportState::Failed->value)->exists() ? 1 : 0;
         }
 
         return $failures;
@@ -218,10 +219,8 @@ class FileExports
     /**
      * Deletes the archive and partial files, verifies, then releases the reservation
      * (idempotent) and moves the export to $state.
-     *
-     * @param  'failed'|'cleaned'  $state
      */
-    private function cleanupOne(FileExport $export, string $state): void
+    private function cleanupOne(FileExport $export, ExportState $state): void
     {
         [$part, $final] = $this->paths($export);
         foreach ([$part, $final] as $path) {
@@ -234,7 +233,7 @@ class FileExports
             throw new RuntimeException('No se pudo confirmar el borrado del ZIP temporal.');
         }
         $this->reservations->release(User::findOrFail($export->user_id), $export->id);
-        $export->state = $state;
+        $export->state = $state->value;
         $export->save();
     }
 

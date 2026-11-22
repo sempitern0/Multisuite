@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Events\AssistantContentConsentWithdrawn;
 use App\Events\PrivateUploadReady;
 use App\Models\Folder;
 use App\Models\PersonalTransaction;
@@ -12,6 +13,7 @@ use App\Policies\PersonalTransactionPolicy;
 use App\Policies\UserFilePolicy;
 use App\Policies\UserPolicy;
 use App\Services\Assistant\AssistantAccess;
+use App\Services\Assistant\SemanticIndex;
 use App\Services\Files\PersonalFiles;
 use App\Support\Finance\ReadsReceipts;
 use App\Support\Finance\ReceiptReader;
@@ -56,11 +58,12 @@ class AppServiceProvider extends ServiceProvider
         Passport::refreshTokensExpireIn(now()->addDays(30));
         // Named limiters: unnamed `throttle:N,1` share one counter per user across every
         // route (and nested ones count twice), so each area gets its own key.
-        foreach (['files' => 120, 'uploads' => 60, 'upload-chunks' => 1200, 'receipt-ocr' => 4, 'finances' => 60, 'file-exports' => 10, 'invitation-accept' => 10, 'account-change' => 5, 'avatar-sticker' => 30, 'admin' => 10, 'admin-storage' => 60, 'assistant' => 20, 'assistant-mcp' => 60] as $name => $perMinute) {
+        foreach (['files' => 120, 'uploads' => 60, 'upload-chunks' => 1200, 'receipt-ocr' => 4, 'finances' => 60, 'file-exports' => 10, 'invitation-accept' => 10, 'account-change' => 5, 'avatar-sticker' => 30, 'admin' => 10, 'admin-storage' => 60, 'assistant' => 20, 'assistant-mcp' => 60, 'mcp-oauth' => 10] as $name => $perMinute) {
             RateLimiter::for($name, fn (Request $request) => Limit::perMinute($perMinute)->by($name.':'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
         }
         // Registered here (no app/Listeners) so event discovery cannot attach it twice.
         Event::listen(PrivateUploadReady::class, fn (PrivateUploadReady $event) => app(PersonalFiles::class)->onUploadReady($event->uploadId, $event->userId));
+        Event::listen(AssistantContentConsentWithdrawn::class, fn (AssistantContentConsentWithdrawn $event) => app(SemanticIndex::class)->forget($event->userId));
         Gate::define('view-admin-audit', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
         Gate::define('manage-invitations', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
         Gate::define('view-storage', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));

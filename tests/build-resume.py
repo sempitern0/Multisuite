@@ -10,7 +10,7 @@ with tempfile.TemporaryDirectory() as temp:
     app=work/'app'; app.mkdir()
     for name, content in {'artisan':'fixture', 'composer.json':'{}', 'composer.lock':'{}', 'package.json':'{}', '.env.example':'APP_KEY=\n', '.env':'APP_KEY=base64:existing-key\n'}.items():
         (app/name).write_text(content)
-    (work/'.foundry.json').write_text(json.dumps({'version':1,'starter':'svelte','settings':{'PROJECT_NAME':'clone-demo','DB_ENGINE':'postgres','DB_UI':'none','QUEUE_ENGINE':'sync','MAIL_ENGINE':'log','HTTPS_ENABLED':'0','TENANCY_MODE':'none'}}))
+    (work/'.foundry.json').write_text(json.dumps({'version':1,'starter':'svelte','settings':{'PROJECT_NAME':'clone-demo','DB_ENGINE':'postgres','DB_UI':'none','QUEUE_ENGINE':'sync','MAIL_ENGINE':'log','HTTPS_ENABLED':'0'}}))
     bin_dir=work/'bin';bin_dir.mkdir()
     docker=bin_dir/'docker'
     docker.write_text('''#!/usr/bin/env python3

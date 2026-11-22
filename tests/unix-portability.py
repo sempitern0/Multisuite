@@ -52,7 +52,7 @@ if args[:2] == ['compose', 'cp']:
     config = ('PROJECT_NAME="unix-demo"\nDB_ENGINE="postgres"\n'
               'DB_DATABASE="foundry"\nDB_USERNAME="foundry"\nQUEUE_ENGINE="sync"\n'
               'MAIL_ENGINE="mailpit"\nDB_UI="none"\nHTTPS_ENABLED="1"\n'
-              'LOCAL_DOMAIN="unix-demo.test"\nTENANCY_MODE="shared-db"\n'
+              'LOCAL_DOMAIN="unix-demo.test"\n'
               'HTTP_PORT="18080"\nHTTPS_PORT="18443"\nMAILPIT_PORT="18025"\n')
 
     def configure(text=config):
@@ -68,8 +68,6 @@ if args[:2] == ['compose', 'cp']:
     expect(result.returncode == 0, 'preflight must accept quoted CRLF settings')
     result = run('status.sh')
     expect('https://unix-demo.test:18443' in result.stdout, 'status must render a clean CRLF HTTPS URL')
-    result = run('tenancy-check.sh')
-    expect(result.returncode == 0, 'tenant routing must accept CRLF settings')
     result = run('backup.sh')
     expect(result.returncode == 0, 'backup must accept quoted CRLF DB names')
     for key in ('base64:existing-key', '"base64:existing-key"', ''):
@@ -84,8 +82,8 @@ if args[:2] == ['compose', 'cp']:
         expect(['compose', 'up', '-d', '--wait', '--wait-timeout', '120', 'postgres'] in calls,
                'setup must wait for selected CRLF database')
 
-    configure(config.replace('shared-db', 'invalid'))
-    expect(run('preflight.sh').returncode != 0, 'preflight must reject invalid tenancy')
+    configure(config.replace('DB_ENGINE="postgres"', 'DB_ENGINE="invalid"'))
+    expect(run('preflight.sh').returncode != 0, 'preflight must reject an invalid engine')
     configure()
     expect(run('preflight.sh', 'typo').returncode != 0, 'preflight must reject unknown mode')
 

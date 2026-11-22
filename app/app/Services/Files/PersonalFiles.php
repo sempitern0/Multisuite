@@ -3,6 +3,7 @@
 namespace App\Services\Files;
 
 use App\Enums\FileKind;
+use App\Enums\UploadState;
 use App\Models\Folder;
 use App\Models\User;
 use App\Models\UserFile;
@@ -184,7 +185,7 @@ class PersonalFiles
             ->join('private_uploads', 'private_uploads.id', '=', 'user_files.upload_id')
             ->join('storage_reservations', 'storage_reservations.id', '=', 'user_files.upload_id')
             ->where('user_files.user_id', $user->id)
-            ->where('private_uploads.state', 'ready');
+            ->where('private_uploads.state', UploadState::Ready->value);
 
         return match ($scope) {
             'current' => $query->whereNull('user_files.trashed_at')->whereNull('user_files.version_of_id'),
@@ -255,7 +256,7 @@ class PersonalFiles
     {
         return UserFile::where('user_files.user_id', $user->id)
             ->join('private_uploads', 'private_uploads.id', '=', 'user_files.upload_id')
-            ->where('private_uploads.state', 'pending')->count();
+            ->where('private_uploads.state', UploadState::Pending->value)->count();
     }
 
     public function createFolder(User $user, ?int $parentId, string $name): Folder
@@ -595,7 +596,7 @@ class PersonalFiles
     {
         return UserFile::where('user_files.user_id', $user->id)->where('user_files.folder_id', $folderId)
             ->join('private_uploads', 'private_uploads.id', '=', 'user_files.upload_id')
-            ->whereIn('private_uploads.state', ['pending', 'ready'])
+            ->whereIn('private_uploads.state', [UploadState::Pending->value, UploadState::Ready->value])
             ->whereNull('user_files.trashed_at')->whereNull('user_files.version_of_id')
             ->when($ignore !== null, fn ($query) => $query->where('user_files.id', '!=', $ignore))
             ->whereRaw('LOWER(user_files.name) = ?', [Str::lower($name)])->exists();

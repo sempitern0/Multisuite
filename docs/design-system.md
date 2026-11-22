@@ -17,7 +17,7 @@ El estado visual pertenece al navegador. La búsqueda paginada, los permisos y l
 
 La revisión de diseño compara el build de referencia y el candidato en dos entornos desechables. El workflow design-review conserva capturas y JSON de Lighthouse y axe. Los informes de laboratorio no certifican conformidad WCAG ni sustituyen el recorrido con lector de pantalla.
 
-El bundle común excluye los estilos de Flux. La entrada `otp.css` se solicita en el desafío de doble factor y los ajustes de seguridad, donde se renderiza `flux:otp`. Si se introduce otro control Flux en una pantalla, incluir su hoja al verificar el flujo.
+El código de verificación es `x-ui::otp`: un solo campo numérico con `autocomplete="one-time-code"` (lo rellenan gestores de contraseñas y SMS, y los lectores de pantalla lo anuncian como un campo), cifras espaciadas por CSS. Ya no hay hoja aparte ni Flux.
 
 En Servicios, las tarjetas pasan a una columna hasta 35 rem. El icono identifica cada fila y la flecha aparece cuando hay un destino. El estado conserva su texto y contraste en ambas paletas.
 

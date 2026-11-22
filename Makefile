@@ -10,7 +10,6 @@ HOST_PREPARE := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/
 HOST_DOCTOR := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/environment.ps1 -Mode Doctor
 HTTP_CHECK := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/check-http.ps1
 ACCOUNTS_NETWORK := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/accounts-network.ps1
-TENANCY_CHECK_SCRIPT := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/tenancy-check.ps1
 NAS_DISCOVER := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/nas-discover.ps1
 NAS_APPLY := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/nas-apply.ps1
 NAS_BACKUP := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/nas-backup.ps1
@@ -26,7 +25,6 @@ HOST_PREPARE := sh scripts/environment.sh apply
 HOST_DOCTOR := sh scripts/environment.sh doctor
 HTTP_CHECK := sh scripts/check-http.sh
 ACCOUNTS_NETWORK := sh scripts/accounts-network.sh
-TENANCY_CHECK_SCRIPT := sh scripts/tenancy-check.sh
 NAS_DISCOVER := sh scripts/nas-discover.sh
 NAS_APPLY := TARGETS="$(TARGETS)" UPLOAD="$(UPLOAD)" YES="$(YES)" sh scripts/nas-apply.sh
 NAS_BACKUP := FILES="$(FILES)" TARGET="$(TARGET)" SNAPSHOT="$(SNAPSHOT)" sh scripts/nas-backup.sh
@@ -87,7 +85,7 @@ STARTER ?=
 # Explicit all-profiles stop also removes containers started manually through a
 # profile not included in the current .env.
 ALL_PROFILES := --profile dev --profile tools --profile workers --profile scheduler --profile redis --profile https --profile postgres --profile mariadb --profile mysql --profile phpmyadmin --profile mailpit --profile pgweb --profile adminer
-.PHONY: nas-discover nas-apply nas-backup nas-backup-verify nas-backup-restore nas-backup-snapshots music-up music-stop music-status music-logs music-config reading-up reading-stop reading-status reading-logs reading-config help check status doctor host-config setup reconfigure up up-detached up-wait up-logs start stop restart down build images rebuild ps logs shell artisan composer npm migrate test lint backup env-sync https-setup reset-project worker scheduler redis config tenancy-check
+.PHONY: nas-discover nas-apply nas-backup nas-backup-verify nas-backup-restore nas-backup-snapshots music-up music-stop music-status music-logs music-config reading-up reading-stop reading-status reading-logs reading-config help check status doctor host-config setup reconfigure up up-detached up-wait up-logs start stop restart down build images rebuild ps logs shell artisan composer npm migrate test lint backup env-sync https-setup reset-project worker scheduler redis config
 
 help:
 	@echo "Laravel Foundry - self-hosted Laravel environments with Docker Compose"
@@ -109,7 +107,6 @@ help:
 	@echo "NAS backup:  make nas-backup | nas-backup-verify | nas-backup-snapshots | nas-backup-restore TARGET=/empty/dir"
 	@echo "Bootstrap:   migrations + unset limits after up/start; DEV_BOOTSTRAP=0 skips"
 	@echo "Operations:  make env-sync | backup | https-setup | reset-project"
-	@echo "SaaS:        make tenancy-check     Check local tenant hostname routing"
 	@echo ""
 	@echo "WARNING: reset-project removes generated app files and Docker volumes."
 
@@ -318,8 +315,6 @@ https-setup:
 reset-project:
 	$(RESET_SCRIPT)
 
-tenancy-check:
-	$(TENANCY_CHECK_SCRIPT)
 
 # Read-only disk inventory, then preparation of chosen mount points (Linux server).
 nas-discover:
