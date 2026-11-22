@@ -38,6 +38,8 @@ class SecurityTest extends TestCase
 
         $response->assertOk();
 
+        $response->assertSee('Correo de recuperación')->assertSee($user->email)->assertSee(route('email-change.edit'));
+        $response->assertSee('0 llaves');
         $response->assertSee('Llaves de acceso');
         $response->assertSee('Todavía no tienes llaves de acceso');
         $response->assertSee('Verificación en dos pasos');

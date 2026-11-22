@@ -5,6 +5,10 @@ El menú **Usuarios** está disponible solo para propietario y administradores. 
 - Administrador: gestiona miembros. No puede editar/eliminar administradores, propietarios ni su propia cuenta.
 - Propietario: también gestiona administradores. Las cuentas propietarias y la propia están protegidas.
 
+## Ajustes personales de seguridad
+
+En **Ajustes → Seguridad** cada persona ve su correo de recuperación y, si están habilitadas, sus llaves de acceso y la verificación en dos pasos. Cada fila abre sus opciones con clic, Intro o Espacio. El correo también se puede cambiar desde Perfil si la dirección aún está sin verificar.
+
 ## Arquitectura de las ediciones
 Cada operación es una Action en `app/Actions/Users` (caso de uso único): la página Livewire solo valida con `rules()` y la llama, así que cualquier otra entrada futura (consola, API) reutiliza la misma regla. La Action bloquea actor y persona en orden (`LockedUsers`), revalida el permiso con `UserPolicy`, aplica el cambio **primero en los servicios** a través del puerto `ServiceProvisioner` (un adaptador por servicio, hoy Navidrome) y después en Multisuite, y deja un evento de auditoría con lista blanca de campos. Si un servicio no confirma, no cambia nada y repetir es seguro.
 

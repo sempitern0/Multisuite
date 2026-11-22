@@ -123,35 +123,31 @@ new #[Title('Seguridad')] class extends Component {
 }; ?>
 
 <div>
-    <x-pages::settings.layout heading="Seguridad" subheading="Contraseña, verificación en dos pasos y llaves de acceso.">
-        <x-ui::stack gap="lg">
-            <x-ui::panel aria-labelledby="password-heading">
-                <x-ui::stack gap="md">
-                    <x-ui::heading id="password-heading">Cambiar contraseña</x-ui::heading>
-                    <x-ui::form wire:submit="updatePassword">
-                        <x-ui::password name="current_password" label="Contraseña actual" wire:model="current_password" required autocomplete="current-password" />
-                        <x-ui::password name="password" label="Nueva contraseña" wire:model="password" required autocomplete="new-password"
-                            passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                            help="También se actualizará en los servicios vinculados a tu cuenta, como Música." />
-                        <x-ui::password name="password_confirmation" label="Repite la nueva contraseña" wire:model="password_confirmation" required autocomplete="new-password" />
-                        <x-ui::button type="submit" data-test="update-password-button">Guardar contraseña</x-ui::button>
-                    </x-ui::form>
-                </x-ui::stack>
-            </x-ui::panel>
+    <x-pages::settings.layout heading="Seguridad" subheading="Elige cómo entrar en tu cuenta y dónde recuperar el acceso.">
+        <x-ui::stack gap="sm">
+            <x-ui::security-option wire:key="security-password" title="Cambiar contraseña" icon="key"
+                description="Actualiza la contraseña de Multisuite y de tus servicios vinculados.">
+                <x-ui::form wire:submit="updatePassword">
+                    <x-ui::password name="current_password" label="Contraseña actual" wire:model="current_password" required autocomplete="current-password" />
+                    <x-ui::password name="password" label="Nueva contraseña" wire:model="password" required autocomplete="new-password"
+                        passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                        help="También se actualizará en los servicios vinculados a tu cuenta, como Música." />
+                    <x-ui::password name="password_confirmation" label="Repite la nueva contraseña" wire:model="password_confirmation" required autocomplete="new-password" />
+                    <x-ui::button type="submit" data-test="update-password-button">Guardar contraseña</x-ui::button>
+                </x-ui::form>
+            </x-ui::security-option>
 
             @if ($canManageTwoFactor)
-                <x-ui::panel aria-labelledby="two-factor-heading">
+                <x-ui::security-option wire:key="security-two-factor" title="Verificación en dos pasos" icon="shield"
+                    description="Confirma el acceso con una aplicación de autenticación."
+                    :status="$twoFactorEnabled ? 'Activada' : 'Desactivada'" :tone="$twoFactorEnabled ? 'ok' : 'muted'">
                     <x-ui::stack gap="md">
-                        <x-ui::row>
-                            <x-ui::heading id="two-factor-heading">Verificación en dos pasos</x-ui::heading>
-                            <x-ui::status :tone="$twoFactorEnabled ? 'ok' : 'muted'">{{ $twoFactorEnabled ? 'Activada' : 'Desactivada' }}</x-ui::status>
-                        </x-ui::row>
                         @if ($twoFactorEnabled)
                             <x-ui::text>Al entrar se te pedirá, además de la contraseña, un código de la aplicación de autenticación de tu teléfono.</x-ui::text>
                             <livewire:pages::settings.two-factor.recovery-codes :$requiresConfirmation />
                             <x-ui::confirm title="¿Desactivar la verificación en dos pasos?">
                                 <x-slot:trigger><x-ui::button variant="danger">Desactivar verificación en dos pasos</x-ui::button></x-slot:trigger>
-                                Tu cuenta quedará protegida solo por la contraseña. Podrás activarla de nuevo cuando quieras.
+                                Al entrar con contraseña dejarás de necesitar el código de la aplicación.
                                 <x-slot:action><x-ui::button variant="danger" wire:click="disable">Desactivar</x-ui::button></x-slot:action>
                             </x-ui::confirm>
                         @else
@@ -160,35 +156,48 @@ new #[Title('Seguridad')] class extends Component {
                             <livewire:pages::settings.two-factor-setup-modal :requires-confirmation="$requiresConfirmation" />
                         @endif
                     </x-ui::stack>
-                </x-ui::panel>
+                </x-ui::security-option>
             @endif
 
             @if ($canManagePasskeys)
-                <x-ui::stack gap="md" aria-labelledby="passkeys-heading">
-                    <x-ui::heading id="passkeys-heading">Llaves de acceso</x-ui::heading>
-                    <x-ui::text>Entra sin contraseña con la huella, la cara o el PIN de tu dispositivo.</x-ui::text>
-                    <x-ui::table label="Llaves de acceso">
-                        <x-slot:head><tr><th>Llave</th><th>Añadida</th><th>Último uso</th><th data-align="end"><x-ui::sr>Acciones</x-ui::sr></th></tr></x-slot:head>
-                        @forelse ($passkeys as $passkey)
-                            <tr wire:key="passkey-{{ $passkey['id'] }}">
-                                <x-ui::td primary :sub="$passkey['authenticator']">{{ $passkey['name'] }}</x-ui::td>
-                                <x-ui::td label="Añadida">{{ $passkey['created_at_diff'] }}</x-ui::td>
-                                <x-ui::td label="Último uso">{{ $passkey['last_used_at_diff'] ?? 'Sin usar' }}</x-ui::td>
-                                <x-ui::td align="end">
-                                    <x-ui::confirm title="¿Eliminar esta llave de acceso?">
-                                        <x-slot:trigger><x-ui::button variant="ghost" size="sm" icon="trash" :aria-label="'Eliminar la llave '.$passkey['name']">Eliminar</x-ui::button></x-slot:trigger>
-                                        Ya no podrás entrar con «{{ $passkey['name'] }}».
-                                        <x-slot:action><x-ui::button variant="danger" wire:click="removePasskey({{ $passkey['id'] }})">Eliminar llave</x-ui::button></x-slot:action>
-                                    </x-ui::confirm>
-                                </x-ui::td>
-                            </tr>
-                        @empty
-                            <x-ui::table-empty colspan="4">Todavía no tienes llaves de acceso.</x-ui::table-empty>
-                        @endforelse
-                    </x-ui::table>
-                    <x-passkey-registration />
-                </x-ui::stack>
+                <x-ui::security-option wire:key="security-passkeys" title="Llaves de acceso" icon="fingerprint"
+                    description="Entra con la huella, la cara o el PIN de tu dispositivo."
+                    :status="count($passkeys) === 1 ? '1 llave' : count($passkeys).' llaves'">
+                    <x-ui::stack gap="md">
+                        @if ($passkeys === [])
+                            <x-ui::text>Todavía no tienes llaves de acceso. Añade una en un dispositivo de confianza.</x-ui::text>
+                        @else
+                            <x-ui::table label="Llaves de acceso">
+                                <x-slot:head><tr><th>Llave</th><th>Añadida</th><th>Último uso</th><th data-align="end"><x-ui::sr>Acciones</x-ui::sr></th></tr></x-slot:head>
+                                @foreach ($passkeys as $passkey)
+                                    <tr wire:key="passkey-{{ $passkey['id'] }}">
+                                        <x-ui::td primary :sub="$passkey['authenticator']">{{ $passkey['name'] }}</x-ui::td>
+                                        <x-ui::td label="Añadida">{{ $passkey['created_at_diff'] }}</x-ui::td>
+                                        <x-ui::td label="Último uso">{{ $passkey['last_used_at_diff'] ?? 'Sin usar' }}</x-ui::td>
+                                        <x-ui::td align="end">
+                                            <x-ui::confirm title="¿Eliminar esta llave de acceso?">
+                                                <x-slot:trigger><x-ui::button variant="ghost" size="sm" icon="trash" :aria-label="'Eliminar la llave '.$passkey['name']">Eliminar</x-ui::button></x-slot:trigger>
+                                                Ya no podrás entrar con «{{ $passkey['name'] }}».
+                                                <x-slot:action><x-ui::button variant="danger" wire:click="removePasskey({{ $passkey['id'] }})">Eliminar llave</x-ui::button></x-slot:action>
+                                            </x-ui::confirm>
+                                        </x-ui::td>
+                                    </tr>
+                                @endforeach
+                            </x-ui::table>
+                        @endif
+                        <x-passkey-registration />
+                    </x-ui::stack>
+                </x-ui::security-option>
             @endif
+
+            <x-ui::security-option wire:key="security-email" title="Correo de recuperación" icon="mail"
+                :description="auth()->user()->email" :status="auth()->user()->hasVerifiedEmail() ? 'Verificado' : 'Sin verificar'"
+                :tone="auth()->user()->hasVerifiedEmail() ? 'ok' : 'warn'">
+                <x-ui::stack gap="sm">
+                    <x-ui::text>Si olvidas tu contraseña, te enviaremos el enlace a este correo.</x-ui::text>
+                    <x-ui::link :href="route('email-change.edit')">Cambiar correo de recuperación</x-ui::link>
+                </x-ui::stack>
+            </x-ui::security-option>
         </x-ui::stack>
     </x-pages::settings.layout>
 </div>

@@ -16,6 +16,10 @@ Instantánea del 21 de noviembre de 2026. Se reescribe al cerrar cada incremento
   - Búsqueda por significado en los archivos de quien acepte la lectura (embeddings del proveedor, texto cifrado, cada 15 minutos; una caída del proveedor deja los archivos pendientes para la siguiente pasada).
   - Clientes MCP externos por OAuth (Passport), solo consultas, con interruptor del owner y desconexión por persona; pendiente de probar con clientes reales tras P03.
 
+## En revisión
+
+La PR #48 reúne en Ajustes → Seguridad la contraseña, la verificación en dos pasos, las llaves de acceso y el correo de recuperación de cada persona.
+
 ## Próximos pasos
 QA del asistente con un modelo real (MCP.md § Probar con un modelo real) y de Komga; los dos pendientes de la revisión de calidad (ROADMAP); después P03 (red privada) para probar los clientes externos y MCP-08 (piloto).
 

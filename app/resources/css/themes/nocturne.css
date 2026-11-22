@@ -242,6 +242,24 @@
     .ui-role-plain { padding: 0; border: 0; background: none; font-weight: 500; color: var(--ui-muted); }
 
     .ui-meter-block { display: flex; flex-direction: column; gap: 9px; }
+    .ui-security-option { min-inline-size: 0; border: 1px solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-panel); }
+    .ui-security-option > summary { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: .75rem; min-height: 3.5rem; padding: 1rem; border-radius: inherit; list-style: none; cursor: pointer; }
+    .ui-security-option > summary::-webkit-details-marker { display: none; }
+    .ui-security-option > summary:hover { background: var(--ui-panel-2); }
+    .ui-security-option > summary:focus-visible { outline: 2px solid var(--ui-accent-text); outline-offset: 2px; }
+    .ui-security-symbol { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: var(--ui-radius-control); background: var(--ui-panel-2); color: var(--ui-accent-text); }
+    .ui-security-symbol svg { width: 1.375rem; height: 1.375rem; }
+    .ui-security-copy { display: grid; gap: .2rem; overflow-wrap: anywhere; }
+    .ui-security-copy > span { color: var(--ui-sub); font-size: .9375rem; }
+    .ui-security-chevron { grid-column: -2; width: 1rem; height: 1rem; color: var(--ui-sub); }
+    .ui-security-option[open] > summary .ui-security-chevron { transform: rotate(90deg); }
+    .ui-security-body { border-top: 1px solid var(--ui-line); padding: clamp(1rem, 3vw, 1.5rem); }
+    @media (max-width: 38rem) {
+        .ui-security-option > summary { grid-template-columns: auto minmax(0, 1fr) auto; gap: .375rem .75rem; }
+        .ui-security-option > summary .ui-status { grid-column: 2; grid-row: 2; justify-self: start; }
+        .ui-security-chevron { grid-row: 1; }
+    }
+
     .ui-meter { height: 9px; background: var(--ui-panel-3); border-radius: 99px; overflow: hidden; }
     .ui-meter > span { display: block; height: 100%; background: var(--ui-accent-text); border-radius: inherit; }
     .ui-meter[data-level="high"] > span { background: var(--ui-bad); }
