@@ -107,7 +107,8 @@ class PublicationsTest extends TestCase
         $this->assertSame(PublicationState::Published->value, $publication->fresh()?->state);
         $this->assertSame($used - 1003, UserStorageQuota::findOrFail($this->member->id)->used_bytes);
         $this->assertSame(1003, app(StorageReservations::class)->commonBytes());
-        $this->assertEqualsCanonicalizing([$this->remote($this->member), $this->remote($this->other)], self::$granted);
+        // The contributor's own media sync grants it again afterwards: idempotent, so compare the set.
+        $this->assertEqualsCanonicalizing([$this->remote($this->member), $this->remote($this->other)], array_values(array_unique(self::$granted)));
 
         $blob = $this->root.'/.multisuite-private/'.PrivateUpload::findOrFail($publication->upload_id)->id.'.blob';
         $common = $this->root.'/.multisuite-media/music/comun/canción.mp3';
