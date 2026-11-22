@@ -57,7 +57,7 @@ class CommonLibrary
         foreach (ServiceAccount::where('service', $definition['service'])->where('status', ServiceAccountStatus::Ready->value)->get() as $account) {
             $user = User::find($account->user_id);
             if ($user !== null && $this->accounts->entitled($user, $definition['service'])) {
-                $failed = ! $this->grantOne($account, $connection) || $failed;
+                $failed = ! $this->grantOne($account, $connection, true) || $failed;
             }
         }
         if ($failed) {
@@ -65,11 +65,14 @@ class CommonLibrary
         }
     }
 
-    /** Called from each person's media sync: access to the common library once something is published. */
-    public function grantOne(ServiceAccount $account, string $connection): bool
+    /**
+     * Called from each person's media sync: access to the common library once something is
+     * published. $publishing: called by grant() for the first publication, before it is confirmed.
+     */
+    public function grantOne(ServiceAccount $account, string $connection, bool $publishing = false): bool
     {
         $definition = ConnectedFolders::definition($connection);
-        if (! config('provisioning.'.$definition['service'].'.enabled') || ! $this->hasPublished($connection)) {
+        if (! config('provisioning.'.$definition['service'].'.enabled') || (! $publishing && ! $this->hasPublished($connection))) {
             return true;
         }
         $provisioner = $this->provisioners->for($definition['service']);
