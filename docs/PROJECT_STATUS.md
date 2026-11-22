@@ -1,6 +1,6 @@
 # Estado de Multisuite
 
-Instantánea del 21 de noviembre de 2026. Se reescribe al cerrar cada incremento; el detalle vive en git y en las PR.
+Instantánea del 22 de noviembre de 2026. Se reescribe al cerrar cada incremento; el detalle vive en git y en las PR.
 
 ## Integrado en main
 - Portal Laravel/Livewire con personas, invitaciones, cuentas de servicio, Mis archivos (carpetas conectadas con los servicios), cuotas, almacenamiento y auditoría. Música con Navidrome y Lectura con Komga 1.30.1 (Kavita desactivado y reactivable), con cuentas automáticas y bibliotecas privadas. Validado en CI; QA de Komga con dos personas pendiente.
@@ -16,12 +16,19 @@ Instantánea del 21 de noviembre de 2026. Se reescribe al cerrar cada incremento
   - Búsqueda por significado en los archivos de quien acepte la lectura (embeddings del proveedor, texto cifrado, cada 15 minutos; una caída del proveedor deja los archivos pendientes para la siguiente pasada).
   - Clientes MCP externos por OAuth (Passport), solo consultas, con interruptor del owner y desconexión por persona; pendiente de probar con clientes reales tras P03.
 
+## En revisión (PR #47, sin fusionar)
+- Mejoras técnicas: registro de clientes OAuth limitado y solo con el interruptor del owner; borrado del índice semántico al retirar el consentimiento; enums de roles y estados con `CHECK` en PostgreSQL; retirada de Flux (OTP nativo `x-ui::otp`) y del andamiaje SaaS heredado.
+- **Publicación para todos (S04b)**: proponer desde Mis archivos, decidir en Administración → Para todos; biblioteca común por enlaces duros concedida en el servicio antes de confirmar; espacio al fondo común; lo publicado sobrevive a la baja del aportante (STORAGE.md § Publicación para todos).
+- **Vídeo con Jellyfin 10.11.11 (P04.2)**: `make video-detect` (Intel, AMD, NVIDIA o procesador), conexión del owner, cuentas privadas no administradoras con carpeta común del operador, control parental por persona y aceleración elegible ([JELLYFIN.md](JELLYFIN.md)).
+- Validado en CI, incluida la integración contra Jellyfin real; pendiente de QA del usuario.
+
 ## Próximos pasos
-QA del asistente con un modelo real (MCP.md § Probar con un modelo real) y de Komga; los dos pendientes de la revisión de calidad (ROADMAP); después P03 (red privada) para probar los clientes externos y MCP-08 (piloto).
+Revisar y fusionar PR #47 y hacer su QA (publicar con dos cuentas; Vídeo con GPU real, JELLYFIN.md § QA). QA del asistente con un modelo real (MCP.md § Probar con un modelo real) y de Komga; después P03 (red privada) para probar los clientes externos y MCP-08 (piloto).
 
 ## Acciones pendientes del usuario
 - `make rebuild` (añade `pdftotext`), `make composer CMD="install"` y `make up` (migraciones y claves OAuth); conectar un proveedor desde *Ajustes del asistente*.
 - `make composer CMD="audit --locked"`.
+- Tras fusionar #47: `make composer CMD="install"` (sale Flux), `make up` (migraciones) y, para Vídeo, `make video-detect`, `make up` y Administración → Conexión de Vídeo; en producción declarar `VIDEO_COMMON_PATH`.
 - Guardar `NAS_FILES_KEY` y `APP_KEY` fuera del servidor (sin `APP_KEY` las claves de IA no se pueden descifrar) y ensayar la copia (`make nas-backup`, `make nas-backup-verify`).
 
 ## Límites conocidos
@@ -29,4 +36,5 @@ QA del asistente con un modelo real (MCP.md § Probar con un modelo real) y de K
 - La búsqueda por significado compara vectores en PHP (sin pgvector): límite de 6.000 fragmentos por persona.
 - El asistente solo hace cambios reversibles en Mis archivos y con aprobación; lee contenido solo con doble permiso.
 - Las preguntas, los nombres de archivos consultados y, con permiso, el texto leído se envían al proveedor elegido.
-- Las sesiones abiertas en Navidrome o Komga siguen hasta caducar tras retirar el acceso.
+- Las sesiones abiertas en Navidrome, Komga o Jellyfin siguen hasta caducar tras retirar el acceso.
+- Vídeo en Windows con Docker Desktop solo acelera con NVIDIA (WSL 2); Intel/AMD usan el procesador.
