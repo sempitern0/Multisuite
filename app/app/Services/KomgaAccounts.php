@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Enums\ServiceAccountStatus;
 use App\Enums\ServiceAuditAction;
 use App\Models\ServiceAccount;
 use App\Models\ServiceConnection;
 use App\Models\User;
 use App\Services\Files\MediaLibrary;
+use App\Services\Provisioning\CommonLibraries;
 use App\Services\Provisioning\PersonalLibraries;
 use App\Services\Provisioning\ServiceProvisioner;
 use App\Services\Provisioning\ServiceUrl;
@@ -19,7 +21,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
 
-final class KomgaAccounts implements PersonalLibraries, ServiceProvisioner
+final class KomgaAccounts implements CommonLibraries, PersonalLibraries, ServiceProvisioner
 {
     public static function connected(): bool
     {
@@ -215,6 +217,29 @@ final class KomgaAccounts implements PersonalLibraries, ServiceProvisioner
         });
     }
 
+    /** The common library (S04b): shared with this account next to its personal ones. */
+    public function ensureCommonLibrary(ServiceAccount $account, ?string $section, string $label): void
+    {
+        $this->guard(function () use ($account, $section, $label): void {
+            if (! in_array($section, ['libros', 'comics'], true)) {
+                throw new RuntimeException('configuration');
+            }
+            DB::transaction(function () use ($account, $section, $label): void {
+                $locked = ServiceAccount::whereKey($account->id)->lockForUpdate()->first();
+                $user = $locked === null ? null : User::find($locked->user_id);
+                if ($locked === null || $locked->status !== ServiceAccountStatus::Ready->value || $user === null
+                    || ! app(ServiceAccounts::class)->entitled($user, 'komga')) {
+                    return;
+                }
+                $key = CommonLibraries::DIRECTORY.'-'.$section;
+                $this->libraryAt($locked, $key, '/personal/'.CommonLibraries::DIRECTORY.'/'.$section, $label);
+                $this->permissions($locked);
+                $locked->save();
+                $this->check($this->client()->post('/api/v1/libraries/'.$locked->library_ids[$key].'/scan'));
+            });
+        });
+    }
+
     public function lock(ServiceAccount $account): void
     {
         $this->guard(function () use ($account): void {
@@ -332,18 +357,23 @@ final class KomgaAccounts implements PersonalLibraries, ServiceProvisioner
     private function library(ServiceAccount $account, string $section, string $label): void
     {
         $relative = ($account->media_id ?? $account->remote_id).'/'.$section;
-        $root = '/personal/'.$relative;
+        $this->libraryAt($account, $section, '/personal/'.$relative, $label.' · '.substr($account->remote_id, 0, 8), '/data/'.$relative);
+    }
+
+    /** Finds or creates the Komga library rooted at $root and remembers it in library_ids[$key]. */
+    private function libraryAt(ServiceAccount $account, string $key, string $root, string $name, ?string $legacyRoot = null): void
+    {
         $libraries = $this->check($this->client()->get('/api/v1/libraries'))->json();
-        $library = collect((array) $libraries)->first(fn ($row) => in_array(rtrim((string) $row['root'], '/'), [$root, '/data/'.$relative], true));
+        $library = collect((array) $libraries)->first(fn ($row) => in_array(rtrim((string) $row['root'], '/'), array_filter([$root, $legacyRoot]), true));
         if ($library === null) {
             $library = $this->check($this->client()->post('/api/v1/libraries', [
-                'name' => $label.' · '.substr($account->remote_id, 0, 8), 'root' => $root,
+                'name' => $name, 'root' => $root,
                 'scanOnStartup' => true, 'repairExtensions' => false, 'convertToCbz' => false,
                 'scanEpub' => true, 'scanPdf' => true, 'scanCbx' => true,
             ]))->json();
         }
         $ids = $account->library_ids ?? [];
-        $ids[$section] = (string) $library['id'];
+        $ids[$key] = (string) $library['id'];
         $account->library_ids = $ids;
     }
 

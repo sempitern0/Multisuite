@@ -354,6 +354,36 @@ class PrivateUploads
     }
 
     /**
+     * Permanent deletion of common content (published for everyone, maybe without a contributor
+     * any more): same checks as purge(), then the bytes leave the pool and the common fund.
+     */
+    public function purgeCommon(string $key): void
+    {
+        DB::transaction(function () use ($key): void {
+            $upload = PrivateUpload::whereKey($key)->lockForUpdate()->firstOrFail();
+            if ($upload->state === UploadState::Purged->value) {
+                return;
+            }
+            if ($upload->state !== UploadState::Ready->value) {
+                throw new RuntimeException('Solo se puede borrar contenido confirmado.');
+            }
+            [$root, , $location] = $this->destination();
+            $this->checkRoot($upload, $root, $location);
+            $path = $root.'/'.$upload->id.'.blob';
+            if (is_link($path) || (file_exists($path) && (! is_file($path) || ! unlink($path)))) {
+                throw new RuntimeException('No se pudo borrar el archivo del disco; se conserva y sigue contando.');
+            }
+            clearstatcache(true, $path);
+            if (file_exists($path) || is_link($path)) {
+                throw new RuntimeException('No se ha podido confirmar el borrado en el disco.');
+            }
+            $this->reservations->releaseCommon($key);
+            $upload->state = UploadState::Purged->value;
+            $upload->save();
+        });
+    }
+
+    /**
      * A confirmed file owned by the user, ready to read as plaintext. The root identity,
      * state and file type are re-checked on every read.
      */

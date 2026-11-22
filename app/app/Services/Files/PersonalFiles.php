@@ -5,6 +5,7 @@ namespace App\Services\Files;
 use App\Enums\FileKind;
 use App\Enums\UploadState;
 use App\Models\Folder;
+use App\Models\Publication;
 use App\Models\User;
 use App\Models\UserFile;
 use App\Services\Storage\PrivateUploads;
@@ -322,6 +323,13 @@ class PersonalFiles
         return DB::transaction(function () use ($user, $folderId, $name, $bytes, $key): UserFile {
             // Ownership of the target folder first: a foreign folder must not reserve quota.
             $folder = $this->folder($user, $folderId);
+            // A same-name upload would turn a proposed or published file into an old version.
+            $clash = $this->visible($user)->where('user_files.folder_id', $folder?->id)
+                ->whereRaw('LOWER(user_files.name) = ?', [Str::lower($name)])
+                ->whereIn('user_files.upload_id', Publication::select('upload_id'))->exists();
+            if ($clash) {
+                throw new RuntimeException('Ya hay un archivo propuesto o publicado para todos con ese nombre. Sube este con otro nombre.');
+            }
             // Inside a connected folder the file is kept unencrypted for its service.
             $upload = $this->uploads->begin($user, $bytes, $key, $this->connected->of($folder)); // Locks the user row.
             $existing = UserFile::where('upload_id', $upload->id)->first();
@@ -354,6 +362,7 @@ class PersonalFiles
             if (! $file->isCurrent()) {
                 throw new RuntimeException('Solo se puede renombrar la versión actual de un archivo fuera de la papelera.');
             }
+            $this->assertNotShared($file);
             if (strcasecmp($file->name, $name) !== 0 && $this->nameTaken($user, $file->folder_id, $name, $file->id)) {
                 throw new RuntimeException('Ya existe un archivo con ese nombre en esta carpeta.');
             }
@@ -391,6 +400,14 @@ class PersonalFiles
     }
 
     /** Moves a current file (and, implicitly, its versions) to the trash. Bytes stay counted. */
+    /** Proposed or published for everyone: only an administrator can change it (S04b). */
+    private function assertNotShared(UserFile $file): void
+    {
+        if (Publication::where('upload_id', $file->upload_id)->exists()) {
+            throw new RuntimeException('Está propuesto o publicado para todos. Cancela la propuesta o pide a un administrador que lo retire.');
+        }
+    }
+
     public function trash(User $user, int $id): UserFile
     {
         return DB::transaction(function () use ($user, $id): UserFile {
@@ -399,6 +416,7 @@ class PersonalFiles
             if (! $file->isCurrent()) {
                 throw new RuntimeException('Este archivo ya está en la papelera o es una versión anterior.');
             }
+            $this->assertNotShared($file);
             $file->original_folder_id = $file->folder_id;
             $file->folder_id = null;
             $file->trashed_at = now();
@@ -476,6 +494,7 @@ class PersonalFiles
             if ($current === null || ! $current->isCurrent()) {
                 throw new RuntimeException('Solo se puede restaurar una versión de un archivo que no esté en la papelera.');
             }
+            $this->assertNotShared($current);
             $this->swap($current, $version, true);
             $this->media->changed($user);
 

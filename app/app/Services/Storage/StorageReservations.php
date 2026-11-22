@@ -181,6 +181,95 @@ class StorageReservations
         });
     }
 
+    /**
+     * Published for everyone (S04b): the confirmed bytes leave the contributor's quota and join
+     * the common fund. They stay on the disk, so the pool does not change. Repeating it is a no-op.
+     */
+    public function moveToCommon(User $user, string $key): void
+    {
+        DB::transaction(function () use ($user, $key): void {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $quota = UserStorageQuota::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $common = DB::table('common_storage')->where('id', 1)->lockForUpdate()->first() ?? throw new RuntimeException('Falta el fondo común.');
+            $reservation = StorageReservation::whereKey($key)->lockForUpdate()->firstOrFail();
+            $this->owns($reservation, $user);
+            if (! $reservation->charges_user) {
+                return;
+            }
+            $bytes = (int) $reservation->actual_bytes;
+            if ($reservation->state !== ReservationState::Committed->value || $quota->used_bytes < $bytes) {
+                throw new RuntimeException('Contabilidad inconsistente: requiere reconciliación.');
+            }
+            $quota->used_bytes = $this->nonnegative($quota->used_bytes - $bytes);
+            $quota->save();
+            DB::table('common_storage')->where('id', 1)->update(['used_bytes' => (int) $common->used_bytes + $bytes, 'updated_at' => now()]);
+            $reservation->charges_user = false;
+            $reservation->save();
+        });
+    }
+
+    /**
+     * Withdrawn from everyone and given back to its contributor: the bytes return to their quota
+     * only if they fit (fail closed), and leave the common fund. Repeating it is a no-op.
+     */
+    public function moveFromCommon(User $user, string $key): void
+    {
+        DB::transaction(function () use ($user, $key): void {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $quota = UserStorageQuota::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $common = DB::table('common_storage')->where('id', 1)->lockForUpdate()->first() ?? throw new RuntimeException('Falta el fondo común.');
+            $reservation = StorageReservation::whereKey($key)->lockForUpdate()->firstOrFail();
+            $this->owns($reservation, $user);
+            if ($reservation->charges_user) {
+                return;
+            }
+            $bytes = (int) $reservation->actual_bytes;
+            if ($reservation->state !== ReservationState::Committed->value || (int) $common->used_bytes < $bytes) {
+                throw new RuntimeException('Contabilidad inconsistente: requiere reconciliación.');
+            }
+            if ($quota->used_bytes + $quota->reserved_bytes + $bytes > $quota->limit_bytes) {
+                throw new RuntimeException('No cabe en el espacio de quien lo aportó.');
+            }
+            $quota->used_bytes += $bytes;
+            $quota->save();
+            DB::table('common_storage')->where('id', 1)->update(['used_bytes' => (int) $common->used_bytes - $bytes, 'updated_at' => now()]);
+            $reservation->charges_user = true;
+            $reservation->save();
+        });
+    }
+
+    /**
+     * Returns the bytes of deleted common content to the pool and the common fund. Only
+     * PrivateUploads::purgeCommon calls it, after verifying the blob is gone. Repeatable.
+     */
+    public function releaseCommon(string $key): void
+    {
+        DB::transaction(function () use ($key): void {
+            $lookup = StorageReservation::whereKey($key)->firstOrFail();
+            $pool = StoragePool::whereKey($lookup->pool_id)->lockForUpdate()->firstOrFail();
+            $common = DB::table('common_storage')->where('id', 1)->lockForUpdate()->first() ?? throw new RuntimeException('Falta el fondo común.');
+            $reservation = StorageReservation::whereKey($key)->lockForUpdate()->firstOrFail();
+            if ($reservation->state === ReservationState::Purged->value) {
+                return;
+            }
+            $bytes = (int) $reservation->actual_bytes;
+            if ($reservation->charges_user || $reservation->state !== ReservationState::Committed->value
+                || $pool->used_bytes < $bytes || (int) $common->used_bytes < $bytes) {
+                throw new RuntimeException('Contabilidad inconsistente: requiere reconciliación.');
+            }
+            $pool->used_bytes = $this->nonnegative($pool->used_bytes - $bytes);
+            $pool->save();
+            DB::table('common_storage')->where('id', 1)->update(['used_bytes' => (int) $common->used_bytes - $bytes, 'updated_at' => now()]);
+            $reservation->state = ReservationState::Purged->value;
+            $reservation->save();
+        });
+    }
+
+    public function commonBytes(): int
+    {
+        return (int) DB::table('common_storage')->where('id', 1)->value('used_bytes');
+    }
+
     /** @return int|null Previous explicit limit, null when the user followed the default. */
     public function setUserQuota(User $user, int $bytes): ?int
     {

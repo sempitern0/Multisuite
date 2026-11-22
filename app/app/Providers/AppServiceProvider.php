@@ -15,6 +15,7 @@ use App\Policies\UserPolicy;
 use App\Services\Assistant\AssistantAccess;
 use App\Services\Assistant\SemanticIndex;
 use App\Services\Files\PersonalFiles;
+use App\Services\Files\Publications;
 use App\Support\Finance\ReadsReceipts;
 use App\Support\Finance\ReceiptReader;
 use Carbon\CarbonImmutable;
@@ -68,6 +69,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-invitations', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
         Gate::define('view-storage', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
         // Disks and the default are infrastructure policy: owner only.
+        // Publication for everyone (S04b): only administrators decide.
+        Gate::define('publish-content', fn (User $user): bool => Publications::canDecide($user));
         Gate::define('manage-storage-pools', fn (User $user): bool => $user->role === 'owner');
         // The assistant is configured only by the owner (decision 2026-11-20, docs/MCP.md).
         Gate::define('manage-assistant', fn (User $user): bool => $user->role === 'owner');

@@ -74,6 +74,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::livewire('users/{user}/edit', 'pages::admin.user-edit')->name('users.edit');
         Route::livewire('users/create', 'pages::admin.user-create')->name('users.create');
         Route::livewire('invitations', 'pages::admin.invitations')->name('invitations.index');
+        Route::livewire('admin/publications', 'pages::admin.publications')->middleware('can:publish-content')->name('publications.index');
     });
 
     // Storage limits: same audience, but a higher rate so a family can be configured in one sitting.

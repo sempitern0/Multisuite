@@ -17,7 +17,7 @@ Pendiente de validar en el piloto: autologin musical con dos usuarios y un naveg
    - [ ] QA del usuario de MCP-01 a MCP-07 (fusionados en #42 y #44) con un proveedor real (MCP.md § Probar con un modelo real) y `composer audit`.
    - [ ] QA de clientes externos (MCP-05) con Claude/ChatGPT cuando exista P03.
    - [ ] MCP-08 Piloto: dos personas, dos dispositivos, red privada.
-3. **S04b** Publicación administrativa (tras MCP-04 o cuando el usuario decida las tres cuestiones).
+3. **S04b** Publicación para todos: QA del usuario (en PR #47).
 
 ## Lectura (Komga)
 - [ ] Evaluar Komga con los libros ya subidos (KOMGA.md). Kavita deshabilitado y reactivable.
@@ -41,9 +41,8 @@ Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúm
 - [ ] Vídeos → Jellyfin cuando llegue P04.2.
 - [ ] Producción con discos reales: generar el montaje de `.multisuite-media/{servicio}` como `/personal` en los compose de cada servicio (hoy solo en desarrollo) → P05.
 
-## S04b — Publicación administrativa
-- [ ] Decidir con el usuario: imputación de contenido global a cuotas, borrado por el aportante de contenido publicado, baja del aportante.
-- [ ] Estados personal → pendiente → global; solo admin publica/retira; permisos aplicados en el servicio antes de confirmar; auditoría e idempotencia sin duplicar bytes.
+## S04b — Publicación para todos (PR #47)
+- [ ] QA del usuario: proponer una canción y un libro, publicarlos, verlos con otra cuenta en Navidrome y Komga, retirar y eliminar (STORAGE.md § Publicación para todos).
 
 ## P03 — Identidad y red privada
 - [ ] VPN (Tailscale u otra), TLS, permisos mínimos y revocación; prueba desde un segundo dispositivo real.
@@ -76,4 +75,3 @@ Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúm
 
 ## Lectura · validación PR #41
 - [ ] QA del usuario: conexión inicial desde panel, invitación, cuenta anterior, subida y lectura sin segundo login.
-- [ ] Publicación administrativa de contenido global: pendiente, sin conceder bibliotecas globales del piloto a miembros.

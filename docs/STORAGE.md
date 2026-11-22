@@ -137,7 +137,19 @@ Decisión del usuario (2026-11-13): gestor de archivos propio del portal con car
 - Privado por defecto; solo el administrador publica para todos. Propietario, ubicación física y visibilidad son conceptos distintos; publicar no duplica bytes.
 - El aislamiento lo debe aplicar el servicio (web, API, clientes, descargas); ocultar enlaces no es autorización.
 - Navidrome 0.64.2 (laboratorio S01, 30 comprobaciones en CI): asignación por biblioteca y aislamiento entre miembros comprobados por API; sus administradores ven todo. **No** demostrado: publicar un archivo individual sin moverlo, cuotas o subida de audio nativas, clientes móviles y streams ya abiertos. Ver `tests/isolation/navidrome.py` y la sección de aislamiento en NAVIDROME.md.
-- Pendiente de decidir con el usuario antes de S04: imputación de contenido global a cuotas, borrado de contenido publicado y baja del aportante.
+- Decisiones del usuario (2026-11-22): el espacio publicado pasa a un **fondo común**; solo un administrador retira o elimina lo publicado; al eliminar la cuenta del aportante, lo publicado se queda como propiedad común.
+
+### Publicación para todos (S04b)
+
+- **Quién**: cualquier persona propone desde la página de un archivo de una carpeta conectada («Proponer para todos»); solo propietario o administradores deciden en **Administración → Para todos** (`/admin/publications`, gate `publish-content`, confirmación de contraseña). Estados `requested → published` (`App\Enums\PublicationState`); rechazar o cancelar borra la propuesta.
+- **Sin duplicar bytes**: la publicación apunta al blob de la subida, no al archivo. `CommonLibrary` refleja lo publicado con enlaces duros en `{volumen}/.multisuite-media/{servicio}/comun[/sección]` (`LinkMirror`, el mismo ayudante que las bibliotecas personales) y el espejo personal del aportante deja de incluirlo, así que se ve una sola vez.
+- **Permisos en el servicio antes de confirmar**: `publish` enlaza y concede la biblioteca común (`CommonLibraries::ensureCommonLibrary`: Navidrome asigna la biblioteca `/personal/comun`, Komga la clave `comun-{sección}`) a cada cuenta lista con derecho al servicio; solo entonces, en una transacción, mueve los bytes y marca `published`. Si el servicio falla se deshacen los enlaces y no se publica nada. Las cuentas nuevas reciben la biblioteca común en su siguiente sincronización.
+- **Espacio**: `StorageReservations::moveToCommon` resta los bytes de la cuota del aportante y los suma a `common_storage` (la reserva queda con `charges_user=false`; el disco sigue contándolos). Retirar (`moveFromCommon`) los devuelve y **falla cerrado** si ya no le caben: el error sugiere eliminarlo.
+- **Bloqueos**: mientras está propuesto o publicado, el aportante no puede renombrarlo, moverlo a la papelera, restaurar una versión ni subir otro con el mismo nombre encima. Puede cancelar su propuesta o «Pedir que se retire» (marca visible para el administrador).
+- **Baja del aportante**: `DeleteUser` llama a `Publications::releaseContributor`: borra sus propuestas, suelta su entrada de Mis archivos y conserva lo publicado sin aportante (ya no se puede retirar, solo eliminar).
+- **Eliminar del NAS**: retira el enlace común, borra el archivo de Mis archivos del aportante y purga el blob con `PrivateUploads::purgeCommon` (mismas comprobaciones de fallo cerrado), liberando el fondo común.
+- **Auditoría**: `content.published`, `content.rejected`, `content.withdrawn`, `content.deleted`, con servicio y tamaño; nunca nombres de archivo ni rutas.
+- Pruebas: `make test CMD="--filter=PublicationsTest"` (autorización entre dos personas, fondo común, fallo del servicio, baja del aportante, auditoría).
 
 ## Fotos y vídeo en Mis archivos (S03.5)
 

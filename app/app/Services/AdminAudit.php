@@ -36,10 +36,18 @@ class AdminAudit
         'assistant.provider_removed' => 'Proveedor de IA eliminado',
     ];
 
+    /** @var array<string, string> */
+    public const CONTENT_ACTIONS = [
+        'content.published' => 'Contenido publicado para todos',
+        'content.rejected' => 'Propuesta de publicación rechazada',
+        'content.withdrawn' => 'Publicación retirada',
+        'content.deleted' => 'Contenido común eliminado',
+    ];
+
     /** @return array<string, string> */
     public static function actionLabels(): array
     {
-        $labels = [...self::USER_ACTIONS, ...self::STORAGE_ACTIONS, ...self::ASSISTANT_ACTIONS];
+        $labels = [...self::USER_ACTIONS, ...self::STORAGE_ACTIONS, ...self::ASSISTANT_ACTIONS, ...self::CONTENT_ACTIONS];
         foreach (ServiceAuditAction::cases() as $action) {
             $labels[$action->value] = $action->label();
         }
@@ -92,6 +100,27 @@ class AdminAudit
         $event->subject_name = $subject->name;
         $event->action = $action;
         $event->details = ['pool' => $pool, 'limit_bytes' => $limitBytes, 'previous_limit_bytes' => $previousBytes];
+        $event->created_at = now();
+        $event->save();
+    }
+
+    /** Publication for everyone (S04b). Only the connection and the size: never names or paths. */
+    public function recordContent(User $actor, User $subject, string $action, string $connection, int $bytes): void
+    {
+        if (! array_key_exists($action, self::CONTENT_ACTIONS) || ! preg_match('/^[a-z]{1,16}$/D', $connection)) {
+            throw new LogicException('Unknown content audit action.');
+        }
+        if ($actor->id < 1 || $subject->id < 1) {
+            throw new LogicException('Audit requires persisted user identifiers.');
+        }
+
+        $event = new AdminAuditEvent;
+        $event->actor_id = $actor->id;
+        $event->actor_name = $actor->name;
+        $event->subject_id = $subject->id;
+        $event->subject_name = $subject->name;
+        $event->action = $action;
+        $event->details = ['connection' => $connection, 'bytes' => $bytes];
         $event->created_at = now();
         $event->save();
     }

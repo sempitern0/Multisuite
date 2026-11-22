@@ -2,9 +2,12 @@
 
 namespace App\Services\Files;
 
+use App\Enums\PublicationState;
+use App\Enums\ServiceAccountStatus;
 use App\Jobs\SyncMediaLibrary;
 use App\Models\Folder;
 use App\Models\PrivateUpload;
+use App\Models\Publication;
 use App\Models\ServiceAccount;
 use App\Models\User;
 use App\Models\UserFile;
@@ -37,6 +40,7 @@ class MediaLibrary
         private PrivateUploads $uploads,
         private ServiceAccounts $accounts,
         private ServiceProvisioners $provisioners,
+        private LinkMirror $mirror,
     ) {}
 
     /** After the current transaction commits and the response is sent, bring the person's mirror up to date. */
@@ -85,11 +89,11 @@ class MediaLibrary
                 // Without access the mirror is emptied: the service must not keep showing it.
                 $entitled = $this->accounts->entitled($user, $definition['service']);
                 $desired = $entitled ? $this->desired($user, $root) : [];
-                $linked += $this->apply($directory, $desired);
+                $linked += $this->mirror->apply($directory, $desired);
                 if ($definition['service'] === 'reading') {
                     $this->readingRevision($directory, $desired);
                 }
-                if ($entitled && $account->status === 'ready' && config('provisioning.'.$definition['service'].'.enabled')) {
+                if ($entitled && $account->status === ServiceAccountStatus::Ready->value && config('provisioning.'.$definition['service'].'.enabled')) {
                     $provisioner = $this->provisioners->for($definition['service']);
                     if ($provisioner instanceof PersonalLibraries) {
                         try {
@@ -99,6 +103,8 @@ class MediaLibrary
                             Log::warning('personal library not ready', ['user' => $user->id, 'service' => $definition['service'], 'reason' => $exception->getMessage()]);
                         }
                     }
+                    // Everyone with the service also sees what was published for everyone (S04b).
+                    $failed = ! app(CommonLibrary::class)->grantOne($account, (string) $root->media_link) || $failed;
                 }
             }
 
@@ -161,13 +167,16 @@ class MediaLibrary
             $children = Folder::where('user_id', $user->id)->whereIn('parent_id', $queue)->get(['id', 'parent_id', 'name']);
             $queue = [];
             foreach ($children as $child) {
-                $paths[$child->id] = $paths[(int) $child->parent_id].self::segment($child->name).'/';
+                $paths[$child->id] = $paths[(int) $child->parent_id].LinkMirror::segment($child->name).'/';
                 $queue[] = $child->id;
             }
         }
         $desired = [];
+        // Published files are shown once, in the common library, not twice to their contributor.
         $files = UserFile::where('user_id', $user->id)->whereIn('folder_id', array_keys($paths))
-            ->whereNull('trashed_at')->whereNull('version_of_id')->get(['id', 'folder_id', 'name', 'upload_id']);
+            ->whereNull('trashed_at')->whereNull('version_of_id')
+            ->whereNotIn('upload_id', Publication::where('state', PublicationState::Published->value)->select('upload_id'))
+            ->get(['id', 'folder_id', 'name', 'upload_id']);
         $uploads = PrivateUpload::whereIn('id', $files->pluck('upload_id'))->get()->keyBy('id');
         foreach ($files as $file) {
             $upload = $uploads->get($file->upload_id);
@@ -178,75 +187,10 @@ class MediaLibrary
                 if ($relativeDirectory === '' && in_array($root->media_link, ['books', 'comics'], true)) {
                     $relativeDirectory = '_lectura-'.$file->id.'/';
                 }
-                $desired[$relativeDirectory.self::segment($file->name)] = $path;
+                $desired[$relativeDirectory.LinkMirror::segment($file->name)] = $path;
             }
         }
 
         return $desired;
-    }
-
-    /**
-     * @param  array<string, string>  $desired
-     * @return int links in place
-     */
-    private function apply(string $directory, array $desired): int
-    {
-        foreach ($desired as $relative => $source) {
-            $target = $directory.'/'.$relative;
-            $parent = dirname($target);
-            if (! is_dir($parent) && ! mkdir($parent, 0755, true) && ! is_dir($parent)) {
-                throw new RuntimeException('No se puede preparar una subcarpeta del servicio.');
-            }
-            clearstatcache(true, $target);
-            if (! is_link($target) && is_file($target) && fileinode($target) === fileinode($source)) {
-                continue;
-            }
-            // Link next to the target, then rename over it: the service never sees a half-made entry.
-            $temporary = $parent.'/.multisuite-'.bin2hex(random_bytes(6));
-            if (! link($source, $temporary)) {
-                throw new RuntimeException('No se puede enlazar el archivo (¿la carpeta del servicio está en otro disco?).');
-            }
-            if (! rename($temporary, $target)) {
-                @unlink($temporary);
-                throw new RuntimeException('No se puede publicar el archivo en el servicio.');
-            }
-        }
-        $this->prune($directory, $directory, $desired);
-
-        return count($desired);
-    }
-
-    /** @param array<string, string> $desired */
-    private function prune(string $base, string $directory, array $desired): bool
-    {
-        $empty = true;
-        foreach (scandir($directory) ?: [] as $name) {
-            if ($name === '.' || $name === '..') {
-                continue;
-            }
-            $path = $directory.'/'.$name;
-            $relative = substr($path, strlen($base) + 1);
-            if (! is_link($path) && is_dir($path)) {
-                if ($this->prune($base, $path, $desired)) {
-                    @rmdir($path);
-                } else {
-                    $empty = false;
-                }
-            } elseif (! is_link($path) && array_key_exists($relative, $desired)) {
-                $empty = false;
-            } else {
-                @unlink($path);
-            }
-        }
-
-        return $empty;
-    }
-
-    /** A name as one safe path segment (labels never become paths). */
-    private static function segment(string $name): string
-    {
-        $clean = trim(str_replace(['/', '\\', "\0"], '-', $name));
-
-        return $clean === '' || $clean === '.' || $clean === '..' || str_starts_with($clean, '.multisuite-') ? '_'.$clean : $clean;
     }
 }
