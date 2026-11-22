@@ -27,6 +27,7 @@ class Navigation
         ]],
         ['group' => 'Administración', 'items' => [
             ['route' => 'komga.connect', 'label' => 'Conexión de Lectura', 'icon' => 'book', 'gate' => 'manage-storage-pools', 'active' => ['komga.connect']],
+            ['route' => 'video.connect', 'label' => 'Conexión de Vídeo', 'icon' => 'video', 'gate' => 'manage-storage-pools', 'active' => ['video.connect']],
             ['route' => 'users.index', 'label' => 'Personas', 'icon' => 'users', 'gate' => 'manage-invitations', 'active' => ['users.*']],
             ['route' => 'invitations.index', 'label' => 'Invitaciones', 'icon' => 'invite', 'gate' => 'manage-invitations', 'active' => ['invitations.*']],
             ['route' => 'publications.index', 'label' => 'Para todos', 'icon' => 'share', 'gate' => 'publish-content', 'active' => ['publications.*']],
@@ -54,6 +55,9 @@ class Navigation
             $items = [];
             foreach ($group['items'] as $item) {
                 if ($item['route'] === 'komga.connect' && ! config('portal.services.komga.enabled')) {
+                    continue;
+                }
+                if ($item['route'] === 'video.connect' && ! (config('portal.services.video.enabled') && config('provisioning.video.enabled'))) {
                     continue;
                 }
                 if ($item['gate'] !== null && Gate::forUser($user)->denies($item['gate'])) {

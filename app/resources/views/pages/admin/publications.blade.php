@@ -18,8 +18,7 @@ use Livewire\Component;
  * Publication for everyone (S04b, docs/STORAGE.md): administrators publish, reject, withdraw or
  * delete; App\Services\Files\Publications applies the rules and authorises every call.
  */
-new #[Title('Para todos')] class extends Component
-{
+new #[Title('Para todos')] class extends Component {
     use NotifiesInterface, ThrottlesActions;
 
     public function mount(): void

@@ -64,6 +64,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware(['can:manage-assistant', 'password.confirm', 'throttle:admin'])->name('assistant.settings');
     Route::livewire('admin/reading-connection', 'pages::admin.komga-connection')
         ->middleware(['can:manage-storage-pools', 'password.confirm', 'throttle:admin'])->name('komga.connect');
+    Route::livewire('admin/video-connection', 'pages::admin.video-connection')
+        ->middleware(['can:manage-storage-pools', 'password.confirm', 'throttle:admin'])->name('video.connect');
     Route::get('services/{service}', ServiceController::class)->where('service', '[a-z0-9-]+')->name('services.open');
 
     Route::middleware(['can:manage-invitations', 'password.confirm', 'throttle:admin'])->group(function () {

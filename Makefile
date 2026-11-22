@@ -47,7 +47,22 @@ NAS_DEV ?= $(if $(NAS_REAL),0,1)
 # Local administrator pilot. Production opts in after configuring its own mounts.
 KOMGA_AUTO ?= $(NAS_DEV)
 KOMGA_DC := docker compose -f compose.komga.yaml
-SERVICES_AUTO := $(if $(filter 1,$(MUSIC_AUTO) $(READING_AUTO) $(KOMGA_AUTO)),1,0)
+# Vídeo (Jellyfin): a video.env (created by `make video-detect`) opts in; VIDEO_AUTO=0 skips it.
+# Its KEY=VALUE lines are valid Make assignments: the detected GPU selects the device override.
+VIDEO_AUTO ?= $(if $(wildcard video.env),1,0)
+-include video.env
+VIDEO_HARDWARE ?= none
+export VIDEO_HARDWARE PORTAL_VIDEO_URL
+VIDEO_DC := docker compose --env-file video.env -f compose.video.yaml
+ifneq ($(filter intel amd nvidia,$(VIDEO_HARDWARE)),)
+VIDEO_DC += -f deploy/compose.video-$(VIDEO_HARDWARE).yaml
+endif
+ifeq ($(OS),Windows_NT)
+VIDEO_DETECT := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/video-detect.ps1
+else
+VIDEO_DETECT := HW="$(HW)" sh scripts/video-detect.sh
+endif
+SERVICES_AUTO := $(if $(filter 1,$(MUSIC_AUTO) $(READING_AUTO) $(KOMGA_AUTO) $(VIDEO_AUTO)),1,0)
 DC_FILES := -f compose.yaml $(if $(wildcard compose.override.yaml),-f compose.override.yaml)
 ifeq ($(SERVICES_AUTO),1)
 # Keep host-generated overrides; append service connectivity without rewriting them.
@@ -63,6 +78,9 @@ endif
 ifeq ($(KOMGA_AUTO),1)
 DC_FILES += -f deploy/compose.portal-komga.example.yaml
 endif
+ifeq ($(VIDEO_AUTO),1)
+DC_FILES += -f deploy/compose.portal-video.example.yaml
+endif
 ifeq ($(READING_AUTO),0)
 DC_FILES += -f deploy/compose.portal-kavita-disabled.yaml
 endif
@@ -71,6 +89,7 @@ DC_FILES += -f deploy/compose.nas-dev.yaml
 # Services read the people's connected folders from the same development volume.
 MUSIC_DC += -f deploy/compose.music-media.dev.yaml
 READING_DC += -f deploy/compose.reading-media.dev.yaml
+VIDEO_DC += -f deploy/compose.video-media.dev.yaml
 endif
 ifneq ($(NAS_REAL),)
 DC_FILES += -f compose.nas.yaml
@@ -99,6 +118,7 @@ help:
 	@echo "Tooling:     make composer CMD='install' | npm CMD='run build'"
 	@echo "Optional:    make worker | scheduler | redis"
 	@echo "Music:       make music-up | music-stop | music-status | music-logs"
+	@echo "Video:       make video-detect [HW=intel|amd|nvidia|none] | video-up | video-stop | video-status | video-logs"
 	@echo "Auto music:  music.env enables Navidrome; use MUSIC_AUTO=0 to skip"
 	@echo "Reading:     make reading-up | reading-stop | reading-status | reading-logs"
 	@echo "Auto read:   reading.env enables Kavita; use READING_AUTO=0 to skip"
@@ -136,6 +156,9 @@ endif
 ifeq ($(KOMGA_AUTO),1)
 	@$(KOMGA_DC) up -d
 endif
+ifeq ($(VIDEO_AUTO),1)
+	@$(VIDEO_DC) up -d
+endif
 ifeq ($(READING_AUTO),0)
 ifneq ($(wildcard reading.env),)
 	@docker compose --env-file reading.env -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml stop
@@ -159,6 +182,9 @@ endif
 ifeq ($(KOMGA_AUTO),1)
 	@$(KOMGA_DC) up -d --wait --wait-timeout 180
 endif
+ifeq ($(VIDEO_AUTO),1)
+	@$(VIDEO_DC) up -d --wait --wait-timeout 180
+endif
 ifeq ($(READING_AUTO),0)
 ifneq ($(wildcard reading.env),)
 	@docker compose --env-file reading.env -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml stop
@@ -179,6 +205,9 @@ ifeq ($(READING_AUTO),1)
 endif
 ifeq ($(KOMGA_AUTO),1)
 	@$(KOMGA_DC) up -d
+endif
+ifeq ($(VIDEO_AUTO),1)
+	@$(VIDEO_DC) up -d
 endif
 ifeq ($(READING_AUTO),0)
 ifneq ($(wildcard reading.env),)
@@ -205,6 +234,9 @@ endif
 ifeq ($(KOMGA_AUTO),1)
 	@$(KOMGA_DC) up -d
 endif
+ifeq ($(VIDEO_AUTO),1)
+	@$(VIDEO_DC) up -d
+endif
 ifeq ($(READING_AUTO),0)
 ifneq ($(wildcard reading.env),)
 	@docker compose --env-file reading.env -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml stop
@@ -214,6 +246,9 @@ endif
 	-@$(STATUS_SCRIPT)
 
 stop:
+ifeq ($(VIDEO_AUTO),1)
+	@$(VIDEO_DC) stop
+endif
 ifeq ($(KOMGA_AUTO),1)
 	@$(KOMGA_DC) stop
 endif
@@ -228,6 +263,9 @@ endif
 restart: stop start
 
 down:
+ifeq ($(VIDEO_AUTO),1)
+	@$(VIDEO_DC) down
+endif
 ifeq ($(KOMGA_AUTO),1)
 	@$(KOMGA_DC) down
 endif
@@ -375,6 +413,21 @@ ifeq ($(SERVICES_AUTO),1)
 	@$(ACCOUNTS_NETWORK)
 	@docker volume create multisuite-music-identity
 endif
+
+.PHONY: video-detect video-up video-stop video-status video-logs video-config
+# Detects the GPU and writes video.env; run again after changing the graphics card.
+video-detect:
+	@$(VIDEO_DETECT)
+video-up: accounts-network
+	@$(VIDEO_DC) up -d
+video-stop:
+	@$(VIDEO_DC) stop
+video-status:
+	@$(VIDEO_DC) ps
+video-logs:
+	@$(VIDEO_DC) logs -f --tail=100 jellyfin
+video-config:
+	@$(VIDEO_DC) config --quiet
 
 .PHONY: komga-up komga-stop komga-status komga-logs
 komga-up: up

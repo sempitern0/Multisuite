@@ -1,0 +1,46 @@
+# Vídeo (Jellyfin, docs/JELLYFIN.md). Standalone stack: do NOT merge with Laravel's compose.yaml.
+# GPU access is added by the override `make video-detect` selects (deploy/compose.video-*.yaml);
+# without one Jellyfin converts with the CPU. The portal never gets devices or this stack's socket.
+name: ${VIDEO_PROJECT_NAME:-multisuite-video}
+services:
+  jellyfin:
+    image: ${JELLYFIN_IMAGE:-jellyfin/jellyfin:10.11.11}
+    user: "${VIDEO_UID:-1000}:${VIDEO_GID:-1000}"
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Madrid
+      # Address the apps and the web interface use to reach it (no trailing slash).
+      JELLYFIN_PublishedServerUrl: "${PORTAL_VIDEO_URL:-http://127.0.0.1:8096}"
+    ports:
+      - "127.0.0.1:${VIDEO_PORT:-8096}:8096"
+    networks: [default, accounts]
+    volumes:
+      - jellyfin-config:/config
+      - jellyfin-cache:/cache
+      # Common folder declared by the operator (an existing NAS folder), read-only for everyone.
+      - type: bind
+        source: ${VIDEO_COMMON_PATH:-./docker/jellyfin/common}
+        target: /common
+        read_only: true
+        bind:
+          create_host_path: false
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8096/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 12
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+networks:
+  accounts:
+    external: true
+    name: multisuite-accounts
+volumes:
+  jellyfin-config: {}
+  jellyfin-cache: {}

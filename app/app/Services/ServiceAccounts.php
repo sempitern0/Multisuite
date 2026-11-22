@@ -38,7 +38,9 @@ class ServiceAccounts
             array_map(strval(...), array_keys($services)),
             fn (string $service): bool => config('portal.services.'.$service.'.enabled')
                 && config('provisioning.'.$service.'.enabled')
-                && $this->provisioners->supports($service),
+                && $this->provisioners->supports($service)
+                // Vídeo needs the owner's one-off connection (its API key) before any account exists.
+                && ($service !== 'video' || JellyfinAccounts::connected()),
         ));
     }
 

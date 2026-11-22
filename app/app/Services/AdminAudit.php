@@ -145,7 +145,7 @@ class AdminAudit
         $event->subject_name = $subject->name;
         $event->action = $action;
         $event->details = [
-            'fields' => array_values(array_intersect($changedFields, ['name', 'email', 'role', 'username'])),
+            'fields' => array_values(array_intersect($changedFields, ['name', 'email', 'role', 'username', 'video_max_rating'])),
             'role' => $subject->role,
             'previous_role' => $previousRole,
         ];

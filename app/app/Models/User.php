@@ -37,6 +37,7 @@ use Laravel\Passport\HasApiTokens;
  * @property string|null $avatar_sticker
  * @property string|null $avatar_hash
  * @property CarbonInterface|null $suspended_at
+ * @property int|null $video_max_rating
  * @property bool $must_change_password
  * @property int|null $created_by_admin_id
  * @property string $password
@@ -109,6 +110,7 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable,
             'preferences' => 'array',
             'must_change_password' => 'boolean',
             'suspended_at' => 'datetime',
+            'video_max_rating' => 'integer',
         ];
     }
 

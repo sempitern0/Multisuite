@@ -3,9 +3,9 @@
 use App\Livewire\Concerns\ManagesOwnFiles;
 use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
+use App\Models\Publication;
 use App\Models\UserFile;
 use App\Services\Files\FilePreview;
-use App\Models\Publication;
 use App\Services\Files\PersonalFiles;
 use App\Services\Files\Publications;
 use App\Support\DomainErrors;

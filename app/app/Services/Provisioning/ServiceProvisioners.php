@@ -2,6 +2,7 @@
 
 namespace App\Services\Provisioning;
 
+use App\Services\JellyfinAccounts;
 use App\Services\KavitaAccounts;
 use App\Services\KomgaAccounts;
 use App\Services\NavidromeAccounts;
@@ -15,6 +16,7 @@ class ServiceProvisioners
         'music' => NavidromeAccounts::class,
         'reading' => KavitaAccounts::class,
         'komga' => KomgaAccounts::class,
+        'video' => JellyfinAccounts::class,
     ];
 
     public function supports(string $service): bool

@@ -101,6 +101,19 @@ jobs:
             sleep 1
           done
           KOMGA_TEST_URL=http://127.0.0.1:25600 MEDIA_TEST_ROOT=/tmp/nas-ci-komga php artisan test tests/Integration/KomgaAccountsTest.php
+      - name: Jellyfin account integration
+        if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
+        run: |
+          mkdir -p /tmp/nas-ci-video/.multisuite-media/video /tmp/nas-ci-video/common
+          trap 'docker logs --tail=200 jellyfin-ci; docker rm -f jellyfin-ci >/dev/null 2>&1' EXIT
+          docker run -d --name jellyfin-ci --user "$(id -u):$(id -g)" -p 127.0.0.1:8096:8096 \
+            -v /tmp/nas-ci-video/.multisuite-media/video:/personal:ro \
+            -v /tmp/nas-ci-video/common:/common:ro jellyfin/jellyfin:10.11.11
+          for attempt in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:8096/System/Info/Public >/dev/null; then break; fi
+            sleep 1
+          done
+          JELLYFIN_TEST_URL=http://127.0.0.1:8096 MEDIA_TEST_ROOT=/tmp/nas-ci-video php artisan test tests/Integration/JellyfinAccountsTest.php
       - name: Navidrome account integration
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: |

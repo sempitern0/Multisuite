@@ -31,14 +31,13 @@ Pendiente de validar en el piloto: autologin musical con dos usuarios y un naveg
 ## P04 — Servicios (uno por PR)
 Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúmenes, copia y restauración, cuotas y aislamiento; adaptador `ServiceProvisioner` con prueba en CI contra la versión fijada.
 - [ ] P04.1 Lectura con Kavita: QA del usuario (KAVITA.md § QA) y copia del volumen `kavita-config` en `make nas-backup`.
-- [ ] P04.2 Vídeo: Jellyfin (medir transcodificación antes de dimensionar).
+- [ ] P04.2 Vídeo con Jellyfin (PR #47): QA del usuario con Docker y GPU reales (JELLYFIN.md § QA) y medir transcodificación antes de dimensionar; copia de `jellyfin-config` en `make nas-backup`.
 - [ ] P04.3 Descargas: interfaz mantenida para yt-dlp con cuotas y aislamiento.
 - [ ] P04.4 Notas/documentos con interfaz web, adjuntos y exportación.
 - [ ] Ideas sin decidir: automatizaciones, invitados temporales con caducidad.
 
 ## S04a — Puente Mis archivos → servicios (fusionado en PR #36)
 - [ ] QA del usuario: subir un MP3, un EPUB y un CBZ a sus carpetas, verlos en Navidrome y Kavita con su cuenta, comprobar que otra persona no los ve y que la papelera los retira.
-- [ ] Vídeos → Jellyfin cuando llegue P04.2.
 - [ ] Producción con discos reales: generar el montaje de `.multisuite-media/{servicio}` como `/personal` en los compose de cada servicio (hoy solo en desarrollo) → P05.
 
 ## S04b — Publicación para todos (PR #47)

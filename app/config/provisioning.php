@@ -2,6 +2,12 @@
 
 return [
     'komga' => ['enabled' => env('KOMGA_PROVISIONING_ENABLED', false)],
+    // Jellyfin: connected by the owner from the portal (API key kept encrypted). hardware = GPU
+    // vendor detected on the host by `make video-detect` (intel, amd, nvidia or none).
+    'video' => [
+        'enabled' => env('JELLYFIN_PROVISIONING_ENABLED', false),
+        'hardware' => env('VIDEO_HARDWARE', 'none'),
+    ],
     'music' => [
         'enabled' => env('NAVIDROME_PROVISIONING_ENABLED', false),
         'url' => env('NAVIDROME_INTERNAL_URL', ''),
