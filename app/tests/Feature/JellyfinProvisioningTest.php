@@ -14,6 +14,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -217,7 +218,7 @@ class JellyfinProvisioningTest extends TestCase
         $this->post('/api/video/session', ['ticket' => $ticket], ['Origin' => $origin])->assertForbidden();
 
         // A revoked Jellyfin session is never handed over: back to the password page.
-        $this->server['loggedOut'][] = 'session-'.$account->external_id;
+        $this->server['loggedOut'][] = Crypt::decrypt($sealed)['token'];
         $ticket = $this->actingAs($member)->withSession([Auth::guard('web')->getName() => $member->id, 'video.login' => $sealed])
             ->get('/services/video')->viewData('ticket');
         $this->post('/api/video/session', ['ticket' => $ticket], ['Origin' => $origin])->assertRedirect(rtrim((string) config('app.url'), '/').'/services/video/confirm');
@@ -229,11 +230,11 @@ class JellyfinProvisioningTest extends TestCase
         $member = User::factory()->create(['role' => 'member', 'username' => 'olga', 'service_access' => ['video'], 'password' => 'olga-password-123']);
         $this->withoutDefer();
         app(VideoSession::class)->prepare($member->fresh(), 'olga-password-123');
-        $account = ServiceAccount::where('user_id', $member->id)->where('service', 'video')->sole();
+        $sealed = session('video.login');
 
-        $this->actingAs($member)->withSession(['video.login' => session('video.login')])->post('/logout');
+        $this->actingAs($member)->withSession(['video.login' => $sealed])->post('/logout');
 
-        $this->assertContains('session-'.$account->external_id, $this->server['loggedOut']);
+        $this->assertContains(Crypt::decrypt($sealed)['token'], $this->server['loggedOut']);
     }
 
     public function test_an_administrator_account_is_never_handed_over(): void
@@ -277,7 +278,7 @@ class JellyfinProvisioningTest extends TestCase
         $method = $request->method();
         $body = $request->data();
         $admin = collect($this->server['keys'])->pluck('AccessToken')->contains(fn (string $key): bool => str_contains($request->header('Authorization')[0] ?? '', 'Token="'.$key.'"'))
-            || str_contains($request->header('Authorization')[0] ?? '', 'Token="session-admin-id"');
+            || str_contains($request->header('Authorization')[0] ?? '', 'Token="session-admin-id-');
 
         if ($path === '/System/Info/Public') {
             return Http::response(['StartupWizardCompleted' => $this->server['wizard'], 'Version' => '10.11.11', 'Id' => 'server-1', 'ServerName' => 'NAS']);
@@ -298,7 +299,8 @@ class JellyfinProvisioningTest extends TestCase
         if ($path === '/Users/AuthenticateByName') {
             $user = collect($this->server['users'])->first(fn (array $row): bool => $row['Name'] === $body['Username'] && $row['password'] === $body['Pw'] && ! ($row['Policy']['IsDisabled'] ?? false));
 
-            return $user === null ? Http::response('', 401) : Http::response(['AccessToken' => 'session-'.$user['Id'], 'User' => $this->dto($user)]);
+            // A new token per sign-in, like Jellyfin: signing one out never ends another.
+            return $user === null ? Http::response('', 401) : Http::response(['AccessToken' => 'session-'.$user['Id'].'-'.Str::random(8), 'User' => $this->dto($user)]);
         }
         if ($path === '/Sessions/Logout') {
             preg_match('/Token="([^"]+)"/', $request->header('Authorization')[0] ?? '', $token);
@@ -307,9 +309,9 @@ class JellyfinProvisioningTest extends TestCase
             return Http::response('', 204);
         }
         if ($path === '/Users/Me') {
-            preg_match('/Token="session-([^"]+)"/', $request->header('Authorization')[0] ?? '', $token);
-            $user = $this->server['users'][$token[1] ?? ''] ?? null;
-            $revoked = in_array('session-'.($token[1] ?? ''), $this->server['loggedOut'] ?? [], true);
+            preg_match('/Token="(session-([^"]+)-[A-Za-z0-9]{8})"/', $request->header('Authorization')[0] ?? '', $token);
+            $user = $this->server['users'][$token[2] ?? ''] ?? null;
+            $revoked = in_array($token[1] ?? '', $this->server['loggedOut'] ?? [], true);
 
             return $user === null || $revoked || ($user['Policy']['IsDisabled'] ?? false) ? Http::response('', 401) : Http::response($this->dto($user));
         }
