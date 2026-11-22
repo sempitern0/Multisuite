@@ -9,9 +9,11 @@ use App\Models\User;
 use App\Services\Files\ConnectedFolders;
 use App\Services\JellyfinAccounts;
 use App\Services\ServiceAccounts;
+use App\Services\VideoSession;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -183,6 +185,71 @@ class JellyfinProvisioningTest extends TestCase
         $this->assertSame('theirs', $this->server['users']['native']['password']);
     }
 
+    public function test_opening_video_resumes_the_persons_own_session_without_a_second_sign_in(): void
+    {
+        config(['portal.services.video.url' => 'http://127.0.0.1:8096']);
+        $this->connect();
+        $member = User::factory()->create(['role' => 'member', 'username' => 'nora', 'service_access' => ['video'], 'password' => 'nora-password-123']);
+        $this->withoutDefer();
+
+        // Without a prepared session (e.g. passkey sign-in) the password is asked once.
+        $this->actingAs($member)->get('/services/video')->assertRedirect(route('video.confirm'));
+
+        app(VideoSession::class)->prepare($member->fresh(), 'nora-password-123');
+        $account = ServiceAccount::where('user_id', $member->id)->where('service', 'video')->sole();
+        $this->assertSame('ready', $account->status, 'Created at sign-in, with no separate step.');
+        $sealed = session('video.login');
+        $this->assertIsString($sealed);
+        $this->assertStringNotContainsString('session-', $sealed, 'Kept encrypted.');
+
+        $launch = $this->actingAs($member)->withSession([Auth::guard('web')->getName() => $member->id, 'video.login' => $sealed])
+            ->get('/services/video')->assertOk()->assertViewIs('video-launch')->assertSee('http://127.0.0.1:8096/_multisuite/launch', false);
+        $ticket = $launch->viewData('ticket');
+        $origin = rtrim((string) config('app.url'), '/');
+
+        $this->post('/api/video/session', ['ticket' => $ticket], ['Origin' => 'https://foreign.test'])->assertForbidden();
+        $enter = $this->post('/api/video/session', ['ticket' => $ticket], ['Origin' => $origin])->assertOk()
+            ->assertSee('/_multisuite/enter.js', false)->assertDontSee('nora-password-123');
+        $this->assertStringContainsString('no-store', (string) $enter->headers->get('Cache-Control'));
+        $this->assertStringContainsString("script-src 'self'", (string) $enter->headers->get('Content-Security-Policy'));
+        $this->assertStringContainsString('session-'.$account->external_id, $enter->getContent(), 'Her own Jellyfin session.');
+        $this->assertStringContainsString('server-1', $enter->getContent());
+        $this->post('/api/video/session', ['ticket' => $ticket], ['Origin' => $origin])->assertForbidden();
+
+        // A revoked Jellyfin session is never handed over: back to the password page.
+        $this->server['loggedOut'][] = 'session-'.$account->external_id;
+        $ticket = $this->actingAs($member)->withSession([Auth::guard('web')->getName() => $member->id, 'video.login' => $sealed])
+            ->get('/services/video')->viewData('ticket');
+        $this->post('/api/video/session', ['ticket' => $ticket], ['Origin' => $origin])->assertRedirect(rtrim((string) config('app.url'), '/').'/services/video/confirm');
+    }
+
+    public function test_signing_out_of_multisuite_ends_the_jellyfin_session_it_opened(): void
+    {
+        $this->connect();
+        $member = User::factory()->create(['role' => 'member', 'username' => 'olga', 'service_access' => ['video'], 'password' => 'olga-password-123']);
+        $this->withoutDefer();
+        app(VideoSession::class)->prepare($member->fresh(), 'olga-password-123');
+        $account = ServiceAccount::where('user_id', $member->id)->where('service', 'video')->sole();
+
+        $this->actingAs($member)->withSession(['video.login' => session('video.login')])->post('/logout');
+
+        $this->assertContains('session-'.$account->external_id, $this->server['loggedOut']);
+    }
+
+    public function test_an_administrator_account_is_never_handed_over(): void
+    {
+        $this->connect();
+        $member = User::factory()->create(['role' => 'member', 'username' => 'pere', 'service_access' => ['video'], 'password' => 'pere-password-123']);
+        $this->withoutDefer();
+        app(ServiceAccounts::class)->resume($member->fresh(), 'pere-password-123');
+        $account = ServiceAccount::where('user_id', $member->id)->where('service', 'video')->sole();
+        $this->server['users'][$account->external_id]['Policy']['IsAdministrator'] = true; // promoted inside Jellyfin
+
+        app(VideoSession::class)->prepare($member->fresh(), 'pere-password-123');
+
+        $this->assertNull(session('video.login'));
+    }
+
     private function removeTree(string $path): void
     {
         if (! is_dir($path)) {
@@ -213,7 +280,7 @@ class JellyfinProvisioningTest extends TestCase
             || str_contains($request->header('Authorization')[0] ?? '', 'Token="session-admin-id"');
 
         if ($path === '/System/Info/Public') {
-            return Http::response(['StartupWizardCompleted' => $this->server['wizard'], 'Version' => '10.11.11']);
+            return Http::response(['StartupWizardCompleted' => $this->server['wizard'], 'Version' => '10.11.11', 'Id' => 'server-1', 'ServerName' => 'NAS']);
         }
         if (str_starts_with($path, '/Startup/')) {
             if ($this->server['wizard']) {
@@ -234,7 +301,17 @@ class JellyfinProvisioningTest extends TestCase
             return $user === null ? Http::response('', 401) : Http::response(['AccessToken' => 'session-'.$user['Id'], 'User' => $this->dto($user)]);
         }
         if ($path === '/Sessions/Logout') {
+            preg_match('/Token="([^"]+)"/', $request->header('Authorization')[0] ?? '', $token);
+            $this->server['loggedOut'][] = $token[1] ?? null;
+
             return Http::response('', 204);
+        }
+        if ($path === '/Users/Me') {
+            preg_match('/Token="session-([^"]+)"/', $request->header('Authorization')[0] ?? '', $token);
+            $user = $this->server['users'][$token[1] ?? ''] ?? null;
+            $revoked = in_array('session-'.($token[1] ?? ''), $this->server['loggedOut'] ?? [], true);
+
+            return $user === null || $revoked || ($user['Policy']['IsDisabled'] ?? false) ? Http::response('', 401) : Http::response($this->dto($user));
         }
         if (! $admin) {
             return Http::response('', 401);

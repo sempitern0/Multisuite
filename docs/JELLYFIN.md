@@ -13,7 +13,16 @@ Comandos: `make video-detect | video-up | video-stop | video-status | video-logs
 ## Entrada, aspecto y vuelta a Multisuite
 - Jellyfin no publica puertos: la única entrada es `video-gateway` (Nginx, `docker/video-proxy`, `127.0.0.1:${VIDEO_PORT}`), que pasa sin cambios la API, el WebSocket y los vídeos (con Range) que usan la web y las apps.
 - Solo en la página de la web añade `video.css` (paleta oscura de Nocturne: fondos, acento lima, foco visible; copiada de `nocturne-tokens.css`, mantener a la par) y `video.mjs`, que coloca **← Multisuite** en la cabecera de Jellyfin junto a sus botones atrás e inicio. Igual que en Música y Lectura, lleva a `/_multisuite/portal`, que responde el propio portal (redirige a la portada; no acepta destinos arbitrarios). Se oculta con la cabecera mientras se reproduce a pantalla completa; en móvil queda solo la flecha.
-- La pantalla de acceso de Jellyfin indica «Entra con tu usuario y contraseña de Multisuite» (configuración de marca aplicada al conectar). No hay inicio de sesión único: Jellyfin pide usuario y contraseña la primera vez en cada dispositivo.
+- La pantalla de acceso de Jellyfin indica «Entra con tu usuario y contraseña de Multisuite» (configuración de marca aplicada al conectar); solo aparece si no hay sesión, por ejemplo en las apps.
+
+## Entrada sin segundo inicio de sesión
+Igual que Lectura: abrir Vídeo desde la portada entra directamente con la cuenta de la persona (`App\Services\VideoSession`).
+1. Al iniciar sesión en Multisuite (también al aceptar una invitación o elegir la primera contraseña), mientras el portal tiene la contraseña, crea la cuenta si faltaba y pide a Jellyfin una sesión de esa cuenta con un dispositivo propio de ese navegador. Guarda solo el token, cifrado en la sesión del portal, con la huella del hash de la contraseña: si cambia, deja de valer.
+2. Al abrir Vídeo, el portal emite un pase de un minuto y un solo uso, ligado a su sesión y a su origen, y lo envía por POST a `/_multisuite/launch` del gateway, que lo pasa al portal (`POST /api/video/session`).
+3. El portal comprueba el pase y que el token sigue siendo de esa cuenta (no administradora, no desactivada) y responde una página en el origen de Vídeo con CSP `script-src 'self'`; `enter.js` guarda la sesión donde la web de Jellyfin guarda la suya (`localStorage` `jellyfin_credentials`, sustituyendo la de ese servidor) y abre `/web/`.
+4. Si no hay sesión preparada (entrada con passkey, Jellyfin caído al entrar o token revocado), se pide una vez la contraseña en **Abrir Vídeo** (`/services/video/confirm`).
+5. Cerrar sesión en Multisuite cierra en Jellyfin la sesión que abrió el portal para ese navegador. Bloquear la cuenta (desactivar el servicio o suspender) la desactiva en Jellyfin, y sus sesiones dejan de valer.
+Nunca se envía una contraseña al navegador ni se acepta una URL o un usuario del cliente. Las apps de Jellyfin siguen pidiendo usuario y contraseña (los del portal).
 
 ## Cuentas y bibliotecas
 - Se crea con una contraseña aleatoria descartada y recibe la de la persona solo después de guardar y comprobar su política: Jellyfin da todas las bibliotecas a las cuentas nuevas, así que una cuenta a medias no sirve para entrar. Bloquear cambia primero la contraseña y después desactiva, sin depender de crear bibliotecas.
@@ -38,10 +47,10 @@ Montar `.multisuite-media/video` como `/personal` del NAS real y `VIDEO_COMMON_P
 
 ## Pruebas
 - `make test CMD="--filter=JellyfinProvisioningTest"`: conexión, opciones por fabricante, cuenta privada con límite, cambio de límite, bloqueo, borrado y nombre ya ocupado (Jellyfin simulado).
-- CI (`application.yml`, «Jellyfin account integration and gateway»): asistente inicial, dos personas que solo ven sus bibliotecas, límite y bloqueo contra `jellyfin/jellyfin:10.11.11`; el gateway añade estilo y vuelta solo al HTML, deja la API intacta y enruta `/_multisuite/portal`; capturas de la pantalla de acceso en escritorio y móvil (artefacto `jellyfin-screens`). `ci.yml` valida los Compose renderizados y los scripts de detección (Unix y PowerShell).
+- CI (`application.yml`, «Jellyfin account integration and gateway»): asistente inicial, dos personas que solo ven sus bibliotecas, límite y bloqueo contra `jellyfin/jellyfin:10.11.11`; el gateway añade estilo y vuelta solo al HTML, deja la API intacta y enruta `/_multisuite/portal`; `tests/jellyfin-web-session.mjs` carga en Chrome la sesión con `enter.js` y comprueba que la web real de Jellyfin entra sin pedir contraseña, con el aspecto de Multisuite y el botón ← Multisuite en su cabecera; capturas en el artefacto `jellyfin-screens`. `ci.yml` valida los Compose renderizados y los scripts de detección (Unix y PowerShell).
 
 ## QA del usuario (lo que CI no puede comprobar)
 - `make video-detect` en el servidor real: fabricante correcto y transcodificación por GPU (Panel de Jellyfin → Reproducción, o `make video-logs` al forzar una calidad menor).
 - Dos personas en dos dispositivos: cada una ve sus vídeos y los comunes; una cuenta limitada no ve contenido para mayores ni películas sin clasificar.
 - Apps oficiales (Android/iOS/TV) con el usuario y la contraseña del portal, apuntando al gateway.
-- Aspecto en el navegador real con una sesión iniciada (inicio, biblioteca, ajustes) y el botón ← Multisuite en escritorio y móvil.
+- Abrir Vídeo desde la portada en el navegador real: entra sin pedir contraseña; aspecto en inicio, biblioteca y ajustes; botón ← Multisuite en escritorio y móvil; al cerrar sesión en Multisuite, Jellyfin vuelve a pedir acceso.

@@ -19,7 +19,7 @@ Instantánea del 22 de noviembre de 2026. Se reescribe al cerrar cada incremento
 ## En revisión (PR #47, sin fusionar)
 - Mejoras técnicas: registro de clientes OAuth limitado y solo con el interruptor del owner; borrado del índice semántico al retirar el consentimiento; enums de roles y estados con `CHECK` en PostgreSQL; retirada de Flux (OTP nativo `x-ui::otp`) y del andamiaje SaaS heredado.
 - **Publicación para todos (S04b)**: proponer desde Mis archivos, decidir en Administración → Para todos; biblioteca común por enlaces duros concedida en el servicio antes de confirmar; espacio al fondo común; lo publicado sobrevive a la baja del aportante (STORAGE.md § Publicación para todos).
-- **Vídeo con Jellyfin 10.11.11 (P04.2)**: `make video-detect` (Intel, AMD, NVIDIA o procesador), conexión del owner, cuentas privadas no administradoras con carpeta común del operador, control parental por persona y aceleración elegible ([JELLYFIN.md](JELLYFIN.md)).
+- **Vídeo con Jellyfin 10.11.11 (P04.2)**: `make video-detect` (Intel, AMD, NVIDIA o procesador), conexión del owner, cuentas privadas no administradoras con carpeta común del operador, control parental por persona, aceleración elegible, aspecto de Multisuite con botón de vuelta y entrada desde la portada sin segundo inicio de sesión ([JELLYFIN.md](JELLYFIN.md)).
 - Validado en CI, incluida la integración contra Jellyfin real; pendiente de QA del usuario.
 
 ## Próximos pasos

@@ -53,7 +53,7 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
 
     private const RESET_PROVIDER = 'Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider';
 
-    private const CLIENT = 'MediaBrowser Client="Multisuite", Device="Portal", DeviceId="multisuite-portal", Version="1.0.0"';
+    private const DEVICE = 'multisuite-portal';
 
     public static function connected(): bool
     {
@@ -79,12 +79,17 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
         return $choices;
     }
 
-    /** One Authorization header (Jellyfin's MediaBrowser scheme), with a token when given. */
-    public function http(#[\SensitiveParameter] ?string $token = null): PendingRequest
+    /**
+     * One Authorization header (Jellyfin's MediaBrowser scheme), with a token when given. $device
+     * names a person's browser session (VideoSession); the portal's own calls use one fixed device.
+     */
+    public function http(#[\SensitiveParameter] ?string $token = null, string $device = self::DEVICE): PendingRequest
     {
+        $client = 'MediaBrowser Client="Multisuite", Device="Multisuite", DeviceId="'.preg_replace('/[^a-z0-9-]/', '', $device).'", Version="1.0.0"';
+
         return Http::baseUrl(ServiceUrl::validated((string) config('portal.video_internal_url')))
             ->acceptJson()->asJson()->withoutRedirecting()->connectTimeout(2)->timeout(10)
-            ->replaceHeaders(['Authorization' => self::CLIENT.($token === null ? '' : ', Token="'.$token.'"')]);
+            ->replaceHeaders(['Authorization' => $client.($token === null ? '' : ', Token="'.$token.'"')]);
     }
 
     public function client(): PendingRequest

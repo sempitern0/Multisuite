@@ -16,9 +16,11 @@ use App\Services\Assistant\AssistantAccess;
 use App\Services\Assistant\SemanticIndex;
 use App\Services\Files\PersonalFiles;
 use App\Services\Files\Publications;
+use App\Services\VideoSession;
 use App\Support\Finance\ReadsReceipts;
 use App\Support\Finance\ReceiptReader;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
@@ -64,6 +66,8 @@ class AppServiceProvider extends ServiceProvider
         }
         // Registered here (no app/Listeners) so event discovery cannot attach it twice.
         Event::listen(PrivateUploadReady::class, fn (PrivateUploadReady $event) => app(PersonalFiles::class)->onUploadReady($event->uploadId, $event->userId));
+        // Signing out of Multisuite also ends the Jellyfin session it opened for that browser.
+        Event::listen(Logout::class, fn () => app(VideoSession::class)->forget());
         Event::listen(AssistantContentConsentWithdrawn::class, fn (AssistantContentConsentWithdrawn $event) => app(SemanticIndex::class)->forget($event->userId));
         Gate::define('view-admin-audit', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
         Gate::define('manage-invitations', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));

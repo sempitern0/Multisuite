@@ -128,6 +128,12 @@ jobs:
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8097/_multisuite/portal)" = 404  # answered by the portal stub
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8097/_multisuite/other)" = 404
           mkdir -p /tmp/video-screens
+          # The session the portal hands over signs Jellyfin's real web interface in (enter.js).
+          login=$(curl -fsS http://127.0.0.1:8097/Users/AuthenticateByName -H 'Content-Type: application/json' \
+            -H 'Authorization: MediaBrowser Client="CI", Device="CI", DeviceId="ci-web", Version="1"' \
+            -d '{"Username":"bruno","Pw":"bruno-password-123"}')
+          server=$(curl -fsS http://127.0.0.1:8097/System/Info/Public | jq -r .Id)
+          node ../tests/jellyfin-web-session.mjs http://127.0.0.1:8097 "$server" "$(echo "$login" | jq -r .User.Id)" "$(echo "$login" | jq -r .AccessToken)" /tmp/video-screens
           for size in 1280,800 390,844; do
             google-chrome --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=15000 \
               --window-size="$size" --screenshot="/tmp/video-screens/login-${size%,*}.png" http://127.0.0.1:8097/web/ || true
