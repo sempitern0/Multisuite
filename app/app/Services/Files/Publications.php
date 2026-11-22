@@ -197,6 +197,16 @@ class Publications
         $publication = Publication::whereKey($id)->where('state', PublicationState::Published->value)->first()
             ?? throw ValidationException::withMessages(['publication' => 'Esa publicación ya no existe.']);
         $this->library->sync(exclude: [$publication->id]); // unlinked from the service first
+        try {
+            $this->deleteConfirmed($actor, $publication);
+        } catch (Throwable $exception) {
+            $this->unlinkQuietly(null); // not deleted: still published, so link it again
+            throw $exception;
+        }
+    }
+
+    private function deleteConfirmed(User $actor, Publication $publication): void
+    {
         DB::transaction(function () use ($actor, $publication): void {
             $locked = Publication::whereKey($publication->id)->lockForUpdate()->firstOrFail();
             if ($locked->user_file_id !== null) {
@@ -261,7 +271,7 @@ class Publications
         try {
             $this->library->sync(exclude: $exclude === null ? [] : [$exclude]);
         } catch (RuntimeException) {
-            // portal:media-sync converges later; the database already says it is not published.
+            // portal:media-sync converges the common library from the database later.
         }
     }
 

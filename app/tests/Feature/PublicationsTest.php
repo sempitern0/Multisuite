@@ -170,6 +170,21 @@ class PublicationsTest extends TestCase
         $this->assertDatabaseHas('admin_audit_events', ['action' => 'content.deleted', 'actor_id' => $this->owner->id]);
     }
 
+    public function test_the_scheduled_sync_removes_a_common_link_that_could_not_be_withdrawn(): void
+    {
+        $id = $this->song($this->member, 'perdida.mp3', 'ID3'.str_repeat('d', 300));
+        $publication = app(Publications::class)->request($this->member, $id);
+        app(Publications::class)->publish($this->owner, $publication->id);
+        $common = $this->root.'/.multisuite-media/music/comun/perdida.mp3';
+        $this->assertFileExists($common);
+
+        // As if the unlink after a withdrawal had failed: the database no longer publishes it.
+        Publication::whereKey($publication->id)->update(['state' => PublicationState::Requested->value]);
+        $this->artisan('portal:media-sync')->assertSuccessful();
+
+        $this->assertFileDoesNotExist($common);
+    }
+
     private function song(User $user, string $name, string $body): int
     {
         app(ConnectedFolders::class)->ensure($user);
