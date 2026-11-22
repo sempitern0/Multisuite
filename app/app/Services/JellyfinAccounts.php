@@ -77,18 +77,19 @@ final class JellyfinAccounts implements CommonLibraries, PersonalLibraries, Serv
         return $choices;
     }
 
-    public function http(): PendingRequest
+    /** One Authorization header (Jellyfin's MediaBrowser scheme), with a token when given. */
+    public function http(#[\SensitiveParameter] ?string $token = null): PendingRequest
     {
         return Http::baseUrl(ServiceUrl::validated((string) config('portal.video_internal_url')))
             ->acceptJson()->asJson()->withoutRedirecting()->connectTimeout(2)->timeout(10)
-            ->withHeaders(['Authorization' => self::CLIENT]);
+            ->replaceHeaders(['Authorization' => self::CLIENT.($token === null ? '' : ', Token="'.$token.'"')]);
     }
 
     public function client(): PendingRequest
     {
         $connection = ServiceConnection::find('video') ?? throw new RuntimeException('configuration');
 
-        return $this->http()->withHeaders(['Authorization' => self::CLIENT.', Token="'.$connection->secret.'"']);
+        return $this->http($connection->secret);
     }
 
     /** empty (wizard pending), existing (set up, not connected), connected or unavailable. Never discloses identities. */
@@ -131,7 +132,7 @@ final class JellyfinAccounts implements CommonLibraries, PersonalLibraries, Serv
                 if (! is_string($token) || ! is_array($native) || ($native['Policy']['IsAdministrator'] ?? false) !== true) {
                     throw new RuntimeException('not_admin');
                 }
-                $admin = $this->http()->withHeaders(['Authorization' => self::CLIENT.', Token="'.$token.'"']);
+                $admin = $this->http($token);
                 $app = 'Multisuite '.Str::lower(Str::random(8));
                 $this->stage($admin->post('/Auth/Keys?app='.rawurlencode($app)), 'key');
                 $key = collect((array) $this->stage($admin->get('/Auth/Keys'), 'key')->json('Items'))
@@ -245,7 +246,7 @@ final class JellyfinAccounts implements CommonLibraries, PersonalLibraries, Serv
             if ($login->json('User.Id') !== $account->external_id) {
                 throw new RuntimeException('unavailable');
             }
-            $this->http()->withHeaders(['Authorization' => self::CLIENT.', Token="'.$login->json('AccessToken').'"'])->post('/Sessions/Logout');
+            $this->http((string) $login->json('AccessToken'))->post('/Sessions/Logout');
             $account->username = $name;
         });
     }
@@ -380,7 +381,7 @@ final class JellyfinAccounts implements CommonLibraries, PersonalLibraries, Serv
             'PasswordResetProviderId' => $remote['Policy']['PasswordResetProviderId'] ?? self::RESET_PROVIDER,
         ];
         $this->check($this->client()->post('/Users/'.rawurlencode((string) $account->external_id).'/Policy', $policy));
-        $saved = ($this->find($account) ?? throw new RuntimeException('unavailable'))['Policy'] ?? [];
+        $saved = (array) (($this->find($account) ?? throw new RuntimeException('unavailable'))['Policy'] ?? []);
         $enabled = array_map('strval', $saved['EnabledFolders'] ?? []);
         sort($enabled);
         if (($saved['IsAdministrator'] ?? true) !== false || ($saved['EnableAllFolders'] ?? true) !== false
@@ -421,7 +422,10 @@ final class JellyfinAccounts implements CommonLibraries, PersonalLibraries, Serv
     /** @return Collection<int, array<string, mixed>> */
     private function users(): Collection
     {
-        return collect((array) $this->check($this->client()->get('/Users'))->json())->filter(fn ($row): bool => is_array($row))->values();
+        /** @var list<array<string, mixed>> $users */
+        $users = array_values(array_filter((array) $this->check($this->client()->get('/Users'))->json(), 'is_array'));
+
+        return collect($users);
     }
 
     /** @return array<string, mixed>|null */

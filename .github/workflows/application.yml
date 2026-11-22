@@ -110,7 +110,8 @@ jobs:
             -v /tmp/nas-ci-video/.multisuite-media/video:/personal:ro \
             -v /tmp/nas-ci-video/common:/common:ro jellyfin/jellyfin:10.11.11
           for attempt in $(seq 1 120); do
-            if curl -fsS http://127.0.0.1:8096/System/Info/Public >/dev/null; then break; fi
+            # 10.11 answers with a temporary setup server while it migrates: wait for the real API.
+            if curl -fsS http://127.0.0.1:8096/System/Info/Public 2>/dev/null | grep -q StartupWizardCompleted; then break; fi
             sleep 1
           done
           JELLYFIN_TEST_URL=http://127.0.0.1:8096 MEDIA_TEST_ROOT=/tmp/nas-ci-video php artisan test tests/Integration/JellyfinAccountsTest.php
