@@ -14,19 +14,15 @@ class UpdateProfile
     /** @return array<string, array<int, mixed>> */
     public function rules(User $user): array
     {
-        return $this->profileRules($user->id);
+        return ['name' => $this->nameRules()];
     }
 
-    /** @param array{name: string, email: string} $data validated with rules() */
+    /** @param array{name: string} $data validated with rules() */
     public function handle(User $user, array $data): void
     {
         DB::transaction(function () use ($user, $data): void {
             $locked = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             $locked->name = $data['name'];
-            $locked->email = $data['email'];
-            if ($locked->isDirty('email')) {
-                $locked->email_verified_at = null;
-            }
             $locked->save();
         });
     }

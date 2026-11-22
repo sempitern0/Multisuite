@@ -41,6 +41,7 @@ class UpdateUser
                 if (! isset($data['email_confirmed'])) {
                     throw ValidationException::withMessages(['email_confirmed' => 'Confirma que has comprobado la titularidad del nuevo correo.']);
                 }
+                DB::table('pending_email_changes')->where('user_id', $target->id)->delete();
                 Password::broker()->deleteToken($target);
                 Invitation::whereIn('email', [$target->email, $data['email']])->update(['expires_at' => now()]);
                 $target->email_verified_at = now();

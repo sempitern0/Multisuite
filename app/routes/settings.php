@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\EmailChangeController;
 use App\Http\Controllers\Settings\SidebarPreferenceController;
 use Illuminate\Support\Facades\Route;
 
@@ -7,6 +8,10 @@ Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
     Route::put('settings/sidebar', SidebarPreferenceController::class)->middleware('throttle:files')->name('preferences.sidebar');
 
+    Route::view('settings/email', 'settings.change-email')->middleware('password.confirm')->name('email-change.edit');
+    Route::post('settings/email', [EmailChangeController::class, 'requestChange'])->middleware(['password.confirm', 'throttle:account-change'])->name('email-change.request');
+    Route::get('settings/email/confirm/{token}', [EmailChangeController::class, 'show'])->middleware('signed')->name('email-change.confirm');
+    Route::post('settings/email/confirm/{token}', [EmailChangeController::class, 'confirm'])->middleware(['signed', 'throttle:account-change']);
     Route::livewire('settings/profile', 'pages::settings.profile')->name('profile.edit');
 });
 
