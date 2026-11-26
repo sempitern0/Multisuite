@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Actions\Users\SetVideoRating;
+use App\Models\Folder;
 use App\Models\ServiceAccount;
 use App\Models\ServiceConnection;
 use App\Models\User;
 use App\Services\Files\ConnectedFolders;
+use App\Services\Files\MediaLibrary;
 use App\Services\JellyfinAccounts;
 use App\Services\ServiceAccounts;
 use App\Services\VideoSession;
@@ -77,6 +79,9 @@ class JellyfinProvisioningTest extends TestCase
         $this->assertContains('video', app(ServiceAccounts::class)->available());
         $this->assertSame(ServiceAccounts::AWAITING_PASSWORD, ServiceAccount::where('user_id', $member->id)->where('service', 'video')->value('status'));
         $this->assertSame('videos', array_key_last(ConnectedFolders::CONNECTIONS));
+        $jellyfin->connect($this->owner, 'multisuite-admin', 'a-long-password');
+        $this->assertCount(1, $this->server['keys']);
+        $this->assertSame($connection->secret, ServiceConnection::findOrFail('video')->secret);
     }
 
     public function test_acceleration_choices_follow_the_detected_vendor_and_default_to_the_cpu(): void
@@ -135,6 +140,29 @@ class JellyfinProvisioningTest extends TestCase
 
         app(JellyfinAccounts::class)->remove($account->fresh());
         $this->assertArrayNotHasKey((string) $account->external_id, $this->server['users']);
+    }
+
+    public function test_a_video_upload_links_the_original_and_requests_a_private_library_scan(): void
+    {
+        $this->connect();
+        $this->withoutDefer();
+        app(ServiceAccounts::class)->resume($this->owner->fresh(), 'owner-password-123');
+        $account = ServiceAccount::where('user_id', $this->owner->id)->where('service', 'video')->sole();
+        app(ConnectedFolders::class)->ensure($this->owner);
+        $folder = Folder::where('user_id', $this->owner->id)->where('media_link', 'videos')->sole();
+        $scans = fn (): int => Http::recorded(fn (Request $request): bool => $request->method() === 'POST'
+            && parse_url($request->url(), PHP_URL_PATH) === '/Library/Refresh')->count();
+        $before = $scans();
+
+        $this->upload($this->owner, 'clip.mp4', "\x00\x00\x00\x18ftypisom".str_repeat("\x00", 32), $folder->id)->assertOk();
+
+        $linked = $this->root.'/.multisuite-media/video/'.strtolower($account->remote_id).'/clip.mp4';
+        $this->assertFileExists($linked);
+        $this->assertSame(fileinode($this->root.'/.multisuite-private/'.$this->entry('clip.mp4')->upload_id.'.blob'), fileinode($linked));
+        $this->assertGreaterThan($before, $scans());
+        $afterUpload = $scans();
+        app(MediaLibrary::class)->sync($this->owner);
+        $this->assertSame($afterUpload, $scans());
     }
 
     public function test_existing_people_get_their_account_automatically_at_their_next_sign_in(): void
@@ -387,7 +415,7 @@ class JellyfinProvisioningTest extends TestCase
 
             return Http::response(array_values($this->server['folders']));
         }
-        if (preg_match('#^/Items/[^/]+/Refresh$#', $path)) {
+        if ($path === '/Library/Refresh') {
             return Http::response('', 204);
         }
 

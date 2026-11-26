@@ -43,9 +43,13 @@ En la ficha de cada persona (**Personas → Gestionar**), «Vídeo: contenido pe
 - AMF no se ofrece: en Linux Jellyfin usa VA-API para AMD.
 
 ## Producción (pendiente, P05)
-Montar `.multisuite-media/video` como `/personal` del NAS real y `VIDEO_COMMON_PATH` a la carpeta común; publicar Jellyfin solo tras la entrada privada (VPN/TLS) con `PORTAL_VIDEO_URL` HTTPS; incluir `jellyfin-config` en la copia de seguridad. Fijar la imagen por digest.
+Montar `.multisuite-media/video` como `/personal` del NAS real y `VIDEO_COMMON_PATH` a la carpeta común; publicar Jellyfin solo tras la entrada privada (VPN/TLS) con `PORTAL_VIDEO_URL` HTTPS. Fijar la imagen por digest.
+
+## Copia y recuperación
+En Linux, con `video.env` presente, `make nas-backup` incluye el volumen que el contenedor monta en `/config` dentro de la instantánea cifrada del portal. Jellyfin se detiene durante la copia de archivos y se vuelve a arrancar si estaba funcionando. Programa la copia fuera de las horas de reproducción. El archivo de configuración y la base de datos del servicio se recuperan en `source/jellyfin-config`. Para ensayar una recuperación, usa un volumen vacío, la misma versión de Jellyfin, las mismas rutas de bibliotecas y la `APP_KEY` del portal original. En el ensayo local con restic 0.19.1 se verificaron los archivos restaurados y se arrancó un segundo Jellyfin 10.11.11 que conservaba el identificador del servidor y admitía la contraseña de la cuenta sintética. El destino externo y los pasos de restauración del NAS se describen en STORAGE.md.
 
 ## Pruebas
+- La prueba de integración sube un MP4 sintético por las rutas de Mis archivos. Comprueba que aparece en el catálogo real de su propietario y que otra persona no lo encuentra. Al cambiar los enlaces, el adaptador solicita a Jellyfin un escaneo de biblioteca. Una revisión del contenido por carpeta evita repetir el escaneo en cada sincronización y caduca al cabo de un día.
 - `make test CMD="--filter=JellyfinProvisioningTest"`: conexión, opciones por fabricante, cuenta privada con límite, cambio de límite, bloqueo, borrado y nombre ya ocupado (Jellyfin simulado).
 - CI (`application.yml`, «Jellyfin account integration and gateway»): asistente inicial, dos personas que solo ven sus bibliotecas, límite y bloqueo contra `jellyfin/jellyfin:10.11.11`; el gateway añade estilo y vuelta solo al HTML, deja la API intacta y enruta `/_multisuite/portal`; `tests/jellyfin-web-session.mjs` carga en Chrome la sesión con `enter.js` y comprueba que la web real de Jellyfin entra sin pedir contraseña, con el aspecto de Multisuite y el botón ← Multisuite en su cabecera; capturas en el artefacto `jellyfin-screens`. `ci.yml` valida los Compose renderizados y los scripts de detección (Unix y PowerShell).
 

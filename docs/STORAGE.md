@@ -199,8 +199,9 @@ La hace el operador en el servidor Linux con restic (DEPENDENCIES D011) en un co
 Qué se copia en cada `make nas-backup`:
 1. Volcado `pg_dump -Fc` de la base de datos del portal (se crea en `local/backup-staging`, 0700, y se borra al terminar).
 2. Los archivos privados de cada disco preparado por `make nas-apply` (`<montaje>/multisuite`, en solo lectura) y las carpetas de `BACKUP_EXTRA_PATHS` (p. ej. la biblioteca de música). En desarrollo, el volumen `nas_private`.
-3. Los datos de Navidrome (`NAVIDROME_DATA_PATH`): Navidrome se detiene durante esa instantánea incremental para copiar su SQLite en reposo y vuelve a arrancar aunque la copia falle.
-4. Retención (`forget --prune`: 7 diarias, 4 semanales y 6 mensuales por defecto) y comprobación (`check --read-data-subset 10%`).
+3. Con Vídeo configurado, la instantánea del portal también contiene el volumen de configuración de Jellyfin en `source/jellyfin-config`. Para restaurarlo, copia su contenido conservando permisos al volumen vacío montado en `/config`, con Jellyfin detenido. Guarda la `APP_KEY` del portal por separado para recuperar la clave de conexión cifrada. Consulta JELLYFIN.md para el ensayo.
+4. Los datos de Navidrome (`NAVIDROME_DATA_PATH`): Navidrome se detiene durante esa instantánea incremental para copiar su SQLite en reposo y vuelve a arrancar aunque la copia falle.
+5. Retención (`forget --prune`: 7 diarias, 4 semanales y 6 mensuales por defecto) y comprobación (`check --read-data-subset 10%`).
 
 Configuración, una vez:
 1. `cp backup.env.example backup.env` y rellenar `RESTIC_PASSWORD` (guardar una copia **fuera del servidor**: sin ella la copia es ilegible) y un destino: `BACKUP_REPOSITORY_PATH` (disco externo ya montado) o `RESTIC_REPOSITORY` (sftp, rest, s3, b2…) con sus credenciales. Formato `CLAVE=valor` sin comillas; el script lo deja en modo 600 y Git lo ignora.

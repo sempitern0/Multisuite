@@ -11,6 +11,7 @@ use App\Services\Files\MediaLibrary;
 use App\Services\Provisioning\CommonLibraries;
 use App\Services\Provisioning\NeedsConnection;
 use App\Services\Provisioning\PersonalLibraries;
+use App\Services\Provisioning\ScansMediaChanges;
 use App\Services\Provisioning\ServiceProvisioner;
 use App\Services\Provisioning\ServiceUrl;
 use Illuminate\Http\Client\ConnectionException;
@@ -30,7 +31,7 @@ use RuntimeException;
  * API key. Each person gets a non-administrator account that sees only their private library, the
  * operator's common folder and what was published for everyone, with their parental limit.
  */
-final class JellyfinAccounts implements CommonLibraries, NeedsConnection, PersonalLibraries, ServiceProvisioner
+final class JellyfinAccounts implements CommonLibraries, NeedsConnection, PersonalLibraries, ScansMediaChanges, ServiceProvisioner
 {
     /** Operator's common folder inside the container (compose.video.yaml, read-only). */
     public const OPERATOR_COMMON = '/common';
@@ -136,17 +137,17 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
                 $login = $this->stage($this->http()->post('/Users/AuthenticateByName', ['Username' => $name, 'Pw' => $password]), 'login');
                 $token = $login->json('AccessToken');
                 $native = $login->json('User');
-                if (! is_string($token) || ! is_array($native) || ($native['Policy']['IsAdministrator'] ?? false) !== true) {
+                if (! is_string($token) || $token === '') {
                     throw new RuntimeException('not_admin');
                 }
                 $admin = $this->http($token);
-                $app = 'Multisuite '.Str::lower(Str::random(8));
-                $this->stage($admin->post('/Auth/Keys?app='.rawurlencode($app)), 'key');
-                $key = collect((array) $this->stage($admin->get('/Auth/Keys'), 'key')->json('Items'))
-                    ->first(fn ($row): bool => is_array($row) && ($row['AppName'] ?? null) === $app)['AccessToken'] ?? null;
-                $admin->post('/Sessions/Logout');
-                if (! is_string($key) || $key === '') {
-                    throw new RuntimeException('unavailable');
+                try {
+                    if (! is_array($native) || ($native['Policy']['IsAdministrator'] ?? false) !== true) {
+                        throw new RuntimeException('not_admin');
+                    }
+                    $key = $this->connectionKey($admin);
+                } finally {
+                    $admin->post('/Sessions/Logout');
                 }
                 DB::transaction(function () use ($owner, $native, $key): void {
                     $locked = User::whereKey($owner->id)->lockForUpdate()->firstOrFail();
@@ -163,6 +164,28 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
             });
         });
         $this->reserveExisting();
+    }
+
+    /** Keep the installed key when reauthorising against the same server. */
+    private function connectionKey(PendingRequest $admin): string
+    {
+        $current = ServiceConnection::find('video')?->secret;
+        if (is_string($current) && $current !== '') {
+            $keys = $this->stage($admin->get('/Auth/Keys'), 'key')->json('Items');
+            if (is_array($keys) && in_array($current, array_column($keys, 'AccessToken'), true)) {
+                return $current;
+            }
+        }
+
+        $name = 'Multisuite '.Str::lower(Str::random(8));
+        $this->stage($admin->post('/Auth/Keys?app='.rawurlencode($name)), 'key');
+        $key = collect((array) $this->stage($admin->get('/Auth/Keys'), 'key')->json('Items'))
+            ->first(fn ($row): bool => is_array($row) && ($row['AppName'] ?? null) === $name)['AccessToken'] ?? null;
+        if (! is_string($key) || $key === '') {
+            throw new RuntimeException('unavailable');
+        }
+
+        return $key;
     }
 
     /**
@@ -335,7 +358,6 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
         $this->whileReady($account, function (ServiceAccount $locked): void {
             $this->libraries($locked);
             $this->policy($locked, false);
-            $this->refresh($locked->library_ids['personal'] ?? null);
         });
     }
 
@@ -346,7 +368,6 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
             $ids[CommonLibraries::DIRECTORY] = $this->library(PersonalLibraries::MOUNT.'/'.CommonLibraries::DIRECTORY, $label, 'homevideos');
             $locked->library_ids = $ids;
             $this->policy($locked, false);
-            $this->refresh($ids[CommonLibraries::DIRECTORY]);
         });
     }
 
@@ -457,11 +478,9 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
         return $id;
     }
 
-    private function refresh(?string $libraryId): void
+    public function scanMedia(): void
     {
-        if ($libraryId !== null) {
-            $this->check($this->client()->post('/Items/'.rawurlencode($libraryId).'/Refresh?Recursive=true&MetadataRefreshMode=Default&ImageRefreshMode=Default'));
-        }
+        $this->guard(fn () => $this->check($this->client()->post('/Library/Refresh')));
     }
 
     /** @return Collection<int, array<string, mixed>> */

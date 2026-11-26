@@ -20,6 +20,7 @@ with tempfile.TemporaryDirectory(prefix="multisuite-backup-") as directory:
     (work / "local" / "nas-targets").write_text(f"{data}\n")
     (work / "local" / "navidrome").mkdir()
     (work / "music.env").write_text("NAVIDROME_DATA_PATH=./local/navidrome\n")
+    (work / "video.env").touch()
     bin_dir = base / "bin"
     bin_dir.mkdir()
     log = base / "calls.log"
@@ -29,6 +30,10 @@ case "$*" in
   *"cat config"*) exit "${{REPO_MISSING:-0}}" ;;
   *"compose cp "*) for last; do :; done; printf dump > "$last" ;;
   *"ps -q --status running navidrome"*) echo abc123 ;;
+  *"ps --all -q jellyfin"*) echo video-container ;;
+  *".Mounts"*video-container) echo custom_jellyfin-config ;;
+  *".State.Status"*video-container) echo "${{VIDEO_STATE:-running}}" ;;
+  *"backup --tag portal"*) exit "${{PORTAL_EXIT:-0}}" ;;
   *" check "*) exit "${{CHECK_EXIT:-0}}" ;;
 esac
 """)
@@ -67,10 +72,19 @@ case "$path" in {external}*) [ "${{SAME_DISK:-0}}" = 1 ] && echo /dev/sdb2 || ec
         "start navidrome", "forget --prune --group-by host,tags --keep-daily 3 --keep-weekly 4", "check --read-data-subset 10%")]
     assert order == sorted(order), calls
     portal = next(call for call in calls if "backup --tag portal" in call)
+    assert "-v custom_jellyfin-config:/source/jellyfin-config:ro" in portal
+    stop, start = [next(i for i, c in enumerate(calls) if action in c) for action in ("stop jellyfin", "start jellyfin")]
+    assert stop < calls.index(portal) < start
     assert f"-v {data}/multisuite:/source/nas{data}:ro" in portal and "/source/portal-db:ro" in portal, portal
     assert "--network none" in portal and f"-v {external}:/repository" in portal and "secret" not in "\n".join(calls)
     assert status()["ok"] is True and status()["step"] == "done" and status()["finished_at"]
     assert not (work / "local" / "backup-staging").exists() and not (work / "local" / "backup.lock").exists()
+
+    result, calls = run(PORTAL_EXIT="1")
+    assert result.returncode == 1 and status()["ok"] is False
+    assert any("start jellyfin" in c for c in calls)
+    result, calls = run(VIDEO_STATE="exited")
+    assert result.returncode == 0 and not any("start jellyfin" in c or "stop jellyfin" in c for c in calls)
 
     # A failed check is recorded, Navidrome is running again and the next run is not blocked.
     result, calls = run(CHECK_EXIT="1")

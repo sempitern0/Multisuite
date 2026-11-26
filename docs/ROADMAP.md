@@ -31,7 +31,7 @@ Pendiente de validar en el piloto: autologin musical con dos usuarios y un naveg
 ## P04 — Servicios (uno por PR)
 Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúmenes, copia y restauración, cuotas y aislamiento; adaptador `ServiceProvisioner` con prueba en CI contra la versión fijada.
 - [ ] P04.1 Lectura con Kavita: QA del usuario (KAVITA.md § QA) y copia del volumen `kavita-config` en `make nas-backup`.
-- [ ] P04.2 Vídeo con Jellyfin (PR #47): QA del usuario con Docker y GPU reales (JELLYFIN.md § QA) y medir transcodificación antes de dimensionar; copia de `jellyfin-config` en `make nas-backup`.
+- [ ] P04.2 Vídeo con Jellyfin (PR #47): QA del usuario con Docker y GPU reales (JELLYFIN.md § QA) y medir transcodificación antes de dimensionar.
 - [ ] P04.3 Descargas: interfaz mantenida para yt-dlp con cuotas y aislamiento.
 - [ ] P04.4 Notas/documentos con interfaz web, adjuntos y exportación.
 - [ ] Ideas sin decidir: automatizaciones, invitados temporales con caducidad.

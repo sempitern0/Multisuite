@@ -41,7 +41,15 @@ class CommonLibrary
         Cache::lock('common-library', 120)->block(30, function () use ($include, $exclude): void {
             foreach (array_keys(ConnectedFolders::CONNECTIONS) as $connection) {
                 $definition = ConnectedFolders::definition($connection);
-                $this->mirror->apply($this->directory($definition['service'], $definition['section']), $this->desired($connection, $include, $exclude));
+                $directory = $this->directory($definition['service'], $definition['section']);
+                $desired = $this->desired($connection, $include, $exclude);
+                $this->mirror->apply($directory, $desired);
+                try {
+                    $this->provisioners->notifyMediaChanges($definition['service'], $directory, $desired);
+                } catch (RuntimeException) {
+                    // The next reconciliation retries the scan. Access grants are checked separately.
+                    Log::warning('common library scan pending', ['service' => $definition['service']]);
+                }
             }
         });
     }

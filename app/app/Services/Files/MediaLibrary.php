@@ -98,6 +98,7 @@ class MediaLibrary
                     if ($provisioner instanceof PersonalLibraries) {
                         try {
                             $provisioner->ensurePersonalLibrary($account, $definition['section'], $definition['library']);
+                            $this->provisioners->notifyMediaChanges($definition['service'], $directory, $desired);
                         } catch (RuntimeException $exception) {
                             $failed = true;
                             Log::warning('personal library not ready', ['user' => $user->id, 'service' => $definition['service'], 'reason' => $exception->getMessage()]);

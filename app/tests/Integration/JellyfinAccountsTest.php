@@ -3,13 +3,15 @@
 namespace Tests\Integration;
 
 use App\Actions\Users\SetVideoRating;
+use App\Models\Folder;
 use App\Models\ServiceAccount;
 use App\Models\User;
 use App\Services\Files\MediaLibrary;
 use App\Services\JellyfinAccounts;
 use App\Services\ServiceAccounts;
+use App\Services\Storage\StorageReservations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Tests\Concerns\PreparesMediaRoot;
 use Tests\TestCase;
 
@@ -50,17 +52,37 @@ class JellyfinAccountsTest extends TestCase
             $people[$username] = [$user, $account->fresh()];
         }
 
-        // Each person signs in with the portal password and sees only their library and the common one.
-        foreach ($people as $username => [$user, $account]) {
-            $login = Http::baseUrl($url)->acceptJson()
-                ->withHeaders(['Authorization' => 'MediaBrowser Client="CI", Device="CI", DeviceId="ci-'.$username.'", Version="1"'])
-                ->post('/Users/AuthenticateByName', ['Username' => $username, 'Pw' => $username.'-password-123']);
+        $this->withoutDefer();
+        [$uploader] = $people['bruno'];
+        app(StorageReservations::class)->setUserQuota($uploader, 1000000);
+        $folder = Folder::where('user_id', $uploader->id)->where('media_link', 'videos')->sole();
+        $clip = file_get_contents($root.'/fixture.mp4');
+        $this->assertIsString($clip);
+        $key = (string) Str::uuid();
+        $this->actingAs($uploader)->postJson('/files', ['key' => $key, 'bytes' => strlen($clip), 'name' => 'Prueba.mp4', 'folder' => $folder->id])->assertCreated();
+        $this->call('PUT', '/uploads/'.$key, [], [], [], ['CONTENT_TYPE' => 'application/octet-stream', 'HTTP_ACCEPT' => 'application/json'], $clip)->assertOk();
+        $this->assertFileExists($root.'/.multisuite-media/video/'.strtolower($people['bruno'][1]->remote_id).'/Prueba.mp4');
+
+        // Check the uploader first so that the isolation assertion runs after indexing.
+        foreach (['bruno', 'ana'] as $username) {
+            [, $account] = $people[$username];
+            $device = 'ci-'.$username;
+            $login = $jellyfin->http(null, $device)->post('/Users/AuthenticateByName', ['Username' => $username, 'Pw' => $username.'-password-123']);
             $this->assertSame(200, $login->status(), $username);
             $this->assertFalse($login->json('User.Policy.IsAdministrator'));
             $this->assertFalse($login->json('User.Policy.EnableAllFolders'));
-            $views = Http::baseUrl($url)->acceptJson()
-                ->withHeaders(['Authorization' => 'MediaBrowser Client="CI", Device="CI", DeviceId="ci-'.$username.'", Version="1", Token="'.$login->json('AccessToken').'"'])
-                ->get('/UserViews', ['userId' => $account->external_id]);
+            $viewer = $jellyfin->http($login->json('AccessToken'), $device);
+            $deadline = microtime(true) + 45;
+            do {
+                $items = $viewer->get('/Items', ['UserId' => $account->external_id, 'Recursive' => 'true', 'SearchTerm' => 'Prueba', 'IncludeItemTypes' => 'Video,Movie'])->throw()->json('Items');
+                if ($username !== 'bruno' || count($items) > 0) {
+                    break;
+                }
+                usleep(500000);
+            } while (microtime(true) < $deadline);
+            $this->assertCount($username === 'bruno' ? 1 : 0, $items, $username);
+
+            $views = $viewer->get('/UserViews', ['userId' => $account->external_id]);
             $this->assertSame(200, $views->status());
             $names = collect($views->json('Items'))->pluck('Name')->all();
             $this->assertContains('Mis vídeos · '.substr($account->remote_id, 0, 8), $names);

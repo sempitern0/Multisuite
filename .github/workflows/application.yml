@@ -5,6 +5,8 @@ on:
     paths: &application-paths
       - 'app/**'
       - 'docker/music-proxy/**'
+      - 'docker/video-proxy/**'
+      - 'tests/jellyfin-web-session.mjs'
       - '.github/workflows/application.yml'
   pull_request:
     paths: *application-paths
@@ -115,6 +117,8 @@ jobs:
             if curl -fsS http://127.0.0.1:8096/System/Info/Public 2>/dev/null | grep -q StartupWizardCompleted; then break; fi
             sleep 1
           done
+          docker exec jellyfin-ci /usr/lib/jellyfin-ffmpeg/ffmpeg -loglevel error -f lavfi -i color=size=64x64:rate=1 -t 1 -c:v mpeg4 /tmp/fixture.mp4
+          docker cp jellyfin-ci:/tmp/fixture.mp4 /tmp/nas-ci-video/fixture.mp4
           JELLYFIN_TEST_URL=http://127.0.0.1:8096 MEDIA_TEST_ROOT=/tmp/nas-ci-video php artisan test tests/Integration/JellyfinAccountsTest.php
           # Gateway: Multisuite look and return link in the web shell only; API and portal route intact.
           docker run -d --name portal-stub-ci --network video-ci-net --network-alias multisuite-portal-web nginx:1.27-alpine
