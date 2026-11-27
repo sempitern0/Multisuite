@@ -2,6 +2,7 @@
 
 namespace App\Services\Assistant;
 
+use App\Events\AssistantContentConsentWithdrawn;
 use App\Models\AssistantMember;
 use App\Models\AssistantSetting;
 use App\Models\AssistantToolCall;
@@ -128,9 +129,9 @@ class AssistantAccess
         } else {
             DB::transaction(function () use ($user): void {
                 DB::table('assistant_consents')->where('user_id', $user->id)->delete();
-                // Withdrawing also removes what was prepared for search by meaning, at once.
-                DB::table('assistant_chunks')->where('user_id', $user->id)->delete();
-                DB::table('assistant_indexed_files')->where('user_id', $user->id)->delete();
+                // Withdrawing also removes what was prepared for search by meaning, at once and
+                // in this transaction (synchronous listener: SemanticIndex::forget).
+                event(new AssistantContentConsentWithdrawn($user->id));
             });
         }
     }

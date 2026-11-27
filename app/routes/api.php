@@ -3,6 +3,7 @@
 use App\Http\Controllers\MusicSessionController;
 use App\Services\KomgaSession;
 use App\Services\ReadingSession;
+use App\Services\VideoSession;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\Cookie;
@@ -14,6 +15,19 @@ Route::post('reading/session', function (Request $request, ReadingSession $bridg
         ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer')
         ->header('Content-Security-Policy', "default-src 'none'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'");
 });
+
+// Served through the Vídeo gateway: the page runs on Jellyfin's origin and stores the session where
+// its web interface keeps its own login (docker/video-proxy/public/enter.js). Single-use ticket.
+Route::post('video/session', function (Request $request, VideoSession $bridge) {
+    $session = $bridge->exchange((string) $request->input('ticket'), (string) $request->header('Origin'));
+    if ($session === null) {
+        return redirect()->away(rtrim((string) config('app.url'), '/').'/services/video/confirm', 303)->header('Cache-Control', 'no-store');
+    }
+
+    return response()->view('video-enter', ['session' => $session])
+        ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer')
+        ->header('Content-Security-Policy', "default-src 'none'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'");
+})->middleware('throttle:30,1');
 
 Route::get('music/portal', fn () => redirect()->away(rtrim((string) config('app.url'), '/').'/dashboard'));
 Route::get('music/session/authorize', [MusicSessionController::class, 'authorize']);

@@ -18,6 +18,9 @@ Schedule::command('portal:uploads-cleanup')->everyTenMinutes()->withoutOverlappi
 
 Schedule::command('portal:files-purge')->dailyAt('03:30')->withoutOverlapping();
 
+// Vídeo browser sessions idle for 30 days (docs/JELLYFIN.md).
+Schedule::command('portal:video-sessions-prune')->dailyAt('03:50')->withoutOverlapping();
+
 // Long ZIP builds run in the background so other schedules are not delayed.
 Schedule::command('portal:exports-run')->everyMinute()->withoutOverlapping()->runInBackground();
 // Assistant audit rows older than 90 days (docs/MCP.md).

@@ -3,9 +3,11 @@
 use App\Livewire\Concerns\ManagesOwnFiles;
 use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
+use App\Models\Publication;
 use App\Models\UserFile;
 use App\Services\Files\FilePreview;
 use App\Services\Files\PersonalFiles;
+use App\Services\Files\Publications;
 use App\Support\DomainErrors;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -125,9 +127,38 @@ new #[Title('Archivo')] class extends Component {
         $this->redirect($current === null ? route('files.trash') : route('files.show', $current));
     }
 
+    /** Proposal for everyone (S04b): only for files in a connected folder; an administrator decides. */
+    #[Computed]
+    public function publication(): ?Publication
+    {
+        return app(Publications::class)->forFile($this->file);
+    }
+
+    public function proposePublication(Publications $publications): void
+    {
+        $this->throttle('files');
+        Gate::authorize('update', $this->file);
+        $publications->request(Auth::user(), $this->fileId);
+        $this->changed('Propuesto para todos. Un administrador decidirá si se publica');
+    }
+
+    public function cancelPublication(Publications $publications): void
+    {
+        $this->throttle('files');
+        $publications->cancel(Auth::user(), (int) $this->publication?->id);
+        $this->changed('Propuesta cancelada');
+    }
+
+    public function askWithdrawal(Publications $publications): void
+    {
+        $this->throttle('files');
+        $publications->askWithdrawal(Auth::user(), (int) $this->publication?->id);
+        $this->changed('Se ha pedido a un administrador que lo retire');
+    }
+
     private function changed(string $message): void
     {
-        unset($this->file, $this->current, $this->versions, $this->preview, $this->crumbs);
+        unset($this->file, $this->current, $this->versions, $this->preview, $this->crumbs, $this->publication);
         $this->toast($message);
     }
 }; ?>
@@ -160,6 +191,29 @@ new #[Title('Archivo')] class extends Component {
         @foreach (['file_trash', 'file_purge', 'file_version'] as $field)
             @error($field)<x-ui::notice tone="bad">{{ $message }}</x-ui::notice>@enderror
         @endforeach
+
+        @error('publication')<x-ui::notice tone="bad">{{ $message }}</x-ui::notice>@enderror
+        @php($publication = $this->publication)
+        @if ($publication?->isPublished())
+            <x-ui::notice tone="info">
+                Publicado para todos el {{ $publication->decided_at?->format('d/m/Y') }}: lo ven quienes tienen el servicio y ya no cuenta en tu espacio. Solo un administrador puede retirarlo.
+                @if ($publication->withdrawal_requested_at === null)
+                    <x-ui::link wire:click="askWithdrawal">Pedir que se retire</x-ui::link>
+                @else
+                    Has pedido que se retire.
+                @endif
+            </x-ui::notice>
+        @elseif ($publication !== null)
+            <x-ui::notice tone="info">
+                Propuesto para todos el {{ $publication->requested_at->format('d/m/Y') }}. Mientras un administrador decide, no se puede renombrar ni mover a la papelera.
+                <x-ui::link wire:click="cancelPublication">Cancelar la propuesta</x-ui::link>
+            </x-ui::notice>
+        @elseif ($file->isCurrent() && $file->upload()->value('media_link') !== null)
+            <x-ui::notice tone="info">
+                Está en una carpeta conectada: puedes proponer que lo vean todos. Si un administrador lo publica, dejará de contar en tu espacio y no podrás borrarlo tú.
+                <x-ui::link wire:click="proposePublication">Proponer para todos</x-ui::link>
+            </x-ui::notice>
+        @endif
 
         @if ($file->trashed_at !== null)
             <x-ui::notice tone="warn">

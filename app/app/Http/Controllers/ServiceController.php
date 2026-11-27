@@ -8,6 +8,7 @@ use App\Services\KomgaSession;
 use App\Services\MusicSessionBridge;
 use App\Services\ReadingSession;
 use App\Services\ServiceAccounts;
+use App\Services\VideoSession;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +30,12 @@ class ServiceController extends Controller
             if (! KomgaSession::allowed($user) || ! session()->has('komga.login')) {
                 return redirect()->route('komga.confirm');
             }
+        }
+        if ($service === 'video' && $user !== null && config('provisioning.video.enabled')
+            && (! VideoSession::allowed($user) || ! session()->has('video.login'))) {
+            abort_unless(app(ServiceAccounts::class)->entitled($user, 'video'), 403);
+
+            return redirect()->route('video.confirm');
         }
         if ($user !== null && $user->service_access !== null && config('provisioning.'.$service.'.enabled')) {
             abort_unless(in_array($service, $user->service_access, true), 403);
@@ -55,6 +62,14 @@ class ServiceController extends Controller
                 'action' => $origin.'/_multisuite/launch',
                 'ticket' => app(KomgaSession::class)->issue($user),
             ])->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'origin');
+        }
+
+        if ($service === 'video' && $user !== null && config('provisioning.video.enabled')) {
+            abort_if(app()->isProduction() && $parts['scheme'] !== 'https', 404);
+            $origin = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
+
+            return response()->view('video-launch', ['action' => $origin.'/_multisuite/launch', 'ticket' => app(VideoSession::class)->issue($user)])
+                ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'origin');
         }
 
         if ($service === 'reading' && config('portal.reading_autologin') && config('provisioning.reading.enabled')

@@ -16,10 +16,6 @@
         "LOCAL_DOMAIN": "multisuite.test",
         "VITE_PORT": "5173",
         "DB_UI_PORT": "8081",
-        "MAILPIT_PORT": "8025",
-        "TENANCY_MODE": "none",
-        "TENANCY_TEST_TENANTS": "alpha,beta",
-        "TENANCY_TEST_PATH": "/",
-        "TENANCY_ASSERT_HEADER": ""
+        "MAILPIT_PORT": "8025"
     }
 }

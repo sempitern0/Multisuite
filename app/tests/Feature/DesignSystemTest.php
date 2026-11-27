@@ -84,7 +84,7 @@ class DesignSystemTest extends TestCase
         ));
 
         $this->assertSame(['Servicios', 'Mis archivos', 'Mis finanzas'], $labels($this->user('member')));
-        $this->assertSame(['Servicios', 'Mis archivos', 'Mis finanzas', 'Personas', 'Invitaciones', 'Almacenamiento', 'Ajustes del asistente', 'Actividad'], $labels($this->user('owner')));
+        $this->assertSame(['Servicios', 'Mis archivos', 'Mis finanzas', 'Personas', 'Invitaciones', 'Para todos', 'Almacenamiento', 'Ajustes del asistente', 'Actividad'], $labels($this->user('owner')));
         $this->assertSame('Miembro', Navigation::for($this->user('member'))['account']['role']);
     }
 

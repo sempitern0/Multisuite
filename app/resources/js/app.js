@@ -8,3 +8,14 @@ import './sidebar';
 import './range-select';
 // Profile photo editor (crop and upload).
 import './avatar-editor';
+
+function updateOfflineNotice() {
+    const notice = document.querySelector('[data-offline-notice]');
+    if (notice) notice.hidden = navigator.onLine;
+}
+
+window.addEventListener('online', updateOfflineNotice);
+window.addEventListener('offline', updateOfflineNotice);
+window.addEventListener('pageshow', updateOfflineNotice);
+document.addEventListener('livewire:navigated', updateOfflineNotice);
+updateOfflineNotice();

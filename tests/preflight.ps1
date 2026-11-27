@@ -7,7 +7,7 @@ try {
   [void](New-Item -ItemType Directory -Path (Join-Path $temp 'app'))
   Set-Content -LiteralPath (Join-Path $temp 'app/artisan') -Value 'fixture'
   Set-Content -LiteralPath (Join-Path $temp 'app/composer.json') -Value '{}'
-  @('PROJECT_NAME=demo','DB_ENGINE=mariadb','QUEUE_ENGINE=database','MAIL_ENGINE=log','DB_UI=none','HTTPS_ENABLED=0','TENANCY_MODE=none','HTTP_PORT=18080','VITE_PORT=15173') | Set-Content (Join-Path $temp '.env')
+  @('PROJECT_NAME=demo','DB_ENGINE=mariadb','QUEUE_ENGINE=database','MAIL_ENGINE=log','DB_UI=none','HTTPS_ENABLED=0','HTTP_PORT=18080','VITE_PORT=15173') | Set-Content (Join-Path $temp '.env')
   function docker { $global:LASTEXITCODE = 0; @('web','node') }
   & $scriptPath -Mode Run -Root $temp
   if ($LASTEXITCODE -ne 0) { throw 'Valid configuration rejected' }

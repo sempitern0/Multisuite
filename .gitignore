@@ -75,5 +75,6 @@ yarn-error.log*
 /local/
 /music.env
 /reading.env
+/video.env
 
 s01-report.json

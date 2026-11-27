@@ -37,6 +37,13 @@ jobs:
           python3 tests/reading-lifecycle.py
           python3 tests/komga-lifecycle.py
           docker compose -f compose.komga.yaml config --quiet
+          for hw in none intel amd nvidia; do
+            overrides="-f deploy/compose.video-media.dev.yaml"
+            [ "$hw" = none ] || overrides="-f deploy/compose.video-$hw.yaml $overrides"
+            docker compose --env-file video.env.example -f compose.video.yaml $overrides config --quiet
+          done
+          docker compose -f compose.yaml -f deploy/compose.portal-accounts.example.yaml -f deploy/compose.portal-video.example.yaml -f deploy/compose.portal-kavita-disabled.yaml config --quiet
+          tmp=$(mktemp -d) && cp video.env.example "$tmp/video.env" && VIDEO_ENV_FILE="$tmp/video.env" HW=amd sh scripts/video-detect.sh && grep -q '^VIDEO_HARDWARE=amd$' "$tmp/video.env"
           docker compose -f compose.yaml -f deploy/compose.portal-komga.example.yaml -f deploy/compose.portal-kavita-disabled.yaml config --quiet
           docker compose --env-file reading.env.example -f compose.reading.yaml config --quiet
           docker compose --env-file reading.env.example -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml config --quiet
@@ -106,7 +113,6 @@ jobs:
           make -n rebuild
           make -n lint
           make -n https-setup && make -n env-sync && make -n reset-project
-          make -n tenancy-check
       - name: Ensure source can be tracked but runtime files remain ignored
         run: |
           git ls-files --error-unmatch app/artisan app/composer.lock app/package-lock.json > /dev/null
@@ -233,16 +239,11 @@ jobs:
           EOF
           docker compose --env-file /tmp/foundry-staging.env -f compose.production.yaml config -q
           docker compose --env-file /tmp/foundry-local.env -f compose.production.yaml config -q
-      - name: Validate SaaS opt-in and local wildcard Caddy routing
+      - name: Single-tenant portal (SaaS scaffolding removed)
         run: |
           php -l scripts/wizard.php
-          sh -n scripts/tenancy-check.sh
-          test -s docs/foundry/SAAS.md
-          grep -q 'TENANCY_MODE' .env.example
-          grep -q 'TENANCY_MODE' scripts/wizard.php
-          grep -q 'Caddyfile.saas' scripts/wizard.php
-          grep -Fq '*.{$LOCAL_DOMAIN}' docker/caddy/Caddyfile.saas
-          grep -q 'tenancy-check:' Makefile
+          ! grep -rqi 'tenancy' scripts Makefile .env.example
+          test ! -e docker/caddy/Caddyfile.saas
           test -s docs/ROADMAP.md
           docker compose config -q
       - name: Validate Compose
@@ -309,6 +310,13 @@ jobs:
             }
             Write-Host "Parsed: $($script.Name)"
           }
+      - name: Record the detected GPU for Video on Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $env:HW = 'nvidia'
+          ./scripts/video-detect.ps1
+          if (-not (Select-String -Path video.env -Pattern '^VIDEO_HARDWARE=nvidia$' -Quiet)) { throw 'VIDEO_HARDWARE not written' }
+          if ((Get-Content video.env -Raw) -match "`r") { throw 'video.env must keep LF endings' }
       - name: Test automatic network creation on Windows PowerShell 5.1
         shell: powershell
         run: ./tests/accounts-network.ps1

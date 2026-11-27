@@ -136,9 +136,8 @@ new class extends Component {
         :description="$showVerificationStep ? 'Escribe el código de 6 cifras que muestra tu aplicación de autenticación.' : 'Escanea el código QR con tu aplicación de autenticación, o escribe la clave a mano.'">
         @if ($showVerificationStep)
             <div x-data x-init="$nextTick(() => $el.querySelector('input')?.focus())">
-                <flux:otp name="code" wire:model="code" length="6" label="Código de verificación" label:sr-only />
+                <x-ui::otp name="code" label="Código de verificación" wire:model.live="code" />
             </div>
-            @error('code')<x-ui::notice tone="bad">{{ $message }}</x-ui::notice>@enderror
             <x-ui::actions>
                 <x-ui::button variant="ghost" wire:click="resetVerification">Atrás</x-ui::button>
                 <x-ui::button wire:click="confirmTwoFactor" x-bind:disabled="$wire.code.length < 6">Confirmar</x-ui::button>

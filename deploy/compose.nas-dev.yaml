@@ -32,10 +32,10 @@ services:
       - |
         root=/nas/private
         [ -f "$$root/.multisuite-volume-id" ] || printf 'private\n' > "$$root/.multisuite-volume-id"
-        mkdir -p "$$root/.multisuite-private" "$$root/.multisuite-media/music" "$$root/.multisuite-media/reading"
+        mkdir -p "$$root/.multisuite-private" "$$root/.multisuite-media/music" "$$root/.multisuite-media/reading" "$$root/.multisuite-media/video" "$$root/.multisuite-video-common"
         chown ${DEV_UID:-1000}:${DEV_GID:-1000} "$$root" "$$root/.multisuite-volume-id" "$$root/.multisuite-private" \
-          "$$root/.multisuite-media" "$$root/.multisuite-media/music" "$$root/.multisuite-media/reading"
-        chmod 0755 "$$root" "$$root/.multisuite-media" "$$root/.multisuite-media/music" "$$root/.multisuite-media/reading"
+          "$$root/.multisuite-media" "$$root/.multisuite-media/music" "$$root/.multisuite-media/reading" "$$root/.multisuite-media/video" "$$root/.multisuite-video-common"
+        chmod 0755 "$$root" "$$root/.multisuite-media" "$$root/.multisuite-media/music" "$$root/.multisuite-media/reading" "$$root/.multisuite-media/video" "$$root/.multisuite-video-common"
         chmod 0644 "$$root/.multisuite-volume-id"
         chmod 0700 "$$root/.multisuite-private"
         echo "Dev NAS ready at $$root"

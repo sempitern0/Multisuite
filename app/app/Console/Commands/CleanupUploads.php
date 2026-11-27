@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\ReservationState;
+use App\Enums\UploadState;
 use App\Models\PrivateUpload;
 use App\Models\StorageReservation;
 use App\Models\User;
@@ -19,8 +21,8 @@ class CleanupUploads extends Command
     {
         $failed = false;
         // Only expired reservations that still belong to a pending upload (one query per chunk, not per row).
-        $expired = StorageReservation::where('state', 'reserved')->where('expires_at', '<', now())
-            ->whereIn('id', PrivateUpload::select('id')->where('state', 'pending'));
+        $expired = StorageReservation::where('state', ReservationState::Reserved->value)->where('expires_at', '<', now())
+            ->whereIn('id', PrivateUpload::select('id')->where('state', UploadState::Pending->value));
         foreach ($expired->lazyById(100) as $reservation) {
             try {
                 $uploads->cancel(User::findOrFail($reservation->user_id), $reservation->id);

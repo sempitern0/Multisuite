@@ -7,7 +7,7 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Palette, fonts and Flux accent are owned by the active theme file. */
+/* Palette and fonts are owned by the active theme file. */
 
 @layer base {
 
@@ -16,6 +16,6 @@
     ::before,
     ::backdrop,
     ::file-selector-button {
-        border-color: var(--color-zinc-700, currentColor);
+        border-color: var(--ui-line, currentColor);
     }
 }

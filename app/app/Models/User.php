@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Role;
 use App\Services\Users\Avatars;
 use App\Support\ProfileStickers;
 use App\Support\UserPreferences;
@@ -36,6 +37,7 @@ use Laravel\Passport\HasApiTokens;
  * @property string|null $avatar_sticker
  * @property string|null $avatar_hash
  * @property CarbonInterface|null $suspended_at
+ * @property int|null $video_max_rating
  * @property bool $must_change_password
  * @property int|null $created_by_admin_id
  * @property string $password
@@ -89,8 +91,8 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable,
 
     public function canInviteRole(string $role): bool
     {
-        return ($this->role === 'owner' && in_array($role, ['admin', 'member'], true))
-            || ($this->role === 'admin' && $role === 'member');
+        return ($this->role === Role::Owner->value && in_array($role, [Role::Admin->value, Role::Member->value], true))
+            || ($this->role === Role::Admin->value && $role === Role::Member->value);
     }
 
     /**
@@ -108,6 +110,7 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable,
             'preferences' => 'array',
             'must_change_password' => 'boolean',
             'suspended_at' => 'datetime',
+            'video_max_rating' => 'integer',
         ];
     }
 
@@ -138,23 +141,13 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable,
     /** Human role name shown in the interface (single source for every view). */
     public function roleLabel(): string
     {
-        return match ($this->role) {
-            'owner' => 'Propietario',
-            'admin' => 'Administrador',
-            'member' => 'Miembro',
-            default => 'Sin rol',
-        };
+        return Role::tryFrom($this->role)?->label() ?? 'Sin rol';
     }
 
     /** How much the role can do, for the role badge: owner 3, admin 2, member 1. */
     public function roleLevel(): int
     {
-        return match ($this->role) {
-            'owner' => 3,
-            'admin' => 2,
-            'member' => 1,
-            default => 0,
-        };
+        return Role::tryFrom($this->role)?->level() ?? 0;
     }
 
     /**
@@ -165,7 +158,7 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable,
     public function assignableRoles(): array
     {
         return array_filter(
-            ['member' => 'Miembro', 'admin' => 'Administrador'],
+            [Role::Member->value => Role::Member->label(), Role::Admin->value => Role::Admin->label()],
             fn (string $role): bool => $this->canInviteRole($role),
             ARRAY_FILTER_USE_KEY,
         );

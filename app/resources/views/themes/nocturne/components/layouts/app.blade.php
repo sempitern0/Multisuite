@@ -90,7 +90,7 @@
                     <x-ui::scheme-toggle class="ui-topbar-end" />
                 </header>
                 <main id="contenido" class="ui-content" tabindex="-1">
-                    <p wire:offline class="ui-notice ui-notice-warn" role="status">Sin conexión. Vuelve a conectarte al NAS para guardar cambios.</p>
+                    <p hidden data-offline-notice class="ui-notice ui-notice-warn ui-offline-notice" role="status">Sin conexión. Vuelve a conectarte al NAS para guardar cambios.</p>
                     {{ $slot }}
                 </main>
             </div>
@@ -99,6 +99,5 @@
         {{ $dock ?? '' }}
         <x-ui::toasts :flash="$flash" />
 
-        @fluxScripts
     </body>
 </html>

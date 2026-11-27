@@ -24,7 +24,6 @@ https=$(setting HTTPS_ENABLED 0)
 http_port=$(setting HTTP_PORT 8080)
 https_port=$(setting HTTPS_PORT 443)
 domain=$(setting LOCAL_DOMAIN foundry.test)
-tenancy=$(setting TENANCY_MODE none)
 profiles=$(setting COMPOSE_PROFILES '-')
 if [ -f app/.letsgo-starter ]; then starter=$(tr -d '\r\n' < app/.letsgo-starter)
 elif [ -f app/artisan ]; then starter=existing
@@ -83,7 +82,7 @@ item 'Database' "$db | $db_name"
 item 'Queue / Mail' "$queue | $mail"
 item 'Database UI' "$ui"
 if [ "$https" = 1 ]; then https_label=enabled; else https_label=disabled; fi
-item 'HTTPS / Tenancy' "$https_label | $tenancy"
+item 'HTTPS' "$https_label"
 item 'Profiles' "$profiles"
 section 'SERVICES'
 [ "$status" = available ] || printf '  %sDocker is unavailable; service status cannot be verified.%s\n' "$yellow" "$reset"
@@ -98,7 +97,6 @@ service scheduler 'Scheduler'
 [ "$ui" = none ] || service "$ui" "$ui"
 section 'NEXT STEPS'
 [ "$https" = 1 ] && printf '  %sHTTPS: hosts 127.0.0.1 %s / make https-setup.%s\n' "$yellow" "$domain" "$reset"
-[ "$tenancy" = none ] || printf '  %sTenancy routing requires Laravel-level data isolation.%s\n' "$yellow" "$reset"
 printf '  %s[OK] = container started; this is not an HTTP health probe.%s\n' "$dim" "$reset"
 echo '  make status | make ps | make logs | make up-wait | make reconfigure'
 printf '%s======================================================%s\n' "$cyan" "$reset"

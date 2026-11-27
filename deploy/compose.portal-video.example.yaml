@@ -1,0 +1,15 @@
+# Applied by Make when video.env exists: the portal reaches Jellyfin on the accounts network and
+# learns which GPU vendor `make video-detect` found (it never sees the device itself).
+x-video: &video
+  JELLYFIN_INTERNAL_URL: "${JELLYFIN_INTERNAL_URL:-http://jellyfin:8096}"
+  JELLYFIN_PROVISIONING_ENABLED: "true"
+  PORTAL_VIDEO_ENABLED: "true"
+  PORTAL_VIDEO_URL: "${PORTAL_VIDEO_URL:-http://127.0.0.1:8096}"
+  VIDEO_HARDWARE: "${VIDEO_HARDWARE:-none}"
+services:
+  app:
+    environment: *video
+  worker:
+    environment: *video
+  scheduler:
+    environment: *video
