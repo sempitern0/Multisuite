@@ -143,8 +143,8 @@ function StackContainers([string]$Project, [string]$Service, [bool]$RunningOnly)
     } catch { return @() }
 }
 function EntryRunning([string]$Project, [string]$Gateway, [string]$Service) {
-    if ((StackContainers $Project $Gateway $true).Count -gt 0) { return $true }
-    return ((StackContainers $Project $Gateway $false).Count -eq 0) -and ((StackContainers $Project $Service $true).Count -gt 0)
+    if (@(StackContainers $Project $Gateway $true).Count -gt 0) { return $true }
+    return (@(StackContainers $Project $Gateway $false).Count -eq 0) -and (@(StackContainers $Project $Service $true).Count -gt 0)
 }
 function Show-NasLink([string]$Label, [string]$Url, [bool]$Running, [string]$Command) {
     Write-Host ('  {0,-22}' -f $Label) -NoNewline -ForegroundColor Gray
@@ -203,9 +203,9 @@ if (Test-Path -LiteralPath (Join-Path $Root 'music.env')) {
     $project = FileSetting 'music.env' 'MUSIC_PROJECT_NAME' 'multisuite-music'
     Show-NasLink 'Music (Navidrome)' ("http://localhost:{0}" -f (FileSetting 'music.env' 'NAVIDROME_PORT' '4533')) (EntryRunning $project 'music-gateway' 'navidrome') 'make music-up'
 }
-if ((StackContainers 'multisuite-komga' '' $false).Count -gt 0) {
+if (@(StackContainers 'multisuite-komga' '' $false).Count -gt 0) {
     $nasShown = $true
-    Show-NasLink 'Reading (Komga)' ("http://localhost:{0}" -f (Setting 'KOMGA_PORT' '25600')) ((StackContainers 'multisuite-komga' 'komga-gateway' $true).Count -gt 0) 'make komga-up'
+    Show-NasLink 'Reading (Komga)' ("http://localhost:{0}" -f (Setting 'KOMGA_PORT' '25600')) (@(StackContainers 'multisuite-komga' 'komga-gateway' $true).Count -gt 0) 'make komga-up'
 }
 if (Test-Path -LiteralPath (Join-Path $Root 'reading.env')) {
     $nasShown = $true
@@ -215,7 +215,7 @@ if (Test-Path -LiteralPath (Join-Path $Root 'reading.env')) {
 if (Test-Path -LiteralPath (Join-Path $Root 'video.env')) {
     $nasShown = $true
     $project = FileSetting 'video.env' 'VIDEO_PROJECT_NAME' 'multisuite-video'
-    Show-NasLink 'Video (Jellyfin)' ("http://localhost:{0}" -f (FileSetting 'video.env' 'VIDEO_PORT' '8096')) ((StackContainers $project 'video-gateway' $true).Count -gt 0) 'make video-up'
+    Show-NasLink 'Video (Jellyfin)' ("http://localhost:{0}" -f (FileSetting 'video.env' 'VIDEO_PORT' '8096')) (@(StackContainers $project 'video-gateway' $true).Count -gt 0) 'make video-up'
     Item 'Video GPU' (FileSetting 'video.env' 'VIDEO_HARDWARE' 'none')
 }
 if (-not $nasShown) {
