@@ -20,6 +20,9 @@ use function Illuminate\Support\defer;
  */
 class ServiceAccounts
 {
+    /** Suspended or no longer entitled: the remote block is retried by the scheduler until it succeeds. */
+    public const LOCK_PENDING = ServiceAccountStatus::LockPending->value;
+
     /** Disabled or suspended: the remote password was replaced and is waiting for access to return. */
     public const LOCKED = ServiceAccountStatus::Locked->value;
 
@@ -214,7 +217,7 @@ class ServiceAccounts
             $account = $accounts->get($service);
             if ($account === null) {
                 $this->reserve($locked, $service);
-            } elseif ($account->status === self::LOCKED) {
+            } elseif (in_array($account->status, [self::LOCKED, self::LOCK_PENDING], true)) {
                 $account->status = self::AWAITING_PASSWORD;
                 $account->save();
             }
@@ -255,6 +258,22 @@ class ServiceAccounts
     {
         DB::transaction(function () use ($id): void {
             $account = ServiceAccount::whereKey($id)->lockForUpdate()->first();
+            if ($account !== null && $account->status === self::LOCK_PENDING) {
+                $user = User::find($account->user_id);
+                if ($user !== null && ! $this->entitled($user, $account->service)) {
+                    try {
+                        $this->lock($account);
+                    } catch (RuntimeException $exception) {
+                        // A service that is down is retried in five minutes. One that is not configured
+                        // cannot be retried usefully: it waits, shown as such, until it is configured
+                        // again (the scheduler checks it without calling the service).
+                        $account->retry_at = $exception->getMessage() === 'configuration' ? null : now()->addMinutes(5);
+                        $account->save();
+                    }
+                }
+
+                return;
+            }
             if ($account === null || $account->pending_password === null) {
                 return;
             }

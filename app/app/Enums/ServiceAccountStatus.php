@@ -8,6 +8,7 @@ enum ServiceAccountStatus: string
     case Pending = 'pending';
     case Ready = 'ready';
     case AwaitingPassword = 'awaiting_password';
+    case LockPending = 'lock_pending';
     case Locked = 'locked';
     case Expired = 'expired';
     case Conflict = 'conflict';

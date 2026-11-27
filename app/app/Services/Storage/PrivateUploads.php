@@ -97,7 +97,7 @@ class PrivateUploads
                 $mime = (new finfo(FILEINFO_MIME_TYPE))->buffer($data);
                 $allowed = [...(array) config('nas.allowed_mimes', []), ...($upload->media_link === null ? [] : ConnectedFolders::definition($upload->media_link)['mimes'])];
                 if ($mime === false || ! in_array($mime, $allowed, true)) {
-                    throw new RuntimeException('Tamaño o formato no permitido.');
+                    throw new UnsupportedFileType((string) $mime);
                 }
                 $upload->mime = $mime;
                 // Sealed as it arrives (no plaintext on disk), except pictures: their metadata is

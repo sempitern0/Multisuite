@@ -276,7 +276,7 @@ new #[Title('Gestionar persona')] class extends Component {
                         <x-ui::text>Podrá volver a entrar en Multisuite. Sus servicios quedarán listos la próxima vez que entre con su contraseña.</x-ui::text>
                         <x-ui::actions><x-ui::button variant="secondary" wire:click="setSuspended(false)">Reactivar cuenta</x-ui::button></x-ui::actions>
                     @else
-                        <x-ui::text>Bloquea su acceso a Multisuite y a sus servicios sin borrar nada: archivos, datos y espacio se conservan. Se cierran sus sesiones abiertas.</x-ui::text>
+                        <x-ui::text>El acceso al portal se bloquea de inmediato y sus invitaciones pendientes caducan. Multisuite seguirá intentando bloquear cada servicio hasta que responda. Sus archivos se conservan.</x-ui::text>
                         <x-ui::actions>
                             <x-ui::confirm title="¿Suspender esta cuenta?">
                                 <x-slot:trigger><x-ui::button variant="secondary">Suspender cuenta</x-ui::button></x-slot:trigger>

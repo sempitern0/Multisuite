@@ -34,9 +34,10 @@ class IssueInvitation
     /** @param array{email: string, role: string, services?: list<string>} $data validated with rules() */
     public function handle(User $issuer, array $data): Invitation
     {
-        abort_unless($issuer->canInviteRole($data['role']), 403);
         $token = Str::random(64);
         $invitation = DB::transaction(function () use ($data, $issuer, $token): Invitation {
+            $issuer = User::whereKey($issuer->id)->lockForUpdate()->firstOrFail();
+            abort_unless(! $issuer->isSuspended() && $issuer->hasVerifiedEmail() && $issuer->canInviteRole($data['role']), 403);
             $invitation = Invitation::where('email', $data['email'])->lockForUpdate()->first() ?? new Invitation;
             // Administrators cannot overwrite an owner's administrator invitation.
             abort_if($invitation->exists && ! $issuer->canInviteRole($invitation->role), 403);

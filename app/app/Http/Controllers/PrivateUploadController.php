@@ -6,6 +6,7 @@ use App\Models\PrivateUpload;
 use App\Models\StorageReservation;
 use App\Services\Storage\PrivateUploads;
 use App\Services\Storage\UnsafeImageMetadata;
+use App\Services\Storage\UnsupportedFileType;
 use App\Services\Storage\UploadOffsetMismatch;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -53,6 +54,8 @@ class PrivateUploadController extends Controller
             $upload = $uploads->receive($request->user(), $key, $input, (int) $offset, $chunkSha256);
         } catch (UploadOffsetMismatch $mismatch) {
             return response()->json(['state' => 'pending', 'received' => $mismatch->received], 409);
+        } catch (UnsupportedFileType $unsupported) {
+            throw ValidationException::withMessages(['upload' => $unsupported->getMessage().' Cancela esta subida para liberar el espacio reservado.']);
         } catch (UnsafeImageMetadata) {
             throw ValidationException::withMessages(['upload' => 'No se ha podido quitar la información privada de esta foto (ubicación, cámara…), así que no se ha guardado. Prueba con otra copia o cancela la subida.']);
         } catch (RuntimeException) {

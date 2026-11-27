@@ -28,6 +28,7 @@ use Laravel\Passport\HasApiTokens;
  * @property list<string>|null $service_access
  * @property list<string>|null $services_revoked
  * @property array<string, mixed>|null $preferences
+ * @property int $assistant_content_revision
  * @property int $id
  * @property string $role
  * @property string $name

@@ -54,12 +54,20 @@ class ReadReceipt implements ShouldBeUnique, ShouldQueue
 
             return;
         }
+        $slot = Cache::lock('receipt-ocr:worker', 75);
+        if (! $slot->get()) {
+            $this->store(['status' => 'failed', 'error' => 'El lector está ocupado. Inténtalo de nuevo en un minuto o completa el movimiento a mano.']);
+
+            return;
+        }
         try {
             $source = $files->readable($user, $file);
             $this->store(['status' => 'done'] + $reader->read($source['blob'], $source['mime']));
         } catch (ReceiptUnreadable $exception) {
             // Expected outcomes (unsupported, unreadable, too large): no retry, tell the person why.
             $this->store(['status' => 'failed', 'error' => $exception->getMessage()]);
+        } finally {
+            $slot->release();
         }
     }
 

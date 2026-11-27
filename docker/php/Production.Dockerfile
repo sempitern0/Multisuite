@@ -1,5 +1,5 @@
 FROM php:8.4-fpm-bookworm AS base
-RUN apt-get update && apt-get install -y --no-install-recommends git unzip libpq-dev libicu-dev libzip-dev libonig-dev libpng-dev libjpeg62-turbo-dev libjpeg-turbo-progs libfreetype6-dev libwebp-dev libimage-exiftool-perl poppler-utils tesseract-ocr tesseract-ocr-spa tesseract-ocr-eng \
+RUN apt-get update && apt-get install -y --no-install-recommends git unzip libpq-dev libicu-dev libzip-dev libonig-dev libpng-dev libjpeg62-turbo-dev libjpeg-turbo-progs libfreetype6-dev libwebp-dev libimage-exiftool-perl poppler-utils util-linux tesseract-ocr tesseract-ocr-spa tesseract-ocr-eng \
  && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
  && docker-php-ext-install -j"$(nproc)" pdo_pgsql pdo_mysql intl zip mbstring bcmath pcntl gd opcache \
  && rm -rf /var/lib/apt/lists/*

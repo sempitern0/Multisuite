@@ -122,6 +122,20 @@ class PersonalFinanceTest extends TestCase
         $this->assertSame(['amount' => '1234.56', 'date' => '2026-03-01'], app(ReceiptReader::class)->suggest("Fecha 01/03/2026\nTOTAL 1.234,56 €"));
     }
 
+    public function test_busy_ocr_provides_immediate_feedback_and_keeps_manual_entry_available(): void
+    {
+        $this->upload($this->owner, 'ticket.png', (string) file_get_contents(base_path('tests/Fixtures/finances/ticket.png')))->assertOk();
+        $slot = Cache::lock('receipt-ocr:worker', 75);
+        $this->assertTrue($slot->get());
+        try {
+            Livewire::withQueryParams(['receipt' => $this->entry('ticket.png')->id])->test('pages::finances')
+                ->call('startScan')->assertHasErrors('receipt')->assertSee('El lector está ocupado')
+                ->set('amount', '9,99')->call('saveTransaction')->assertHasNoErrors();
+        } finally {
+            $slot->release();
+        }
+    }
+
     public function test_the_page_stops_waiting_when_no_reading_arrives(): void
     {
         $this->upload($this->owner, 'ticket.png', (string) file_get_contents(base_path('tests/Fixtures/finances/ticket.png')))->assertOk();

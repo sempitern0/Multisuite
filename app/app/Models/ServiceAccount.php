@@ -30,6 +30,9 @@ class ServiceAccount extends Model
     {
         return match ($this->status) {
             'ready' => ['label' => 'Activa', 'tone' => 'ok'],
+            ServiceAccounts::LOCK_PENDING => $this->retry_at === null
+                ? ['label' => 'Sin bloquear en el servicio: no está configurado. Se bloqueará al volver a configurarlo', 'tone' => 'bad']
+                : ['label' => 'Bloqueo remoto pendiente', 'tone' => 'warn'],
             ServiceAccounts::LOCKED => ['label' => 'Desactivada', 'tone' => 'muted'],
             ServiceAccounts::AWAITING_PASSWORD => ['label' => 'Se activará en su próximo acceso con contraseña', 'tone' => 'warn'],
             'expired' => ['label' => 'Caducada: se reintentará en su próximo acceso', 'tone' => 'warn'],

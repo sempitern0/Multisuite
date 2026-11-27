@@ -23,8 +23,6 @@ new #[Title('Perfil')] class extends Component {
 
     public string $name = '';
 
-    public string $email = '';
-
     public string $username = '';
 
     public string $current_password = '';
@@ -34,13 +32,12 @@ new #[Title('Perfil')] class extends Component {
     public function mount(): void
     {
         $this->name = Auth::user()->name;
-        $this->email = Auth::user()->email;
     }
 
     public function updateProfileInformation(UpdateProfile $update): void
     {
-        /** @var array{name: string, email: string} $data */
-        $data = $this->validate($update->rules(Auth::user()));
+        /** @var array{name: string} $data */
+        $data = $this->validate($update->rules());
         $update->handle(Auth::user(), $data);
         $this->toast('Perfil actualizado');
     }
@@ -132,7 +129,8 @@ new #[Title('Perfil')] class extends Component {
             <x-ui::panel>
                 <x-ui::form wire:submit="updateProfileInformation">
                     <x-ui::field name="name" label="Nombre" wire:model="name" required autocomplete="name" />
-                    <x-ui::field name="email" type="email" label="Correo electrónico" wire:model="email" required autocomplete="email" />
+                    <x-ui::text>{{ auth()->user()->email }}</x-ui::text>
+                    <x-ui::link :href="route('email-change.edit')">Cambiar correo de recuperación</x-ui::link>
                     @if ($this->hasUnverifiedEmail)
                         <x-ui::notice tone="warn">
                             Tu correo está sin verificar.

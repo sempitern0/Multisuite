@@ -26,16 +26,16 @@ class ProfileUpdateTest extends TestCase
 
         $response = Livewire::test('pages::settings.profile')
             ->set('name', 'Test User')
-            ->set('email', 'test@example.com')
             ->call('updateProfileInformation');
 
         $response->assertHasNoErrors();
 
+        $previous = $user->email;
         $user->refresh();
 
         $this->assertEquals('Test User', $user->name);
-        $this->assertEquals('test@example.com', $user->email);
-        $this->assertNull($user->email_verified_at);
+        $this->assertEquals($previous, $user->email);
+        $this->assertNotNull($user->email_verified_at);
     }
 
     public function test_email_verification_status_is_unchanged_when_email_address_is_unchanged(): void
@@ -46,12 +46,28 @@ class ProfileUpdateTest extends TestCase
 
         $response = Livewire::test('pages::settings.profile')
             ->set('name', 'Test User')
-            ->set('email', $user->email)
             ->call('updateProfileInformation');
 
         $response->assertHasNoErrors();
 
         $this->assertNotNull($user->refresh()->email_verified_at);
+    }
+
+    public function test_email_change_requires_recent_authentication_and_single_use_confirmation(): void
+    {
+        config(['mail.default' => 'array']);
+        $user = User::factory()->create();
+        $old = $user->email;
+        $this->actingAs($user)->post(route('email-change.request'), ['email' => 'new@example.test'])
+            ->assertRedirect(route('password.confirm'));
+        $this->withSession(['auth.password_confirmed_at' => time()])->post(route('email-change.request'), ['email' => 'new@example.test'])->assertRedirect(route('profile.edit'));
+        $this->assertSame($old, $user->fresh()->email);
+        $body = app('mailer')->getSymfonyTransport()->messages()->last()->getOriginalMessage()->getTextBody();
+        $url = trim(explode("\n", trim($body))[2]);
+        $this->get($url)->assertOk();
+        $this->post($url)->assertRedirect(route('profile.edit'));
+        $this->assertSame('new@example.test', $user->fresh()->email);
+        $this->post($url)->assertGone();
     }
 
     public function test_user_can_delete_their_account(): void

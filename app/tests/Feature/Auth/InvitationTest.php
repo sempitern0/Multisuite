@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Actions\Users\SetSuspension;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Notifications\PortalInvitation;
@@ -119,6 +120,19 @@ class InvitationTest extends TestCase
         $this->post($url, $this->details())->assertStatus(410);
         $this->travel(2)->days();
         $this->get($url)->assertForbidden();
+    }
+
+    public function test_reactivation_does_not_restore_invitations_issued_before_suspension(): void
+    {
+        $owner = $this->actor('owner');
+        $admin = $this->actor('admin');
+        $url = $this->invitation($admin);
+        $suspension = app(SetSuspension::class);
+        $suspension->handle($owner, $admin, true);
+        $this->get($url)->assertGone();
+        $suspension->handle($owner, $admin, false);
+        $this->post($url, $this->details())->assertGone();
+        $this->assertDatabaseMissing('users', ['email' => 'guest@example.com']);
     }
 
     public function test_reissue_invalidates_the_old_link_and_failed_validation_preserves_it(): void

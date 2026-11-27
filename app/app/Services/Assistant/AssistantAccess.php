@@ -2,10 +2,11 @@
 
 namespace App\Services\Assistant;
 
-use App\Events\AssistantContentConsentWithdrawn;
+use App\Events\AssistantContentRevoked;
 use App\Models\AssistantMember;
 use App\Models\AssistantSetting;
 use App\Models\AssistantToolCall;
+use App\Models\Folder;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -124,16 +125,58 @@ class AssistantAccess
     /** The person's own choice: the owner allowing it is not enough (D3). */
     public function setContentConsent(User $user, bool $accepted): void
     {
-        if ($accepted) {
-            DB::table('assistant_consents')->insertOrIgnore(['user_id' => $user->id, 'content_accepted_at' => now()]);
-        } else {
-            DB::transaction(function () use ($user): void {
+        DB::transaction(function () use ($user, $accepted): void {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            if ($this->hasAcceptedContent($user) === $accepted) {
+                return;
+            }
+            User::whereKey($user->id)->increment('assistant_content_revision');
+            if ($accepted) {
+                DB::table('assistant_consents')->insert(['user_id' => $user->id, 'content_accepted_at' => now()]);
+            } else {
                 DB::table('assistant_consents')->where('user_id', $user->id)->delete();
-                // Withdrawing also removes what was prepared for search by meaning, at once and
-                // in this transaction (synchronous listener: SemanticIndex::forget).
-                event(new AssistantContentConsentWithdrawn($user->id));
-            });
+                // Removes what was prepared for search by meaning, in this transaction
+                // (synchronous listener: SemanticIndex::forget).
+                event(new AssistantContentRevoked($user->id));
+            }
+        });
+    }
+
+    public function setFolderExcluded(User $user, int $id, bool $excluded): void
+    {
+        DB::transaction(function () use ($user, $id, $excluded): void {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $folder = Folder::where('user_id', $user->id)->lockForUpdate()->findOrFail($id);
+            if ((bool) $folder->assistant_excluded === $excluded) {
+                return;
+            }
+            $folder->assistant_excluded = $excluded;
+            $folder->save();
+            User::whereKey($user->id)->increment('assistant_content_revision');
+            if ($excluded) {
+                event(new AssistantContentRevoked($user->id));
+            }
+        });
+    }
+
+    /** @return list<int> */
+    public function excludedFolders(User $user): array
+    {
+        $children = $queue = $excluded = [];
+        foreach (Folder::where('user_id', $user->id)->get(['id', 'parent_id', 'assistant_excluded']) as $folder) {
+            $children[(int) $folder->parent_id][] = $folder->id;
+            if ($folder->assistant_excluded) {
+                $queue[] = $folder->id;
+            }
         }
+        while (($id = array_pop($queue)) !== null) {
+            if (! isset($excluded[$id])) {
+                $excluded[$id] = true;
+                array_push($queue, ...($children[$id] ?? []));
+            }
+        }
+
+        return array_keys($excluded);
     }
 
     public function usedToday(User $user): int

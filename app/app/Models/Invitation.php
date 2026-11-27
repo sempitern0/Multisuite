@@ -41,7 +41,7 @@ class Invitation extends Model
         $issuer = $this->inviter;
 
         return $this->used_at === null && $this->expires_at->isFuture()
-            && $issuer !== null && $issuer->hasVerifiedEmail() && $issuer->canInviteRole($this->role);
+            && $issuer !== null && ! $issuer->isSuspended() && $issuer->hasVerifiedEmail() && $issuer->canInviteRole($this->role);
     }
 
     /** @return 'accepted'|'pending'|'expired' */
@@ -84,7 +84,7 @@ class Invitation extends Model
      */
     private static function canStillInvite(Builder $issuer): void
     {
-        $issuer->whereNotNull('users.email_verified_at')->where(fn (Builder $roles) => $roles
+        $issuer->whereNull('users.suspended_at')->whereNotNull('users.email_verified_at')->where(fn (Builder $roles) => $roles
             ->where('users.role', 'owner')->whereIn('invitations.role', ['admin', 'member'])
             ->orWhere(fn (Builder $admin) => $admin->where('users.role', 'admin')->where('invitations.role', 'member')));
     }

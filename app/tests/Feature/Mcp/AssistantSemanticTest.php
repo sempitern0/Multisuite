@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Ai\Embeddings;
 use Laravel\Ai\Prompts\EmbeddingsPrompt;
+use Livewire\Livewire;
 use RuntimeException;
 use Tests\Concerns\UsesPrivateStorage;
 use Tests\TestCase;
@@ -120,6 +121,44 @@ class AssistantSemanticTest extends TestCase
         app(UpdateAssistantSettings::class)->handle($this->owner, true, array_keys(AssistantAccess::TOOLS), 200, 1000000, true, false);
         $this->artisan('portal:assistant-index')->assertSuccessful();
         $this->assertSame(0, DB::table('assistant_chunks')->count());
+    }
+
+    public function test_parent_exclusion_removes_existing_passages_and_skips_descendants(): void
+    {
+        $access = app(AssistantAccess::class);
+        $access->setContentConsent($this->member, true);
+        $files = app(PersonalFiles::class);
+        $parent = $files->createFolder($this->member, null, 'Personal');
+        $child = $files->createFolder($this->member, $parent->id, 'Facturas');
+        $this->upload($this->member, 'luz.txt', 'Factura de la luz', $child->id)->assertOk();
+        $this->assertSame(1, $this->index()->sync($this->member));
+        $access->setFolderExcluded($this->member, $parent->id, true);
+        $this->assertSame(0, $this->index()->stats($this->member)['chunks']);
+        $this->assertSame(0, $this->index()->sync($this->member));
+        $access->setFolderExcluded($this->member, $parent->id, false);
+        $this->assertSame(1, $this->index()->sync($this->member));
+
+        // From the folder page: the same rule, through the button.
+        $this->actingAs($this->member);
+        Livewire::test('pages::files.index', ['folderId' => $parent->id])
+            ->call('setAssistantExcluded', true)->assertHasNoErrors();
+        $this->assertTrue((bool) $parent->fresh()?->assistant_excluded);
+        $this->assertSame(0, $this->index()->stats($this->member)['chunks']);
+    }
+
+    public function test_consent_changed_during_embedding_discards_the_result(): void
+    {
+        $access = app(AssistantAccess::class);
+        $access->setContentConsent($this->member, true);
+        $this->upload($this->member, 'nota.txt', 'Contenido privado')->assertOk();
+        Embeddings::fake(function (EmbeddingsPrompt $prompt) use ($access): array {
+            $access->setContentConsent($this->member, false);
+            $access->setContentConsent($this->member, true);
+
+            return array_fill(0, count($prompt->inputs), array_fill(0, SemanticIndex::DIMENSIONS, 0.1));
+        });
+        $this->assertSame(0, $this->index()->sync($this->member));
+        $this->assertSame(0, $this->index()->stats($this->member)['chunks']);
     }
 
     public function test_a_provider_outage_leaves_files_pending_for_the_next_pass(): void

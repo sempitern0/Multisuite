@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Models\User;
+use App\Services\Assistant\AssistantAccess;
 use App\Services\Files\FileText;
 use App\Services\Files\PersonalFiles;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -46,13 +47,23 @@ class FilesReadExcerpt extends AssistantTool
         ]);
         // Owner-scoped lookup: another person's file id is "not found"; trashed files are not readable.
         $file = $this->files->file($user, (int) $input['file_id']);
-        if ($file->trashed_at !== null || $file->version_of_id !== null) {
+        $access = app(AssistantAccess::class);
+        $snapshot = $user->fresh();
+        if ($snapshot === null || in_array($file->folder_id, $access->excludedFolders($user), true) || $file->trashed_at !== null || $file->version_of_id !== null) {
             return Response::error('No existe o no es tuyo.');
         }
         try {
             $slice = $this->text->slice($user, $file, (int) ($input['offset'] ?? 0));
         } catch (RuntimeException $exception) {
             return Response::error($exception->getMessage());
+        }
+
+        $current = $snapshot->fresh();
+        $file = $file->fresh();
+        if ($current === null || $current->assistant_content_revision !== $snapshot->assistant_content_revision
+            || $access->toolDenial($current, 'files_read_excerpt') !== null || $file === null || ! $file->isCurrent()
+            || in_array($file->folder_id, $access->excludedFolders($current), true)) {
+            return Response::error('El contenido ya no está disponible.');
         }
 
         return Response::structured([

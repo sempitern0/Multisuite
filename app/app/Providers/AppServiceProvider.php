@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-use App\Events\AssistantContentConsentWithdrawn;
+use App\Events\AssistantContentRevoked;
 use App\Events\PrivateUploadReady;
 use App\Models\Folder;
 use App\Models\PersonalTransaction;
@@ -68,7 +68,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(PrivateUploadReady::class, fn (PrivateUploadReady $event) => app(PersonalFiles::class)->onUploadReady($event->uploadId, $event->userId));
         // Signing out of Multisuite also ends the Jellyfin session it opened for that browser.
         Event::listen(Logout::class, fn () => app(VideoSession::class)->forget());
-        Event::listen(AssistantContentConsentWithdrawn::class, fn (AssistantContentConsentWithdrawn $event) => app(SemanticIndex::class)->forget($event->userId));
+        Event::listen(AssistantContentRevoked::class, fn (AssistantContentRevoked $event) => app(SemanticIndex::class)->forget($event->userId));
         Gate::define('view-admin-audit', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
         Gate::define('manage-invitations', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
         Gate::define('view-storage', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));

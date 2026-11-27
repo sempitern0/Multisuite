@@ -198,9 +198,18 @@ class UserAdministrationTest extends TestCase
         $member->save();
 
         $this->actAs($owner);
+        $this->withoutDefer();
+        // The service is down: Multisuite closes at once, the remote block waits for a retry.
+        $this->remoteDown = true;
         $this->page($member)->call('setSuspended', true)->assertHasNoErrors();
 
         $this->assertTrue($member->fresh()->isSuspended());
+        $this->assertSame(ServiceAccounts::LOCK_PENDING, ServiceAccount::firstOrFail()->status);
+        $this->artisan('portal:sync-accounts')->assertSuccessful();
+        $this->assertSame(ServiceAccounts::LOCK_PENDING, ServiceAccount::firstOrFail()->status);
+        $this->remoteDown = false;
+        $this->travel(6)->minutes();
+        $this->artisan('portal:sync-accounts')->assertSuccessful();
         $this->assertSame(ServiceAccounts::LOCKED, ServiceAccount::firstOrFail()->status);
         $this->actingAs($member->fresh())->get(route('dashboard'))->assertRedirect(route('login'));
         $this->assertGuest();
@@ -212,6 +221,39 @@ class UserAdministrationTest extends TestCase
         $this->assertFalse($member->fresh()->isSuspended());
         $this->assertSame(ServiceAccounts::AWAITING_PASSWORD, ServiceAccount::firstOrFail()->status);
         $this->assertSame('user.reactivated', AdminAuditEvent::latest('id')->value('action'));
+    }
+
+    public function test_suspension_blocks_reachable_services_right_away(): void
+    {
+        $owner = $this->person('owner');
+        $member = $this->memberWithMusic();
+        $this->actAs($owner);
+        $this->withoutDefer();
+
+        $this->page($member)->call('setSuspended', true)->assertHasNoErrors();
+
+        $this->assertSame(ServiceAccounts::LOCKED, ServiceAccount::firstOrFail()->status, 'No wait for the scheduler.');
+    }
+
+    public function test_a_block_waiting_for_an_unconfigured_service_is_shown_and_resumes_when_configured(): void
+    {
+        $owner = $this->person('owner');
+        $member = $this->memberWithMusic();
+        $this->actAs($owner);
+        $this->withoutDefer();
+        config(['provisioning.music.enabled' => false]); // the operator turned Música off
+
+        $this->page($member)->call('setSuspended', true)->assertHasNoErrors();
+
+        $account = ServiceAccount::firstOrFail();
+        $this->assertSame(ServiceAccounts::LOCK_PENDING, $account->status);
+        $this->assertNull($account->retry_at, 'No pointless retries every five minutes.');
+        $this->assertSame('bad', $account->state()['tone']);
+        $this->assertStringContainsString('no está configurado', $account->state()['label']);
+
+        config(['provisioning.music.enabled' => true]);
+        $this->artisan('portal:sync-accounts')->assertSuccessful();
+        $this->assertSame(ServiceAccounts::LOCKED, ServiceAccount::firstOrFail()->status);
     }
 
     public function test_a_person_uploads_and_replaces_their_own_photo_which_is_stored_small_and_private(): void
