@@ -11,6 +11,7 @@ use App\Services\Assistant\AssistantAccess;
 use App\Services\Files\ConnectedFolders;
 use App\Services\Files\FileExports;
 use App\Services\Files\PersonalFiles;
+use App\Services\Files\Publications;
 use App\Support\DomainErrors;
 use App\Support\UserPreferences;
 use Illuminate\Support\Facades\Auth;
@@ -227,6 +228,42 @@ new #[Title('Mis archivos')] class extends Component {
         $this->toast($moved === 1 ? '1 archivo movido a la papelera' : $moved.' archivos movidos a la papelera');
     }
 
+    /**
+     * Selected files to the common fund, as the person's role allows (docs/STORAGE.md §
+     * Publicación para todos): administrators publish them after a recent password
+     * confirmation, like on Administración → Para todos; anyone else proposes them.
+     */
+    public function shareSelected(Publications $publications): void
+    {
+        $ids = array_values(array_unique(array_map('intval', array_filter($this->selectedFiles, 'is_numeric'))));
+        abort_if($ids === [] || count($ids) > 500, 422);
+        $user = Auth::user();
+        $this->throttle('files');
+        $deciding = Gate::allows('publish-content');
+        if ($deciding) {
+            $this->throttle('admin');
+            if (time() - (int) session('auth.password_confirmed_at', 0) > (int) config('auth.password_timeout')) {
+                redirect()->setIntendedUrl(url()->previous());
+                $this->redirectRoute('password.confirm');
+
+                return;
+            }
+        }
+        $files = app(PersonalFiles::class);
+        foreach ($ids as $id) {
+            Gate::authorize('update', $files->file($user, $id));
+        }
+        $result = DomainErrors::guard('publication', fn () => $publications->share($user, $ids));
+        $this->selectedFiles = [];
+        unset($this->listing);
+        $count = fn (int $n, string $one, string $many): string => $n === 1 ? '1 archivo '.$one : $n.' archivos '.$many;
+        $this->toast(match (true) {
+            $result['published'] > 0 => $count($result['published'], 'publicado', 'publicados').' para todos',
+            $result['requested'] > 0 => $count($result['requested'], 'propuesto', 'propuestos').' para todos. Un administrador decidirá',
+            default => 'Ya estaban propuestos o publicados para todos',
+        });
+    }
+
     public function export(string $scope, FileExports $exports): void
     {
         $this->throttle('file-exports');
@@ -268,6 +305,7 @@ new #[Title('Mis archivos')] class extends Component {
         $summary = $describe($l['summaries'][$folder->id ?? 0] ?? ['items' => 0, 'bytes' => 0]);
         $usage = $l['limit'] > 0 ? ' · Usas '.$fmt($l['used']).' de '.$fmt($l['limit']) : '';
         $selected = '$wire.selectedFiles.length + $wire.selectedFolders.length';
+        $deciding = Gate::allows('publish-content');
     @endphp
     <x-ui::breadcrumbs :items="$crumbs" />
     <x-ui::page-header :title="$folder->name ?? 'Mis archivos'" :description="$summary.$usage"
@@ -315,7 +353,7 @@ new #[Title('Mis archivos')] class extends Component {
         @if ($l['pending'] > 0)
             <x-ui::text tone="muted">{{ $l['pending'] }} {{ $l['pending'] === 1 ? 'subida sin terminar' : 'subidas sin terminar' }}. Si cerraste la página a mitad, el espacio se libera solo al cabo de unos 30–40 minutos.</x-ui::text>
         @endif
-        @foreach (['folder_delete', 'file_trash', 'export'] as $field)
+        @foreach (['folder_delete', 'file_trash', 'export', 'publication'] as $field)
             @error($field)<x-ui::notice tone="bad">{{ $message }}</x-ui::notice>@enderror
         @endforeach
 
@@ -324,6 +362,19 @@ new #[Title('Mis archivos')] class extends Component {
             <x-ui::selection-bar :show="$selected.' > 0'">
                 <span class="ui-selection-count" x-text="(n => n === 1 ? '1 elemento seleccionado' : n + ' elementos seleccionados')({{ $selected }})"></span>
                 <x-ui::button variant="secondary" size="sm" icon="archive" wire:click="export('selection')">Descargar en ZIP</x-ui::button>
+                @if ($this->connection !== null || $l['searching'])
+                    <x-ui::confirm :title="$deciding ? '¿Publicar para todos los archivos seleccionados?' : '¿Proponer para todos los archivos seleccionados?'">
+                        <x-slot:trigger>
+                            <x-ui::button variant="secondary" size="sm" icon="share" x-bind:disabled="$wire.selectedFiles.length === 0" title="Solo archivos de carpetas conectadas (Música, Libros, Cómics, Vídeos…); las carpetas seleccionadas no se envían">{{ $deciding ? 'Publicar para todos' : 'Proponer para todos' }}</x-ui::button>
+                        </x-slot:trigger>
+                        @if ($deciding)
+                            Los verán todas las personas con acceso al servicio. Su espacio pasa al fondo común y dejarán de contar en el tuyo. Solo se publican archivos de carpetas conectadas: si alguno no lo está, no se publica ninguno.
+                        @else
+                            Un administrador decidirá si los publica. Mientras tanto no podrás renombrarlos ni moverlos a la papelera. Si los publica, los verán todas las personas con acceso al servicio, dejarán de contar en tu espacio y no podrás borrarlos tú.
+                        @endif
+                        <x-slot:action><x-ui::button wire:click="shareSelected">{{ $deciding ? 'Publicar para todos' : 'Proponer para todos' }}</x-ui::button></x-slot:action>
+                    </x-ui::confirm>
+                @endif
                 <x-ui::button variant="secondary" size="sm" icon="trash" wire:click="trashSelected" x-bind:disabled="$wire.selectedFiles.length === 0" title="Las carpetas no van a la papelera; solo los archivos seleccionados">Mover a la papelera</x-ui::button>
                 <x-ui::button variant="ghost" size="sm" icon="close" label="Quitar la selección" x-on:click="$wire.selectedFiles = []; $wire.selectedFolders = []" />
             </x-ui::selection-bar>

@@ -18,9 +18,11 @@ use App\Services\NavidromeAccounts;
 use App\Services\Storage\StorageReservations;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use RuntimeException;
 use Tests\Concerns\UsesPrivateStorage;
 use Tests\TestCase;
@@ -183,6 +185,59 @@ class PublicationsTest extends TestCase
         $this->artisan('portal:media-sync')->assertSuccessful();
 
         $this->assertFileDoesNotExist($common);
+    }
+
+    public function test_a_member_proposes_several_selected_files_all_or_nothing(): void
+    {
+        $first = $this->song($this->member, 'uno.mp3', 'ID3'.str_repeat('e', 200));
+        $second = $this->song($this->member, 'dos.mp3', 'ID3'.str_repeat('f', 200));
+        $this->upload($this->member, 'nota.txt', 'hola')->assertOk();
+        $loose = $this->entry('nota.txt')->id;
+        $foreign = $this->song($this->other, 'ajena.mp3', 'ID3'.str_repeat('g', 200));
+        $music = Folder::where('user_id', $this->member->id)->where('media_link', 'music')->value('id');
+        $page = fn () => Livewire::actingAs($this->member)->test('pages::files.index', ['folderId' => $music]);
+
+        $page()->assertSee('Proponer para todos')->assertDontSee('Publicar para todos')
+            ->set('selectedFiles', [$first, $foreign])->call('shareSelected')->assertStatus(404);
+        $page()->set('selectedFiles', [$first, $loose])->call('shareSelected')
+            ->assertHasErrors('publication')->assertSee('«nota.txt»');
+        $this->assertSame(0, Publication::count(), 'One file that cannot be proposed cancels the batch.');
+
+        $page()->set('selectedFiles', [$first, (string) $second])->call('shareSelected')
+            ->assertHasNoErrors()->assertSet('selectedFiles', []);
+        $this->assertSame([PublicationState::Requested->value], Publication::pluck('state')->unique()->values()->all());
+        $this->assertSame(2, Publication::where('contributor_id', $this->member->id)->count());
+        $this->assertSame([], self::$granted, 'A member only proposes.');
+        $page()->set('selectedFiles', [$first])->call('shareSelected')->assertHasNoErrors();
+        $this->assertSame(2, Publication::count(), 'Proposing again keeps the same proposal.');
+    }
+
+    public function test_an_administrator_publishes_selected_files_after_confirming_the_password(): void
+    {
+        $first = $this->song($this->owner, 'propia.mp3', 'ID3'.str_repeat('h', 300));
+        $second = $this->song($this->owner, 'otra.mp3', 'ID3'.str_repeat('i', 300));
+        $used = UserStorageQuota::findOrFail($this->owner->id)->used_bytes;
+        $music = Folder::where('user_id', $this->owner->id)->where('media_link', 'music')->value('id');
+        $page = fn () => Livewire::actingAs($this->owner)->test('pages::files.index', ['folderId' => $music]);
+
+        $page()->assertSee('Publicar para todos')->set('selectedFiles', [$first, $second])->call('shareSelected')
+            ->assertRedirect(route('password.confirm'));
+        $this->assertSame(0, Publication::count());
+
+        session(['auth.password_confirmed_at' => time()]);
+        self::$failGrant = true;
+        $page()->set('selectedFiles', [$first, $second])->call('shareSelected')->assertHasErrors('publication');
+        $this->assertSame(2, Publication::where('state', PublicationState::Requested->value)->count(), 'Left as proposals to decide later.');
+        $this->assertSame(0, app(StorageReservations::class)->commonBytes());
+        $this->assertFileDoesNotExist($this->root.'/.multisuite-media/music/comun/propia.mp3');
+
+        self::$failGrant = false;
+        $page()->set('selectedFiles', [$first, $second])->call('shareSelected')->assertHasNoErrors();
+        $this->assertSame(2, Publication::where('state', PublicationState::Published->value)->count());
+        $this->assertSame(606, app(StorageReservations::class)->commonBytes());
+        $this->assertSame($used - 606, UserStorageQuota::findOrFail($this->owner->id)->used_bytes);
+        $this->assertFileExists($this->root.'/.multisuite-media/music/comun/propia.mp3');
+        $this->assertSame(2, DB::table('admin_audit_events')->where('action', 'content.published')->count());
     }
 
     private function song(User $user, string $name, string $body): int
