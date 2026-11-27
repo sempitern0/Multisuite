@@ -1,6 +1,6 @@
 # Estado de Multisuite
 
-Instantánea del 26 de noviembre de 2026. Se reescribe al cerrar cada incremento; el detalle vive en git y en las PR.
+Instantánea del 27 de noviembre de 2026. Se reescribe al cerrar cada incremento; el detalle vive en git y en las PR.
 
 ## Integrado en main
 - Portal Laravel/Livewire con personas, invitaciones, cuentas de servicio, Mis archivos (carpetas conectadas con los servicios), cuotas, almacenamiento y auditoría. Música con Navidrome y Lectura con Komga 1.30.1 (Kavita desactivado y reactivable), con cuentas automáticas y bibliotecas privadas. Validado en CI; QA de Komga con dos personas pendiente.
@@ -15,20 +15,17 @@ Instantánea del 26 de noviembre de 2026. Se reescribe al cerrar cada incremento
   - Búsqueda en Música (Navidrome) y Lectura (Komga) limitada a las bibliotecas de cada persona.
   - Búsqueda por significado en los archivos de quien acepte la lectura (embeddings del proveedor, texto cifrado, cada 15 minutos; una caída del proveedor deja los archivos pendientes para la siguiente pasada).
   - Clientes MCP externos por OAuth (Passport), solo consultas, con interruptor del owner y desconexión por persona; pendiente de probar con clientes reales tras P03.
-
-## En revisión (PR #47, sin fusionar)
-- Mejoras técnicas: registro de clientes OAuth limitado y solo con el interruptor del owner; borrado del índice semántico al retirar el consentimiento; enums de roles y estados con `CHECK` en PostgreSQL; retirada de Flux (OTP nativo `x-ui::otp`) y del andamiaje SaaS heredado.
-- **Publicación para todos (S04b)**: proponer desde Mis archivos, decidir en Administración → Para todos; biblioteca común por enlaces duros concedida en el servicio antes de confirmar; espacio al fondo común; lo publicado sobrevive a la baja del aportante (STORAGE.md § Publicación para todos).
-- **Vídeo con Jellyfin 10.11.11 (P04.2)**: `make video-detect` (Intel, AMD, NVIDIA o procesador), conexión del owner, cuentas privadas no administradoras con carpeta común del operador, control parental por persona, aceleración elegible, aspecto de Multisuite con botón de vuelta y entrada desde la portada sin segundo inicio de sesión ([JELLYFIN.md](JELLYFIN.md)).
-- La integración base pasó CI y el propietario confirmó la conexión en desarrollo. La revisión local comprobó la subida de un MP4 hasta el catálogo privado y restauró la configuración con restic en otro Jellyfin desechable. Pendientes CI de los cambios y QA con GPU y clientes reales.
+- **Mejoras técnicas (PR #47)**: registro de clientes OAuth limitado y solo con el interruptor del owner; borrado del índice semántico al retirar el consentimiento; enums de roles y estados con `CHECK` en PostgreSQL; sin Flux (OTP nativo `x-ui::otp`) ni andamiaje SaaS heredado.
+- **Publicación para todos (S04b, PR #47)**: proponer desde Mis archivos, decidir en Administración → Para todos; biblioteca común por enlaces duros concedida en el servicio antes de confirmar; espacio al fondo común; lo publicado sobrevive a la baja del aportante (STORAGE.md § Publicación para todos). Validado en CI; QA con dos cuentas pendiente.
+- **Vídeo con Jellyfin 10.11.11 (P04.2, PR #47)**: `make video-detect` (Intel, AMD, NVIDIA o procesador), conexión del owner, cuentas privadas no administradoras con carpeta común del operador, control parental por persona, aceleración elegible, gateway con aspecto de Multisuite y botón de vuelta, entrada desde la portada sin segundo inicio de sesión (un dispositivo por navegador, inactivos retirados a los 30 días) y copia de su configuración en instantánea propia ([JELLYFIN.md](JELLYFIN.md)). Validado en CI contra Jellyfin real (web con sesión iniciada en Chrome); el propietario confirmó la conexión y la subida de un MP4 en desarrollo. Pendiente QA con GPU y apps reales.
 
 ## Próximos pasos
-Revisar y fusionar PR #47 y hacer su QA (publicar con dos cuentas; Vídeo con GPU real, JELLYFIN.md § QA). QA del asistente con un modelo real (MCP.md § Probar con un modelo real) y de Komga; después P03 (red privada) para probar los clientes externos y MCP-08 (piloto).
+QA de #47 (publicar con dos cuentas; Vídeo con GPU real y apps, JELLYFIN.md § QA). Revisar la PR #48 (endurecimiento de privacidad de cuentas). QA del asistente con un modelo real (MCP.md § Probar con un modelo real) y de Komga; después P03 (red privada) para probar los clientes externos y MCP-08 (piloto).
 
 ## Acciones pendientes del usuario
 - `make rebuild` (añade `pdftotext`), `make composer CMD="install"` y `make up` (migraciones y claves OAuth); conectar un proveedor desde *Ajustes del asistente*.
 - `make composer CMD="audit --locked"`.
-- Tras fusionar #47: `make composer CMD="install"` (sale Flux), `make up` (migraciones) y, para Vídeo, `make video-detect`, `make up` y Administración → Conexión de Vídeo; en producción declarar `VIDEO_COMMON_PATH`.
+- `make composer CMD="install"` (sale Flux), `make up` (migraciones) y, para Vídeo, `make video-detect`, `make up` y Administración → Conexión de Vídeo; en producción declarar `VIDEO_COMMON_PATH`.
 - Guardar `NAS_FILES_KEY` y `APP_KEY` fuera del servidor (sin `APP_KEY` las claves de IA no se pueden descifrar) y ensayar la copia (`make nas-backup`, `make nas-backup-verify`).
 
 ## Límites conocidos
