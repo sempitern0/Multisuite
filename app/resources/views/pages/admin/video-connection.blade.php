@@ -3,7 +3,7 @@
 use App\Livewire\Concerns\ForgetsSecrets;
 use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
-use App\Services\JellyfinAccounts;
+use App\Services\JellyfinServer;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -33,13 +33,13 @@ new #[Title('Conexión de Vídeo')] class extends Component {
 
     public function mount(): void
     {
-        $this->acceleration = $this->setupState === 'connected' ? app(JellyfinAccounts::class)->acceleration() : (string) array_key_first(JellyfinAccounts::accelerationChoices());
+        $this->acceleration = $this->setupState === 'connected' ? app(JellyfinServer::class)->acceleration() : (string) array_key_first(JellyfinServer::accelerationChoices());
     }
 
     #[Computed]
     public function setupState(): string
     {
-        return app(JellyfinAccounts::class)->setupState();
+        return app(JellyfinServer::class)->setupState();
     }
 
     public function connect(): void
@@ -56,7 +56,7 @@ new #[Title('Conexión de Vídeo')] class extends Component {
                 'name.regex' => 'Solo letras sin tildes, números, punto, guion, guion bajo o @.',
             ]);
             try {
-                app(JellyfinAccounts::class)->connect($user, $this->name, $this->password);
+                app(JellyfinServer::class)->connect($user, $this->name, $this->password);
             } catch (LockTimeoutException) {
                 $this->addError('password', 'La conexión ya se está preparando. Espera unos segundos y vuelve a intentarlo.');
 
@@ -74,7 +74,7 @@ new #[Title('Conexión de Vídeo')] class extends Component {
                 return;
             }
             unset($this->setupState);
-            $this->acceleration = app(JellyfinAccounts::class)->acceleration();
+            $this->acceleration = app(JellyfinServer::class)->acceleration();
             $this->toast('Vídeo conectado. Cada persona tendrá su cuenta al volver a entrar en Multisuite.');
         });
     }
@@ -82,9 +82,9 @@ new #[Title('Conexión de Vídeo')] class extends Component {
     public function saveAcceleration(): void
     {
         $this->throttle('admin');
-        $this->validate(['acceleration' => ['required', Rule::in(array_keys(JellyfinAccounts::accelerationChoices()))]]);
+        $this->validate(['acceleration' => ['required', Rule::in(array_keys(JellyfinServer::accelerationChoices()))]]);
         try {
-            app(JellyfinAccounts::class)->applyAcceleration($this->acceleration);
+            app(JellyfinServer::class)->applyAcceleration($this->acceleration);
         } catch (RuntimeException) {
             $this->addError('acceleration', 'Jellyfin no ha guardado el cambio. Comprueba que Vídeo esté en marcha y vuelve a intentarlo.');
 
@@ -126,9 +126,9 @@ new #[Title('Conexión de Vídeo')] class extends Component {
                 <x-ui::panel>
                     <x-ui::stack gap="md">
                         <x-ui::heading>Aceleración por hardware</x-ui::heading>
-                        <p>Convierte los vídeos más rápido y con menos consumo cuando un dispositivo no puede reproducir el original. Se ofrecen solo las opciones que este equipo tiene{{ JellyfinAccounts::vendor() === 'none' ? '; no se detectó ninguna tarjeta gráfica, así que se usa el procesador' : '' }}.</p>
+                        <p>Convierte los vídeos más rápido y con menos consumo cuando un dispositivo no puede reproducir el original. Se ofrecen solo las opciones que este equipo tiene{{ JellyfinServer::vendor() === 'none' ? '; no se detectó ninguna tarjeta gráfica, así que se usa el procesador' : '' }}.</p>
                         <x-ui::form wire:submit="saveAcceleration">
-                            <x-ui::select name="acceleration" label="Usar" :options="JellyfinAccounts::accelerationChoices()" wire:model="acceleration" help="Si cambias la tarjeta gráfica, ejecuta make video-detect y reinicia Vídeo." />
+                            <x-ui::select name="acceleration" label="Usar" :options="JellyfinServer::accelerationChoices()" wire:model="acceleration" help="Si cambias la tarjeta gráfica, ejecuta make video-detect y reinicia Vídeo." />
                             <x-ui::button type="submit" variant="secondary">Guardar</x-ui::button>
                         </x-ui::form>
                     </x-ui::stack>

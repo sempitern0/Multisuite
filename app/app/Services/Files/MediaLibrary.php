@@ -41,6 +41,7 @@ class MediaLibrary
         private ServiceAccounts $accounts,
         private ServiceProvisioners $provisioners,
         private LinkMirror $mirror,
+        private MediaScans $scans,
     ) {}
 
     /** After the current transaction commits and the response is sent, bring the person's mirror up to date. */
@@ -98,7 +99,7 @@ class MediaLibrary
                     if ($provisioner instanceof PersonalLibraries) {
                         try {
                             $provisioner->ensurePersonalLibrary($account, $definition['section'], $definition['library']);
-                            $this->provisioners->notifyMediaChanges($definition['service'], $directory, $desired);
+                            $this->scans->changed($definition['service'], $directory, $desired);
                         } catch (RuntimeException $exception) {
                             $failed = true;
                             Log::warning('personal library not ready', ['user' => $user->id, 'service' => $definition['service'], 'reason' => $exception->getMessage()]);

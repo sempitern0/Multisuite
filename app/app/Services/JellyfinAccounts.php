@@ -3,9 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ServiceAccountStatus;
-use App\Enums\ServiceAuditAction;
 use App\Models\ServiceAccount;
-use App\Models\ServiceConnection;
 use App\Models\User;
 use App\Services\Files\MediaLibrary;
 use App\Services\Provisioning\CommonLibraries;
@@ -13,39 +11,22 @@ use App\Services\Provisioning\NeedsConnection;
 use App\Services\Provisioning\PersonalLibraries;
 use App\Services\Provisioning\ScansMediaChanges;
 use App\Services\Provisioning\ServiceProvisioner;
-use App\Services\Provisioning\ServiceUrl;
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Vídeo (Jellyfin 10.11, docs/JELLYFIN.md). The owner connects it once (the portal completes the
- * startup wizard on an empty server or proves an existing administrator) and the portal keeps an
- * API key. Each person gets a non-administrator account that sees only their private library, the
- * operator's common folder and what was published for everyone, with their parental limit.
+ * People's Vídeo accounts (Jellyfin 10.11, docs/JELLYFIN.md), once the owner has connected the
+ * server (JellyfinServer). Each person gets a non-administrator account that sees only their
+ * private library, the operator's common folder and what was published for everyone, with their
+ * parental limit.
  */
 final class JellyfinAccounts implements CommonLibraries, NeedsConnection, PersonalLibraries, ScansMediaChanges, ServiceProvisioner
 {
     /** Operator's common folder inside the container (compose.video.yaml, read-only). */
     public const OPERATOR_COMMON = '/common';
-
-    /** Hardware acceleration choices offered per detected GPU vendor (make video-detect). */
-    public const ACCELERATION = [
-        'none' => 'Procesador (sin aceleración)',
-        'qsv' => 'Intel Quick Sync',
-        'vaapi' => 'VA-API (Intel o AMD)',
-        'nvenc' => 'NVIDIA NVENC',
-    ];
-
-    /** @var array<string, list<string>> */
-    private const BY_VENDOR = ['intel' => ['qsv', 'vaapi'], 'amd' => ['vaapi'], 'nvidia' => ['nvenc']];
 
     /** Age limits offered to administrators; Jellyfin 10.9+ rating scores follow the minimum age. */
     public const AGE_LIMITS = [7 => 'Hasta 7 años', 12 => 'Hasta 12 años', 16 => 'Hasta 16 años', 18 => 'Hasta 18 años'];
@@ -54,214 +35,16 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
 
     private const RESET_PROVIDER = 'Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider';
 
-    private const DEVICE = 'multisuite-portal';
+    public function __construct(private JellyfinClient $jellyfin) {}
 
     public static function connected(): bool
     {
-        return ServiceConnection::whereKey('video')->exists();
-    }
-
-    /** GPU vendor detected on the host by make video-detect (intel, amd, nvidia or none). */
-    public static function vendor(): string
-    {
-        $vendor = (string) config('provisioning.video.hardware', 'none');
-
-        return array_key_exists($vendor, self::BY_VENDOR) ? $vendor : 'none';
-    }
-
-    /** @return array<string, string> choices valid for this host; the first one is the default. */
-    public static function accelerationChoices(): array
-    {
-        $choices = [];
-        foreach ([...(self::BY_VENDOR[self::vendor()] ?? []), 'none'] as $key) {
-            $choices[$key] = self::ACCELERATION[$key];
-        }
-
-        return $choices;
-    }
-
-    /**
-     * One Authorization header (Jellyfin's MediaBrowser scheme), with a token when given. $device
-     * names a person's browser session (VideoSession); the portal's own calls use one fixed device.
-     */
-    public function http(#[\SensitiveParameter] ?string $token = null, string $device = self::DEVICE): PendingRequest
-    {
-        $client = 'MediaBrowser Client="Multisuite", Device="Multisuite", DeviceId="'.preg_replace('/[^a-z0-9-]/', '', $device).'", Version="1.0.0"';
-
-        return Http::baseUrl(ServiceUrl::validated((string) config('portal.video_internal_url')))
-            ->acceptJson()->asJson()->withoutRedirecting()->connectTimeout(2)->timeout(10)
-            ->replaceHeaders(['Authorization' => $client.($token === null ? '' : ', Token="'.$token.'"')]);
-    }
-
-    public function client(): PendingRequest
-    {
-        $connection = ServiceConnection::find('video') ?? throw new RuntimeException('configuration');
-
-        return $this->http($connection->secret);
-    }
-
-    /** empty (wizard pending), existing (set up, not connected), connected or unavailable. Never discloses identities. */
-    public function setupState(): string
-    {
-        try {
-            $info = $this->http()->get('/System/Info/Public');
-            $completed = $info->json('StartupWizardCompleted');
-            if (! $info->successful() || ! is_bool($completed)) {
-                return 'unavailable';
-            }
-
-            return $completed ? (self::connected() ? 'connected' : 'existing') : 'empty';
-        } catch (ConnectionException|RuntimeException) {
-            return 'unavailable';
-        }
-    }
-
-    /**
-     * Authorise the integration once: on an empty server the owner's chosen name and password become
-     * its administrator; otherwise they must belong to an existing administrator.
-     */
-    public function connect(User $owner, string $name, #[\SensitiveParameter] string $password): void
-    {
-        abort_unless($owner->role === 'owner' && ! $owner->isSuspended() && $owner->hasVerifiedEmail(), 403);
-        Cache::lock('video-connection', 60)->block(10, function () use ($owner, $name, $password): void {
-            $this->guard(function () use ($owner, $name, $password): void {
-                if ($this->setupState() === 'empty') {
-                    $this->stage($this->http()->post('/Startup/Configuration', [
-                        'UICulture' => 'es-ES', 'MetadataCountryCode' => 'ES', 'PreferredMetadataLanguage' => 'es',
-                    ]), 'wizard');
-                    $this->stage($this->http()->get('/Startup/User'), 'wizard');
-                    $this->stage($this->http()->post('/Startup/User', ['Name' => $name, 'Password' => $password]), 'wizard');
-                    $this->stage($this->http()->post('/Startup/RemoteAccess', ['EnableRemoteAccess' => false, 'EnableAutomaticPortMapping' => false]), 'wizard');
-                    $this->stage($this->http()->post('/Startup/Complete'), 'wizard');
-                }
-                $login = $this->stage($this->http()->post('/Users/AuthenticateByName', ['Username' => $name, 'Pw' => $password]), 'login');
-                $token = $login->json('AccessToken');
-                $native = $login->json('User');
-                if (! is_string($token) || $token === '') {
-                    throw new RuntimeException('not_admin');
-                }
-                $admin = $this->http($token);
-                try {
-                    if (! is_array($native) || ($native['Policy']['IsAdministrator'] ?? false) !== true) {
-                        throw new RuntimeException('not_admin');
-                    }
-                    $key = $this->connectionKey($admin);
-                } finally {
-                    $admin->post('/Sessions/Logout');
-                }
-                DB::transaction(function () use ($owner, $native, $key): void {
-                    $locked = User::whereKey($owner->id)->lockForUpdate()->firstOrFail();
-                    abort_unless($locked->role === 'owner' && ! $locked->isSuspended(), 403);
-                    $connection = ServiceConnection::find('video') ?? new ServiceConnection;
-                    $connection->service = 'video';
-                    $connection->operator_id = (string) $native['Id'];
-                    $connection->secret = $key;
-                    $connection->save();
-                    app(AdminAudit::class)->recordService($locked, $locked, 'video', ServiceAuditAction::AccountLinked);
-                });
-                $this->applyAcceleration(array_key_first(self::accelerationChoices()));
-                $this->brand();
-            });
-        });
-        $this->reserveExisting();
-    }
-
-    /** Keep the installed key when reauthorising against the same server. */
-    private function connectionKey(PendingRequest $admin): string
-    {
-        $current = ServiceConnection::find('video')?->secret;
-        if (is_string($current) && $current !== '') {
-            $keys = $this->stage($admin->get('/Auth/Keys'), 'key')->json('Items');
-            if (is_array($keys) && in_array($current, array_column($keys, 'AccessToken'), true)) {
-                return $current;
-            }
-        }
-
-        $name = 'Multisuite '.Str::lower(Str::random(8));
-        $this->stage($admin->post('/Auth/Keys?app='.rawurlencode($name)), 'key');
-        $key = collect((array) $this->stage($admin->get('/Auth/Keys'), 'key')->json('Items'))
-            ->first(fn ($row): bool => is_array($row) && ($row['AppName'] ?? null) === $name)['AccessToken'] ?? null;
-        if (! is_string($key) || $key === '') {
-            throw new RuntimeException('unavailable');
-        }
-
-        return $key;
-    }
-
-    /**
-     * Jellyfin's sign-in page tells people which credentials to use. Cosmetic: a failure is only
-     * logged (the look itself comes from the gateway, docker/video-proxy).
-     */
-    public function brand(): void
-    {
-        try {
-            $branding = $this->check($this->client()->get('/System/Configuration/branding'))->json();
-            $branding = is_array($branding) ? $branding : [];
-            $branding['LoginDisclaimer'] = 'Entra con tu usuario y contraseña de Multisuite.';
-            $branding['SplashscreenEnabled'] = false;
-            $this->check($this->client()->post('/System/Configuration/branding', $branding));
-        } catch (ConnectionException|RuntimeException $exception) {
-            Log::warning('video branding not applied', ['reason' => $exception->getMessage()]);
-        }
-    }
-
-    /** Existing people activate their account on their next sign-in (Laravel hashes cannot be replayed). */
-    public function reserveExisting(): void
-    {
-        if (! config('provisioning.video.enabled') || ! self::connected()) {
-            return;
-        }
-        User::orderBy('id')->each(function (User $user): void {
-            DB::transaction(function () use ($user): void {
-                $locked = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
-                $accounts = app(ServiceAccounts::class);
-                $accounts->grantNewServices($locked);
-                $accounts->awaitPassword($locked);
-            });
-        });
-    }
-
-    /** Current hardware acceleration in Jellyfin ('none' when it cannot be read). */
-    public function acceleration(): string
-    {
-        try {
-            $type = $this->check($this->client()->get('/System/Configuration/encoding'))->json('HardwareAccelerationType');
-
-            return is_string($type) && array_key_exists($type, self::ACCELERATION) ? $type : 'none';
-        } catch (ConnectionException|RuntimeException) {
-            return 'none';
-        }
-    }
-
-    /** Applies one of accelerationChoices() through Jellyfin's own encoding settings. */
-    public function applyAcceleration(string $type): void
-    {
-        if (! array_key_exists($type, self::accelerationChoices())) {
-            throw new RuntimeException('configuration');
-        }
-        $this->guard(function () use ($type): void {
-            $options = $this->check($this->client()->get('/System/Configuration/encoding'))->json();
-            if (! is_array($options)) {
-                throw new RuntimeException('unavailable');
-            }
-            $hardware = $type !== 'none';
-            $options['HardwareAccelerationType'] = $type;
-            $options['EnableHardwareEncoding'] = $hardware;
-            // Decoders every supported GPU of the last decade handles; Jellyfin falls back to the CPU otherwise.
-            $options['HardwareDecodingCodecs'] = $hardware ? ['h264', 'hevc', 'mpeg2video', 'vc1', 'vp9'] : [];
-            if (in_array($type, ['vaapi', 'qsv'], true)) {
-                $options['VaapiDevice'] = '/dev/dri/renderD128';
-            }
-            $this->check($this->client()->post('/System/Configuration/encoding', $options));
-            if ($this->check($this->client()->get('/System/Configuration/encoding'))->json('HardwareAccelerationType') !== $type) {
-                throw new RuntimeException('unavailable');
-            }
-        });
+        return JellyfinClient::connected();
     }
 
     public function synchronize(ServiceAccount $account, #[\SensitiveParameter] string $password): void
     {
-        $this->guard(function () use ($account, $password): void {
+        $this->jellyfin->guard(function () use ($account, $password): void {
             $user = User::findOrFail($account->user_id);
             $name = $user->username ?? $account->username;
             $remote = $this->find($account);
@@ -275,7 +58,7 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
                 }
                 // Created with a discarded random password: Jellyfin gives new accounts every library,
                 // so nobody can sign in until the policy below is saved and verified.
-                $remote = $this->check($this->client()->post('/Users/New', ['Name' => $name, 'Password' => Str::random(64)]))->json();
+                $remote = $this->jellyfin->check($this->jellyfin->admin()->post('/Users/New', ['Name' => $name, 'Password' => Str::random(64)]))->json();
                 if (! is_array($remote) || ! is_string($remote['Id'] ?? null)) {
                     throw new RuntimeException('unavailable');
                 }
@@ -293,18 +76,18 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
             if ($remote['Name'] !== $name) {
                 $this->rename($account, $name);
             }
-            $login = $this->check($this->http()->post('/Users/AuthenticateByName', ['Username' => $name, 'Pw' => $password]));
+            $login = $this->jellyfin->check($this->jellyfin->http()->post('/Users/AuthenticateByName', ['Username' => $name, 'Pw' => $password]));
             if ($login->json('User.Id') !== $account->external_id) {
                 throw new RuntimeException('unavailable');
             }
-            $this->http((string) $login->json('AccessToken'))->post('/Sessions/Logout');
+            $this->jellyfin->http((string) $login->json('AccessToken'))->post('/Sessions/Logout');
             $account->username = $name;
         });
     }
 
     public function rename(ServiceAccount $account, string $username): void
     {
-        $this->guard(function () use ($account, $username): void {
+        $this->jellyfin->guard(function () use ($account, $username): void {
             $remote = $this->find($account);
             if ($remote === null) {
                 return;
@@ -313,11 +96,11 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
             if ($remote['Name'] === $username) {
                 return;
             }
-            $response = $this->client()->post('/Users?userId='.rawurlencode((string) $account->external_id), [...$remote, 'Name' => $username]);
+            $response = $this->jellyfin->admin()->post('/Users?userId='.rawurlencode((string) $account->external_id), [...$remote, 'Name' => $username]);
             if (in_array($response->status(), [400, 409], true)) {
                 throw new RuntimeException('conflict');
             }
-            $this->check($response);
+            $this->jellyfin->check($response);
             if (($this->find($account)['Name'] ?? null) !== $username) {
                 throw new RuntimeException('unavailable');
             }
@@ -326,7 +109,7 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
 
     public function lock(ServiceAccount $account): void
     {
-        $this->guard(function () use ($account): void {
+        $this->jellyfin->guard(function () use ($account): void {
             $remote = $this->find($account);
             if ($remote === null) {
                 return;
@@ -340,13 +123,13 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
 
     public function remove(ServiceAccount $account): void
     {
-        $this->guard(function () use ($account): void {
+        $this->jellyfin->guard(function () use ($account): void {
             $remote = $this->find($account);
             if ($remote === null) {
                 return;
             }
             $this->assertIdentity($account, $remote, [$account->username]);
-            $this->check($this->client()->delete('/Users/'.rawurlencode((string) $account->external_id)));
+            $this->jellyfin->check($this->jellyfin->admin()->delete('/Users/'.rawurlencode((string) $account->external_id)));
             if ($this->find($account) !== null) {
                 throw new RuntimeException('unavailable');
             }
@@ -380,7 +163,7 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
     /** Serialised against suspension and revocation: a stale job must never restore access. */
     private function whileReady(ServiceAccount $account, callable $operation): void
     {
-        $this->guard(function () use ($account, $operation): void {
+        $this->jellyfin->guard(function () use ($account, $operation): void {
             DB::transaction(function () use ($account, $operation): void {
                 $locked = ServiceAccount::whereKey($account->id)->lockForUpdate()->first();
                 $user = $locked === null ? null : User::find($locked->user_id);
@@ -405,7 +188,7 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
 
     private function password(ServiceAccount $account, #[\SensitiveParameter] string $password): void
     {
-        $this->check($this->client()->post('/Users/Password?userId='.rawurlencode((string) $account->external_id), ['NewPw' => $password, 'ResetPassword' => false]));
+        $this->jellyfin->check($this->jellyfin->admin()->post('/Users/Password?userId='.rawurlencode((string) $account->external_id), ['NewPw' => $password, 'ResetPassword' => false]));
     }
 
     /**
@@ -442,7 +225,7 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
             'AuthenticationProviderId' => $remote['Policy']['AuthenticationProviderId'] ?? self::AUTH_PROVIDER,
             'PasswordResetProviderId' => $remote['Policy']['PasswordResetProviderId'] ?? self::RESET_PROVIDER,
         ];
-        $this->check($this->client()->post('/Users/'.rawurlencode((string) $account->external_id).'/Policy', $policy));
+        $this->jellyfin->check($this->jellyfin->admin()->post('/Users/'.rawurlencode((string) $account->external_id).'/Policy', $policy));
         // Read again after saving (?? also covers an account that disappeared meanwhile).
         $saved = $this->find($account)['Policy'] ?? null;
         if (! is_array($saved)) {
@@ -459,15 +242,15 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
     /** Finds or creates the library rooted at $path and returns its id. */
     private function library(string $path, string $name, string $type): string
     {
-        $folders = collect((array) $this->check($this->client()->get('/Library/VirtualFolders'))->json());
+        $folders = collect((array) $this->jellyfin->check($this->jellyfin->admin()->get('/Library/VirtualFolders'))->json());
         $existing = $folders->first(fn ($row): bool => is_array($row) && in_array($path, array_map(fn ($location) => rtrim((string) $location, '/'), $row['Locations'] ?? []), true));
         if ($existing === null) {
             $query = http_build_query(['name' => $name, 'collectionType' => $type, 'paths' => $path, 'refreshLibrary' => 'true']);
-            $this->check($this->client()->post('/Library/VirtualFolders?'.$query, ['LibraryOptions' => [
+            $this->jellyfin->check($this->jellyfin->admin()->post('/Library/VirtualFolders?'.$query, ['LibraryOptions' => [
                 'EnableRealtimeMonitor' => true, 'EnablePhotos' => false, 'SaveLocalMetadata' => false,
                 'EnableInternetProviders' => true, 'PathInfos' => [['Path' => $path]],
             ]]));
-            $existing = collect((array) $this->check($this->client()->get('/Library/VirtualFolders'))->json())
+            $existing = collect((array) $this->jellyfin->check($this->jellyfin->admin()->get('/Library/VirtualFolders'))->json())
                 ->first(fn ($row): bool => is_array($row) && in_array($path, array_map(fn ($location) => rtrim((string) $location, '/'), $row['Locations'] ?? []), true));
         }
         $id = is_array($existing) ? ($existing['ItemId'] ?? null) : null;
@@ -480,14 +263,14 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
 
     public function scanMedia(): void
     {
-        $this->guard(fn () => $this->check($this->client()->post('/Library/Refresh')));
+        $this->jellyfin->guard(fn () => $this->jellyfin->check($this->jellyfin->admin()->post('/Library/Refresh')));
     }
 
     /** @return Collection<int, array<string, mixed>> */
     private function users(): Collection
     {
         /** @var list<array<string, mixed>> $users */
-        $users = array_values(array_filter((array) $this->check($this->client()->get('/Users'))->json(), 'is_array'));
+        $users = array_values(array_filter((array) $this->jellyfin->check($this->jellyfin->admin()->get('/Users'))->json(), 'is_array'));
 
         return collect($users);
     }
@@ -514,44 +297,6 @@ final class JellyfinAccounts implements CommonLibraries, NeedsConnection, Person
         // The portal never manages Jellyfin administrators, the connected one included.
         if (($remote['Policy']['IsAdministrator'] ?? false) === true) {
             throw new RuntimeException('conflict');
-        }
-    }
-
-    private function stage(Response $response, string $stage): Response
-    {
-        if ($response->status() === 429) {
-            throw new RuntimeException('rate_limited');
-        }
-        if (! $response->successful()) {
-            throw new RuntimeException(match (true) {
-                $stage === 'login' && $response->status() === 401 => 'credentials',
-                $stage === 'key' && in_array($response->status(), [401, 403], true) => 'not_admin',
-                $stage === 'wizard' => 'wizard',
-                default => 'unavailable',
-            });
-        }
-
-        return $response;
-    }
-
-    private function check(Response $response): Response
-    {
-        if (in_array($response->status(), [401, 403], true)) {
-            throw new RuntimeException('configuration');
-        }
-        if (! $response->successful()) {
-            throw new RuntimeException('unavailable');
-        }
-
-        return $response;
-    }
-
-    private function guard(callable $operation): void
-    {
-        try {
-            $operation();
-        } catch (ConnectionException) {
-            throw new RuntimeException('unavailable');
         }
     }
 }

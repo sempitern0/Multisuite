@@ -6,6 +6,7 @@ use App\Models\ServiceAccount;
 use App\Models\User;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -19,13 +20,15 @@ use RuntimeException;
  */
 final class VideoSession
 {
-    public function __construct(private JellyfinAccounts $jellyfin) {}
+    public const BROWSER_COOKIE = 'multisuite_video_device';
+
+    public function __construct(private JellyfinClient $jellyfin) {}
 
     public static function allowed(User $user): bool
     {
         return (bool) config('portal.services.video.enabled')
             && config('provisioning.video.enabled')
-            && JellyfinAccounts::connected()
+            && JellyfinClient::connected()
             && ! $user->isSuspended()
             && ! $user->must_change_password
             && app(ServiceAccounts::class)->entitled($user, 'video')
@@ -35,7 +38,7 @@ final class VideoSession
     public function prepare(User $user, #[\SensitiveParameter] string $password): void
     {
         $this->forget();
-        if (! config('portal.services.video.enabled') || ! config('provisioning.video.enabled') || ! JellyfinAccounts::connected()
+        if (! config('portal.services.video.enabled') || ! config('provisioning.video.enabled') || ! JellyfinClient::connected()
             || $user->isSuspended() || $user->must_change_password || ! app(ServiceAccounts::class)->entitled($user, 'video')) {
             return;
         }
@@ -53,7 +56,7 @@ final class VideoSession
             if (! self::allowed($user) || $account->external_id === null) {
                 return;
             }
-            $device = 'multisuite-'.Str::lower(Str::random(24));
+            $device = $this->device($user);
             $login = $this->jellyfin->http(null, $device)->post('/Users/AuthenticateByName', ['Username' => $account->username, 'Pw' => $password]);
             $token = $login->json('AccessToken');
             if (! $login->successful() || ! is_string($token) || ! $this->matches($account, $login->json('User'))) {
@@ -116,6 +119,22 @@ final class VideoSession
         }
 
         return ['server' => $login['server'], 'name' => $login['name'], 'user' => $login['remote'], 'token' => $login['token']];
+    }
+
+    /**
+     * One Jellyfin device per person and browser: a long-lived, encrypted, HTTP-only cookie names
+     * the browser, so each new sign-in replaces that browser's previous session instead of adding
+     * another one. Old ones are retired by portal:video-sessions-prune.
+     */
+    private function device(User $user): string
+    {
+        $browser = request()->cookie(self::BROWSER_COOKIE);
+        if (! is_string($browser) || preg_match('/^[a-zA-Z0-9]{40}$/D', $browser) !== 1) {
+            $browser = Str::random(40);
+        }
+        Cookie::queue(Cookie::make(self::BROWSER_COOKIE, $browser, 60 * 24 * 400, '/', null, null, true, false, 'lax'));
+
+        return JellyfinClient::DEVICE_PREFIX.substr(hash_hmac('sha256', $user->id.'|'.$browser, (string) config('app.key')), 0, 32);
     }
 
     /** Ends the Jellyfin session the portal opened (sign-out, new sign-in or revocation). */

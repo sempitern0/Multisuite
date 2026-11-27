@@ -34,6 +34,7 @@ case "$*" in
   *".Mounts"*video-container) echo custom_jellyfin-config ;;
   *".State.Status"*video-container) echo "${{VIDEO_STATE:-running}}" ;;
   *"backup --tag portal"*) exit "${{PORTAL_EXIT:-0}}" ;;
+  *"backup --tag jellyfin"*) exit "${{VIDEO_BACKUP_EXIT:-0}}" ;;
   *" check "*) exit "${{CHECK_EXIT:-0}}" ;;
 esac
 """)
@@ -68,13 +69,14 @@ case "$path" in {external}*) [ "${{SAME_DISK:-0}}" = 1 ] && echo /dev/sdb2 || ec
     assert result.returncode == 0, result.stderr
     assert oct(env_file.stat().st_mode & 0o777) == "0o600"
     order = [next(i for i, call in enumerate(calls) if needle in call) for needle in (
-        "cat config", " init", "pg_dump", "backup --tag portal", "stop navidrome", "backup --tag navidrome",
+        "cat config", " init", "pg_dump", "stop jellyfin", "backup --tag jellyfin", "start jellyfin",
+        "backup --tag portal", "stop navidrome", "backup --tag navidrome",
         "start navidrome", "forget --prune --group-by host,tags --keep-daily 3 --keep-weekly 4", "check --read-data-subset 10%")]
     assert order == sorted(order), calls
     portal = next(call for call in calls if "backup --tag portal" in call)
-    assert "-v custom_jellyfin-config:/source/jellyfin-config:ro" in portal
-    stop, start = [next(i for i, c in enumerate(calls) if action in c) for action in ("stop jellyfin", "start jellyfin")]
-    assert stop < calls.index(portal) < start
+    video = next(call for call in calls if "backup --tag jellyfin" in call)
+    assert "-v custom_jellyfin-config:/source/jellyfin-config:ro" in video and "jellyfin-config" not in portal
+    assert "--network none" in video, "Jellyfin is stopped only around its own snapshot, not the NAS copy"
     assert f"-v {data}/multisuite:/source/nas{data}:ro" in portal and "/source/portal-db:ro" in portal, portal
     assert "--network none" in portal and f"-v {external}:/repository" in portal and "secret" not in "\n".join(calls)
     assert status()["ok"] is True and status()["step"] == "done" and status()["finished_at"]
@@ -83,6 +85,10 @@ case "$path" in {external}*) [ "${{SAME_DISK:-0}}" = 1 ] && echo /dev/sdb2 || ec
     result, calls = run(PORTAL_EXIT="1")
     assert result.returncode == 1 and status()["ok"] is False
     assert any("start jellyfin" in c for c in calls)
+    # A failed Jellyfin snapshot still starts it again and stops before copying the NAS.
+    result, calls = run(VIDEO_BACKUP_EXIT="1")
+    assert result.returncode == 1 and status()["ok"] is False and status()["step"] == "jellyfin"
+    assert any("start jellyfin" in c for c in calls) and not any("backup --tag portal" in c for c in calls)
     result, calls = run(VIDEO_STATE="exited")
     assert result.returncode == 0 and not any("start jellyfin" in c or "stop jellyfin" in c for c in calls)
 
@@ -104,7 +110,8 @@ case "$path" in {external}*) [ "${{SAME_DISK:-0}}" = 1 ] && echo /dev/sdb2 || ec
     assert result.returncode == 1 and "no está vacía" in result.stderr and not calls
     (target / "old").unlink()
     result, calls = run("restore", TARGET=str(target))
-    assert result.returncode == 0 and sum("restore latest" in call for call in calls) == 2, result.stderr
+    assert result.returncode == 0 and sum("restore latest" in call for call in calls) == 3, result.stderr
+    assert any("restore latest --tag jellyfin" in call for call in calls)
 
     result, calls = run("verify", FILES="0")
     assert result.returncode == 0, result.stderr

@@ -28,6 +28,7 @@ class CommonLibrary
         private ServiceAccounts $accounts,
         private ServiceProvisioners $provisioners,
         private LinkMirror $mirror,
+        private MediaScans $scans,
     ) {}
 
     /**
@@ -45,7 +46,7 @@ class CommonLibrary
                 $desired = $this->desired($connection, $include, $exclude);
                 $this->mirror->apply($directory, $desired);
                 try {
-                    $this->provisioners->notifyMediaChanges($definition['service'], $directory, $desired);
+                    $this->scans->changed($definition['service'], $directory, $desired);
                 } catch (RuntimeException) {
                     // The next reconciliation retries the scan. Access grants are checked separately.
                     Log::warning('common library scan pending', ['service' => $definition['service']]);

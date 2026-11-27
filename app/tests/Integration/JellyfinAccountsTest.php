@@ -8,6 +8,8 @@ use App\Models\ServiceAccount;
 use App\Models\User;
 use App\Services\Files\MediaLibrary;
 use App\Services\JellyfinAccounts;
+use App\Services\JellyfinClient;
+use App\Services\JellyfinServer;
 use App\Services\ServiceAccounts;
 use App\Services\Storage\StorageReservations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,15 +33,17 @@ class JellyfinAccountsTest extends TestCase
             'portal.video_internal_url' => $url, 'provisioning.video.hardware' => 'none']);
         $this->prepareMediaRoot($root);
         $owner = User::factory()->create(['role' => 'owner', 'username' => 'propietaria']);
+        $server = app(JellyfinServer::class);
+        $client = app(JellyfinClient::class);
         $jellyfin = app(JellyfinAccounts::class);
-        $this->assertSame('empty', $jellyfin->setupState());
+        $this->assertSame('empty', $server->setupState());
 
-        $jellyfin->connect($owner, 'multisuite-admin', 'disposable-admin-password');
-        $this->assertSame('connected', $jellyfin->setupState());
+        $server->connect($owner, 'multisuite-admin', 'disposable-admin-password');
+        $this->assertSame('connected', $server->setupState());
         // Re-authorising an already configured server reuses its administrator.
-        $jellyfin->connect($owner, 'multisuite-admin', 'disposable-admin-password');
-        $this->assertSame('none', $jellyfin->acceleration());
-        $this->assertStringContainsString('Multisuite', (string) $jellyfin->client()->get('/System/Configuration/branding')->json('LoginDisclaimer'));
+        $server->connect($owner, 'multisuite-admin', 'disposable-admin-password');
+        $this->assertSame('none', $server->acceleration());
+        $this->assertStringContainsString('Multisuite', (string) $client->admin()->get('/System/Configuration/branding')->json('LoginDisclaimer'));
 
         $people = [];
         foreach (['ana' => 12, 'bruno' => null] as $username => $rating) {
@@ -67,11 +71,11 @@ class JellyfinAccountsTest extends TestCase
         foreach (['bruno', 'ana'] as $username) {
             [, $account] = $people[$username];
             $device = 'ci-'.$username;
-            $login = $jellyfin->http(null, $device)->post('/Users/AuthenticateByName', ['Username' => $username, 'Pw' => $username.'-password-123']);
+            $login = $client->http(null, $device)->post('/Users/AuthenticateByName', ['Username' => $username, 'Pw' => $username.'-password-123']);
             $this->assertSame(200, $login->status(), $username);
             $this->assertFalse($login->json('User.Policy.IsAdministrator'));
             $this->assertFalse($login->json('User.Policy.EnableAllFolders'));
-            $viewer = $jellyfin->http($login->json('AccessToken'), $device);
+            $viewer = $client->http($login->json('AccessToken'), $device);
             $deadline = microtime(true) + 45;
             do {
                 $items = $viewer->get('/Items', ['UserId' => $account->external_id, 'Recursive' => 'true', 'SearchTerm' => 'Prueba', 'IncludeItemTypes' => 'Video,Movie'])->throw()->json('Items');
@@ -92,19 +96,26 @@ class JellyfinAccountsTest extends TestCase
         }
 
         [$ana, $anaAccount] = $people['ana'];
-        $this->assertSame(12, $this->policy($jellyfin, $anaAccount)['MaxParentalRating']);
+        $this->assertSame(12, $this->policy($client, $anaAccount)['MaxParentalRating']);
         app(SetVideoRating::class)->handle($owner, $ana, 7);
-        $this->assertSame(7, $this->policy($jellyfin, $anaAccount)['MaxParentalRating']);
+        $this->assertSame(7, $this->policy($client, $anaAccount)['MaxParentalRating']);
+
+        // Idle browser sessions the portal opened are retired with their token.
+        $device = JellyfinClient::DEVICE_PREFIX.'citest';
+        $session = $client->http(null, $device)->post('/Users/AuthenticateByName', ['Username' => 'ana', 'Pw' => 'ana-password-123']);
+        $this->assertSame(200, $session->status());
+        $this->assertGreaterThanOrEqual(1, $server->pruneBrowserSessions(-1));
+        $this->assertSame(401, $client->http((string) $session->json('AccessToken'), $device)->get('/Users/Me')->status());
 
         $jellyfin->lock($anaAccount);
-        $this->assertTrue($this->policy($jellyfin, $anaAccount)['IsDisabled']);
+        $this->assertTrue($this->policy($client, $anaAccount)['IsDisabled']);
         $jellyfin->remove($anaAccount);
-        $this->assertSame(404, $jellyfin->client()->get('/Users/'.$anaAccount->external_id)->status());
+        $this->assertSame(404, $client->admin()->get('/Users/'.$anaAccount->external_id)->status());
     }
 
     /** @return array<string, mixed> */
-    private function policy(JellyfinAccounts $jellyfin, ServiceAccount $account): array
+    private function policy(JellyfinClient $client, ServiceAccount $account): array
     {
-        return (array) $jellyfin->client()->get('/Users/'.$account->external_id)->json('Policy');
+        return (array) $client->admin()->get('/Users/'.$account->external_id)->json('Policy');
     }
 }

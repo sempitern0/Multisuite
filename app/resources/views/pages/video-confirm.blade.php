@@ -2,7 +2,7 @@
 
 use App\Livewire\Concerns\ForgetsSecrets;
 use App\Livewire\Concerns\ThrottlesActions;
-use App\Services\JellyfinAccounts;
+use App\Services\JellyfinClient;
 use App\Services\ServiceAccounts;
 use App\Services\VideoSession;
 use Illuminate\Support\Facades\Auth;
@@ -43,7 +43,7 @@ new #[Title('Abrir Vídeo')] class extends Component {
     <x-ui::page-header :back="route('dashboard')" back-label="Servicios" title="Abrir Vídeo" description="Confirma tu contraseña de Multisuite para entrar en tus vídeos sin escribir otra vez tu usuario. No necesitas crear otra cuenta." />
     <x-ui::container>
         <x-ui::panel>
-            @if (! JellyfinAccounts::connected())
+            @if (! JellyfinClient::connected())
                 <p>El propietario debe conectar Vídeo desde Administración una sola vez. Tu cuenta se preparará automáticamente después.</p>
             @else
                 <x-ui::form wire:submit="open">

@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Services\Files\ConnectedFolders;
 use App\Services\Files\MediaLibrary;
 use App\Services\JellyfinAccounts;
+use App\Services\JellyfinClient;
+use App\Services\JellyfinServer;
 use App\Services\ServiceAccounts;
 use App\Services\VideoSession;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -59,7 +61,7 @@ class JellyfinProvisioningTest extends TestCase
 
     public function test_the_owner_connects_an_empty_server_once_and_cpu_is_never_forced_on_a_gpu_host(): void
     {
-        $jellyfin = app(JellyfinAccounts::class);
+        $jellyfin = app(JellyfinServer::class);
         $this->assertSame('empty', $jellyfin->setupState());
         $this->assertNotContains('video', app(ServiceAccounts::class)->available(), 'No accounts before the connection.');
 
@@ -86,18 +88,18 @@ class JellyfinProvisioningTest extends TestCase
 
     public function test_acceleration_choices_follow_the_detected_vendor_and_default_to_the_cpu(): void
     {
-        $this->assertSame(['qsv', 'vaapi', 'none'], array_keys(JellyfinAccounts::accelerationChoices()));
+        $this->assertSame(['qsv', 'vaapi', 'none'], array_keys(JellyfinServer::accelerationChoices()));
         config(['provisioning.video.hardware' => 'amd']);
-        $this->assertSame(['vaapi', 'none'], array_keys(JellyfinAccounts::accelerationChoices()));
+        $this->assertSame(['vaapi', 'none'], array_keys(JellyfinServer::accelerationChoices()));
         config(['provisioning.video.hardware' => 'nvidia']);
-        $this->assertSame(['nvenc', 'none'], array_keys(JellyfinAccounts::accelerationChoices()));
+        $this->assertSame(['nvenc', 'none'], array_keys(JellyfinServer::accelerationChoices()));
         config(['provisioning.video.hardware' => 'unknown']);
-        $this->assertSame(['none'], array_keys(JellyfinAccounts::accelerationChoices()));
+        $this->assertSame(['none'], array_keys(JellyfinServer::accelerationChoices()));
 
         $this->connect();
         $this->assertSame('none', $this->server['encoding']['HardwareAccelerationType']);
-        $this->assertThrows(fn () => app(JellyfinAccounts::class)->applyAcceleration('nvenc'), RuntimeException::class);
-        $this->assertSame('none', app(JellyfinAccounts::class)->acceleration());
+        $this->assertThrows(fn () => app(JellyfinServer::class)->applyAcceleration('nvenc'), RuntimeException::class);
+        $this->assertSame('none', app(JellyfinServer::class)->acceleration());
     }
 
     public function test_each_person_gets_a_private_non_administrator_account_with_their_parental_limit(): void
@@ -193,7 +195,7 @@ class JellyfinProvisioningTest extends TestCase
         $remote = $this->server['users'][$account->external_id];
         $this->assertTrue($remote['Policy']['EnableAllFolders'], 'Jellyfin default before the policy.');
         $this->assertNotSame('eva-password-123', $remote['password'], 'Nobody can sign in to the half-created account.');
-        $this->assertSame(401, app(JellyfinAccounts::class)->http()->post('/Users/AuthenticateByName', ['Username' => 'eva', 'Pw' => 'eva-password-123'])->status());
+        $this->assertSame(401, app(JellyfinClient::class)->http()->post('/Users/AuthenticateByName', ['Username' => 'eva', 'Pw' => 'eva-password-123'])->status());
 
         // Revocation does not depend on creating libraries.
         app(JellyfinAccounts::class)->lock($account);
@@ -252,6 +254,30 @@ class JellyfinProvisioningTest extends TestCase
         $this->post('/api/video/session', ['ticket' => $ticket], ['Origin' => $origin])->assertRedirect(rtrim((string) config('app.url'), '/').'/services/video/confirm');
     }
 
+    public function test_each_browser_keeps_one_jellyfin_device_and_idle_ones_are_retired(): void
+    {
+        $this->connect();
+        $member = User::factory()->create(['role' => 'member', 'username' => 'irene', 'service_access' => ['video'], 'password' => 'irene-password-123']);
+        $this->withoutDefer();
+        request()->cookies->set(VideoSession::BROWSER_COOKIE, str_repeat('a', 40));
+        app(VideoSession::class)->prepare($member->fresh(), 'irene-password-123');
+        app(VideoSession::class)->prepare($member->fresh(), 'irene-password-123');
+        $devices = array_values(array_filter($this->server['logins'], fn (?string $id): bool => str_starts_with((string) $id, JellyfinClient::DEVICE_PREFIX)));
+        $this->assertCount(2, $devices);
+        $this->assertSame($devices[0], $devices[1], 'Signing in again from the same browser reuses its device.');
+        $this->assertStringNotContainsString(str_repeat('a', 40), $devices[0], 'The cookie itself never reaches Jellyfin.');
+
+        $old = now()->subDays(45)->toIso8601String();
+        $this->server['devices'] = [
+            'multisuite-web-old' => ['Id' => 'multisuite-web-old', 'DateLastActivity' => $old],
+            'multisuite-web-new' => ['Id' => 'multisuite-web-new', 'DateLastActivity' => now()->toIso8601String()],
+            'multisuite-portal' => ['Id' => 'multisuite-portal', 'DateLastActivity' => $old],
+            'tv-app' => ['Id' => 'tv-app', 'DateLastActivity' => $old],
+        ];
+        $this->artisan('portal:video-sessions-prune')->expectsOutput('Sesiones retiradas: 1')->assertSuccessful();
+        $this->assertSame(['multisuite-web-new', 'multisuite-portal', 'tv-app'], array_keys($this->server['devices']));
+    }
+
     public function test_signing_out_of_multisuite_ends_the_jellyfin_session_it_opened(): void
     {
         $this->connect();
@@ -296,7 +322,7 @@ class JellyfinProvisioningTest extends TestCase
     {
         $this->server['wizard'] = true;
         $this->server['users']['admin-id'] = ['Id' => 'admin-id', 'Name' => 'multisuite-admin', 'password' => 'a-long-password', 'Policy' => ['IsAdministrator' => true]];
-        app(JellyfinAccounts::class)->connect($this->owner, 'multisuite-admin', 'a-long-password');
+        app(JellyfinServer::class)->connect($this->owner, 'multisuite-admin', 'a-long-password');
     }
 
     private function jellyfin(Request $request): mixed
@@ -325,6 +351,8 @@ class JellyfinProvisioningTest extends TestCase
             return Http::response('', 204);
         }
         if ($path === '/Users/AuthenticateByName') {
+            preg_match('/DeviceId="([^"]+)"/', $request->header('Authorization')[0] ?? '', $device);
+            $this->server['logins'][] = $device[1] ?? null;
             $user = collect($this->server['users'])->first(fn (array $row): bool => $row['Name'] === $body['Username'] && $row['password'] === $body['Pw'] && ! ($row['Policy']['IsDisabled'] ?? false));
 
             // A new token per sign-in, like Jellyfin: signing one out never ends another.
@@ -354,6 +382,15 @@ class JellyfinProvisioningTest extends TestCase
             }
 
             return Http::response(['Items' => $this->server['keys']]);
+        }
+        if ($path === '/Devices') {
+            if ($method === 'DELETE') {
+                unset($this->server['devices'][$query['id']]);
+
+                return Http::response('', 204);
+            }
+
+            return Http::response(['Items' => array_values($this->server['devices'] ?? [])]);
         }
         if ($path === '/System/Configuration/branding') {
             if ($method === 'POST') {

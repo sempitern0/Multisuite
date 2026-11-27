@@ -45,8 +45,10 @@ write_status() {
 music() { "$DOCKER" compose --env-file music.env -f compose.music.yaml "$@"; }
 video() { "$DOCKER" compose --env-file video.env -f compose.video.yaml "$@"; }
 
-# Keep the config database and the portal's service-account mapping in one restic snapshot.
-prepare_video_backup() {
+# Jellyfin's configuration (its SQLite database) in its own short snapshot, right after the portal
+# database dump that holds the account mapping: Jellyfin is stopped only while its volume is copied,
+# never during the much longer copy of the NAS files.
+backup_video() {
     container=$(video ps --all -q jellyfin)
     [ -n "$container" ] || die "Vídeo está configurado pero falta su contenedor. Comprueba make video-status."
     volume=$("$DOCKER" inspect --format '{{range .Mounts}}{{if and (eq .Destination "/config") (eq .Type "volume")}}{{.Name}}{{end}}{{end}}' "$container")
@@ -57,7 +59,12 @@ prepare_video_backup() {
         exited|created) ;;
         *) die "Jellyfin está en estado $state. Reintenta la copia cuando esté estable." ;;
     esac
-    mounts="$mounts -v $volume:/source/jellyfin-config:ro"
+    extra_mounts="-v $volume:/source/jellyfin-config:ro"
+    restic backup --tag jellyfin /source
+    if [ "$video_stopped" = 1 ]; then
+        video start jellyfin >/dev/null
+        video_stopped=0
+    fi
 }
 cleanup() {
     code=$?
@@ -164,16 +171,11 @@ run)
     "$DOCKER" compose exec -T postgres rm -f /tmp/portal.dump
     if [ -f video.env ]; then
         step=jellyfin
-        prepare_video_backup
+        backup_video
     fi
     step=files
     extra_mounts="-v $PWD/$staging:/source/portal-db:ro $mounts"
     restic backup --tag portal /source
-    if [ "$video_stopped" = 1 ]; then
-        step=jellyfin
-        video start jellyfin >/dev/null
-        video_stopped=0
-    fi
 
     if [ -f music.env ]; then
         step=navidrome
@@ -253,6 +255,7 @@ restore)
     else
         restic restore latest --tag portal --target /restore
         restic restore latest --tag navidrome --target /restore || echo "nas-backup: no hay copia de Navidrome." >&2
+        restic restore latest --tag jellyfin --target /restore || echo "nas-backup: no hay copia de Vídeo." >&2
     fi
     echo "Restaurado en $target/source. Pasos para volver a ponerlo en servicio: docs/STORAGE.md (Restaurar)."
     ;;
