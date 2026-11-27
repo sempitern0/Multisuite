@@ -1,0 +1,69 @@
+# Private entry routes (docs/VPN.md), rendered by Traefik from vpn-entry's environment.
+# Each private name goes to the portal or a gateway on the accounts network; an unset name is
+# skipped. Never add a route to a service's administration or to the database.
+# HTTPS: certificate per name from Let's Encrypt by DNS (deploy/compose.vpn-tls.yaml).
+http:
+  routers:
+{{ if env "VPN_PORTAL_HOST" }}
+    portal:
+      rule: "Host(`{{ env "VPN_PORTAL_HOST" }}`)"
+      service: portal
+      entryPoints: [websecure]
+      middlewares: [headers]
+      tls:
+        certResolver: letsencrypt
+{{ end }}
+{{ if env "VPN_MUSIC_HOST" }}
+    music:
+      rule: "Host(`{{ env "VPN_MUSIC_HOST" }}`)"
+      service: music
+      entryPoints: [websecure]
+      middlewares: [headers]
+      tls:
+        certResolver: letsencrypt
+{{ end }}
+{{ if env "VPN_READING_HOST" }}
+    reading:
+      rule: "Host(`{{ env "VPN_READING_HOST" }}`)"
+      service: reading
+      entryPoints: [websecure]
+      middlewares: [headers]
+      tls:
+        certResolver: letsencrypt
+{{ end }}
+{{ if env "VPN_VIDEO_HOST" }}
+    video:
+      rule: "Host(`{{ env "VPN_VIDEO_HOST" }}`)"
+      service: video
+      entryPoints: [websecure]
+      middlewares: [headers]
+      tls:
+        certResolver: letsencrypt
+{{ end }}
+  middlewares:
+    headers:
+      headers:
+        contentTypeNosniff: true
+        referrerPolicy: strict-origin-when-cross-origin
+        stsSeconds: 31536000
+  services:
+    portal:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://multisuite-portal-web:80"
+    music:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://music-gateway:8080"
+    reading:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://komga-gateway:8080"
+    video:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://video-gateway:8080"

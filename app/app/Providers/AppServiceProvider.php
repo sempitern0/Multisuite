@@ -22,6 +22,7 @@ use App\Support\Finance\ReceiptReader;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Date;
@@ -49,6 +50,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        // Behind the private entry the scheme and host come from X-Forwarded-*: only from these proxies.
+        /** @var list<string> $proxies */
+        $proxies = config('app.trusted_proxies', []);
+        TrustProxies::at($proxies);
         // Design layer: `<x-ui::button>` etc. resolve to the active theme's components.
         Blade::anonymousComponentPath(resource_path('views/themes/'.config('ui.theme', 'nocturne').'/components'), 'ui');
         Gate::policy(User::class, UserPolicy::class);

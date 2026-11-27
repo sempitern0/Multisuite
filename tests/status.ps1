@@ -14,6 +14,7 @@ try {
   [System.IO.File]::WriteAllLines((Join-Path $temp '.env'), $settings)
   [System.IO.File]::WriteAllLines((Join-Path $temp 'music.env'), @('NAVIDROME_PORT=14533'))
   [System.IO.File]::WriteAllLines((Join-Path $temp 'video.env'), @('VIDEO_PORT=18096', 'VIDEO_HARDWARE=nvidia'))
+  [System.IO.File]::WriteAllLines((Join-Path $temp 'vpn.env'), @('VPN_SERVER_URL=https://vpn.example.org', 'VPN_TLS=acme-dns', 'VPN_PORTAL_HOST=multisuite.example.org'))
   function docker {
     $global:LASTEXITCODE = 0
     $joined = $args -join ' '
@@ -21,6 +22,7 @@ try {
       # Music and Video gateways running; the Komga stack exists but is stopped.
       if ($joined -match 'multisuite-music' -and $joined -match 'music-gateway' -and $joined -match 'status=running') { return 'm1' }
       if ($joined -match 'multisuite-video' -and $joined -match 'video-gateway' -and $joined -match 'status=running') { return 'v1' }
+      if ($joined -match 'multisuite-vpn' -and $joined -match 'service=headscale' -and $joined -match 'status=running') { return 'h1' }
       if ($joined -match 'multisuite-komga' -and $joined -match '-aq') { return 'k1' }
       return
     }
@@ -33,6 +35,8 @@ try {
   if ($output -notmatch 'Music \(Navidrome\)\s+http://localhost:14533') { throw 'Music URL missing' }
   if ($output -notmatch 'Video \(Jellyfin\)\s+http://localhost:18096') { throw 'Video URL missing' }
   if ($output -notmatch 'Video GPU\s+nvidia') { throw 'Video GPU missing' }
+  if ($output -notmatch 'VPN \(Headscale\)\s+https://vpn.example.org') { throw 'VPN control URL missing' }
+  if ($output -notmatch 'Private portal\s+https://multisuite.example.org') { throw 'Private portal URL missing' }
   if ($output -notmatch 'Reading \(Komga\)\s+OFF\s+stopped\s+\(make komga-up\)') { throw 'Stopped Komga not shown' }
   if ($output -match 'Kavita') { throw 'Unconfigured Kavita shown' }
   # After make down Komga still appears (Make starts it with the development NAS); disabled Kavita is never offered.
@@ -46,6 +50,7 @@ try {
   if ($down -notmatch 'Reading \(Komga\)\s+OFF\s+stopped\s+\(make komga-up\)') { throw 'Komga missing after make down' }
   if ($down -notmatch 'Reading \(Kavita\)\s+disabled') { throw 'Disabled Kavita not explained' }
   if ($down -match 'make reading-up') { throw 'Suggested starting disabled Kavita' }
+  if ($down -notmatch 'VPN \(Headscale\)\s+OFF\s+stopped\s+\(make vpn-up\)') { throw 'Stopped VPN not shown' }
   [void](New-Item -ItemType File -Path (Join-Path $temp 'compose.nas.yaml'))
   $real = (& $statusScript -Root $temp 6>&1 | Out-String)
   if ($real -match 'Reading \(Komga\)') { throw 'Komga shown with real disks and no containers' }

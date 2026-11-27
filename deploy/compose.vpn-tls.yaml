@@ -1,0 +1,31 @@
+# Applied by Make when vpn.env sets VPN_TLS=acme-dns (docs/VPN.md § HTTPS).
+# The private names get Let's Encrypt certificates through a DNS challenge: they only resolve inside
+# the private network, so Let's Encrypt cannot reach them over HTTP. VPN_DNS_PROVIDER is a lego
+# provider code (cloudflare, ovh, duckdns, gandiv5…); its credentials live in vpn.secrets.env
+# (ignored by git, never in vpn.env).
+services:
+  vpn-entry:
+    env_file: ["${VPN_SECRETS_FILE:-./vpn.secrets.env}"]
+    command:
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.ping.address=:8082
+      - --ping.entrypoint=ping
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+      - --certificatesresolvers.letsencrypt.acme.email=${VPN_ACME_EMAIL:?set VPN_ACME_EMAIL for Let's Encrypt}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=${VPN_DNS_PROVIDER:?set VPN_DNS_PROVIDER (lego provider code)}
+      # Public resolvers: the network's own resolver would answer the private names instead.
+      - --certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=9.9.9.9:53,1.1.1.1:53
+      - --api.dashboard=false
+      - --global.checknewversion=false
+      - --global.sendanonymoususage=false
+      - --log.level=WARN
+    volumes: !override
+      - ./docker/vpn-entry/tls.yml:/etc/traefik/dynamic/routes.yml:ro
+      - vpn-certificates:/letsencrypt
+volumes:
+  vpn-certificates:

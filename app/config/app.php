@@ -55,6 +55,12 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     /*
+     | Proxies whose X-Forwarded-* headers are trusted: the private entry (docs/VPN.md) on the
+     | Docker networks, as CIDR ranges separated by commas. Empty (default): none.
+     */
+    'trusted_proxies' => array_values(array_filter(array_map('trim', explode(',', (string) env('TRUSTED_PROXIES', ''))))),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------

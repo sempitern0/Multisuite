@@ -1,0 +1,86 @@
+# Headscale 0.29 configuration for Multisuite's private network (docs/VPN.md).
+# Per-installation values come from vpn.env through HEADSCALE_* variables (compose.vpn.yaml):
+# server_url, listen_addr, tls_letsencrypt_hostname, acme_email and dns.base_domain.
+---
+server_url: http://127.0.0.1:8090
+listen_addr: 0.0.0.0:8080
+# Internal only: never published by compose.vpn.yaml.
+metrics_listen_addr: 127.0.0.1:9090
+grpc_listen_addr: 127.0.0.1:50443
+grpc_allow_insecure: false
+trusted_proxies: []
+
+noise:
+  private_key_path: /var/lib/headscale/noise_private.key
+
+prefixes:
+  v4: 100.64.0.0/10
+  v6: fd7a:115c:a1e0::/48
+  allocation: sequential
+
+# Relays used only when two devices cannot talk directly. Traffic stays end-to-end encrypted.
+# Self-hosted relay (embedded DERP) is pending: docs/ROADMAP.md, P03.
+derp:
+  server:
+    enabled: false
+  urls:
+    - https://controlplane.tailscale.com/derpmap/default
+  paths: []
+  auto_update_enabled: true
+  update_frequency: 3h
+
+disable_check_updates: true
+
+node:
+  # Devices stay joined until the operator removes them (`make vpn-remove`).
+  expiry: 0
+  ephemeral:
+    inactivity_timeout: 30m
+
+database:
+  type: sqlite
+  sqlite:
+    path: /var/lib/headscale/db.sqlite
+    write_ahead_log: true
+
+acme_url: https://acme-v02.api.letsencrypt.org/directory
+acme_email: ""
+tls_letsencrypt_hostname: ""
+tls_letsencrypt_cache_dir: /var/lib/headscale/cache
+tls_letsencrypt_challenge_type: HTTP-01
+tls_letsencrypt_listen: ":http"
+tls_cert_path: ""
+tls_key_path: ""
+
+log:
+  level: info
+  format: text
+
+# Who may reach what: docker/headscale/policy.hujson (only the NAS, only its web ports).
+policy:
+  mode: file
+  path: /etc/headscale/policy.hujson
+
+dns:
+  magic_dns: true
+  base_domain: red.multisuite.internal
+  # Devices resolve the private names (written by vpn-node) through the network's resolver.
+  override_local_dns: true
+  nameservers:
+    global:
+      - 9.9.9.9
+      - 149.112.112.112
+      - 2620:fe::fe
+      - 2620:fe::9
+    split: {}
+  search_domains: []
+  extra_records_path: /etc/headscale/dns/extra-records.json
+
+unix_socket: /var/run/headscale/headscale.sock
+unix_socket_permission: "0770"
+
+logtail:
+  enabled: false
+
+taildrop:
+  enabled: false

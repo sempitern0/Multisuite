@@ -76,5 +76,7 @@ yarn-error.log*
 /music.env
 /reading.env
 /video.env
+/vpn.env
+/vpn.secrets.env
 
 s01-report.json

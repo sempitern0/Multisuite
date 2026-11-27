@@ -25,7 +25,7 @@ Pendiente de validar en el piloto: autologin musical con dos usuarios y un naveg
 - [ ] Adaptar copia y recuperación al lector elegido.
 
 ## Después
-- **P03** — Red privada (VPN/TLS), segundo dispositivo y vinculación de cuentas existentes (prerrequisito de MCP-05).
+- **P03** — Red privada implementada (VPN.md, QA pendiente); faltan segundo dispositivo real y vinculación de cuentas existentes (prerrequisito de MCP-05).
 - **P05** — Despliegue reproducible y piloto familiar.
 
 ## P04 — Servicios (uno por PR)
@@ -45,7 +45,10 @@ Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúm
 - [ ] QA del usuario de la selección múltiple (PR #51): proponer varios con una cuenta normal y publicar varios como owner desde Mis archivos.
 
 ## P03 — Identidad y red privada
-- [ ] VPN (Tailscale u otra), TLS, permisos mínimos y revocación; prueba desde un segundo dispositivo real.
+- [ ] QA del usuario de la red privada (PR #53, VPN.md): servidor con nombre público, `make vpn-join`, invitar a una persona y entrar desde un móvil real fuera de casa; probar `VPN_TLS=acme-dns` con su proveedor DNS.
+- [ ] Relé propio (DERP integrado en Headscale, UDP 3478) para no depender de los relés públicos.
+- [ ] Copia de `headscale-data` y `vpn-node-state` en la copia del servidor.
+- [ ] Alta en la red desde la invitación del portal (API de Headscale con clave de solo servidor), sin pasar por la terminal.
 - [ ] Vincular cuentas remotas preexistentes con prueba de titularidad (nunca por coincidencia de correo).
 - [ ] Cerrar sesiones ya abiertas en el servicio al desactivarlo o suspender; permisos por biblioteca.
 - [ ] Entrada web sin segundo inicio de sesión (proxy/identidad central) sin romper clientes móviles.

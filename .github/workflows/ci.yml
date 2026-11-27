@@ -6,6 +6,7 @@ on:
       - '.github/workflows/ci.yml'
       - 'compose*.yaml'
       - 'deploy/compose.*-accounts.example.yaml'
+      - 'deploy/compose.vpn-*.yaml'
       - 'docker/**'
       - 'scripts/**'
       - 'tests/**'
@@ -53,8 +54,13 @@ jobs:
           docker compose -f compose.yaml -f deploy/compose.portal-accounts.example.yaml -f deploy/compose.portal-reading.example.yaml config --quiet
           python3 tests/nas-disk-discovery.py
           python3 tests/nas-backup.py
+          docker compose --env-file vpn.env.example -f compose.vpn.yaml config --quiet
+          tls=$(mktemp -d) && sed -e 's/^VPN_TLS=.*/VPN_TLS=acme-dns/' -e 's/^VPN_DNS_PROVIDER=.*/VPN_DNS_PROVIDER=cloudflare/' -e 's/^VPN_ACME_EMAIL=.*/VPN_ACME_EMAIL=ci@example.org/' vpn.env.example > "$tls/vpn.env" && touch "$tls/vpn.secrets.env"
+          VPN_SECRETS_FILE="$tls/vpn.secrets.env" docker compose --env-file "$tls/vpn.env" -f compose.vpn.yaml -f deploy/compose.vpn-tls.yaml config --quiet
       - name: Komga disposable EPUB integration
         run: python3 tests/komga-smoke.py
+      - name: Private network integration (Headscale, NAS node, entry, device)
+        run: python3 tests/vpn-smoke.py
       - name: Test music session bridge and gateway
         run: |
           node --test tests/music-session.test.mjs
@@ -351,6 +357,8 @@ jobs:
       - name: Execute status summary in Windows PowerShell 5.1
         shell: powershell
         run: ./tests/status.ps1
+      - name: Test private network commands
+        run: ./tests/vpn.ps1
       - name: Guard preflight against duplicated or truncated blocks
         shell: powershell
         run: |
