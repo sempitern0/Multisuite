@@ -52,6 +52,53 @@ link() {
 }
 ready=no
 if active app && active web; then ready=yes; fi
+
+# Multisuite services run as separate Compose stacks (music.env, video.env, reading.env, Komga).
+# Queried by Compose labels, so the extra override files Make adds do not matter.
+file_setting() {
+  [ -f "$1" ] || { printf '%s' "$3"; return; }
+  v=$(sed -n "s/^$2=//p" "$1" | tail -n 1 | tr -d '\r' | sed 's/^"//;s/"$//')
+  if [ -n "$v" ]; then printf '%s' "$v" | tr -d '\r\n'; else printf '%s' "$3"; fi
+}
+stack_running() {
+  [ "$status" = available ] || return 1
+  [ -n "$(docker ps -q --filter "label=com.docker.compose.project=$1" --filter "label=com.docker.compose.service=$2" --filter status=running 2>/dev/null)" ]
+}
+stack_exists() {
+  [ "$status" = available ] || return 1
+  [ -n "$(docker ps -aq --filter "label=com.docker.compose.project=$1" 2>/dev/null)" ]
+}
+# Entry is the gateway when the stack runs with the portal's account bridge, else the service itself.
+entry_running() {
+  if stack_running "$1" "$2"; then return 0; fi
+  [ -z "$(docker ps -aq --filter "label=com.docker.compose.project=$1" --filter "label=com.docker.compose.service=$2" 2>/dev/null)" ] && stack_running "$1" "$3"
+}
+nas_link() {
+  if [ "$3" = yes ]; then printf '  %-20s %s%s%s\n' "$1" "$green" "$2" "$reset"
+  elif [ "$status" = unavailable ]; then printf '  %-20s %s[?] unknown%s\n' "$1" "$yellow" "$reset"
+  else printf '  %-20s %s[--] stopped%s  %s(%s)%s\n' "$1" "$yellow" "$reset" "$dim" "$4" "$reset"; fi
+}
+nas_services() {
+  shown=no
+  if [ -f music.env ]; then
+    shown=yes; up=no; entry_running "$(file_setting music.env MUSIC_PROJECT_NAME multisuite-music)" music-gateway navidrome && up=yes
+    nas_link 'Music (Navidrome)' "http://localhost:$(file_setting music.env NAVIDROME_PORT 4533)" "$up" 'make music-up'
+  fi
+  if stack_exists multisuite-komga; then
+    shown=yes; up=no; stack_running multisuite-komga komga-gateway && up=yes
+    nas_link 'Reading (Komga)' "http://localhost:$(setting KOMGA_PORT 25600)" "$up" 'make komga-up'
+  fi
+  if [ -f reading.env ]; then
+    shown=yes; up=no; entry_running "$(file_setting reading.env READING_PROJECT_NAME multisuite-reading)" reading-gateway kavita && up=yes
+    nas_link 'Reading (Kavita)' "http://localhost:$(file_setting reading.env KAVITA_PORT 5000)" "$up" 'make reading-up'
+  fi
+  if [ -f video.env ]; then
+    shown=yes; up=no; stack_running "$(file_setting video.env VIDEO_PROJECT_NAME multisuite-video)" video-gateway && up=yes
+    nas_link 'Video (Jellyfin)' "http://localhost:$(file_setting video.env VIDEO_PORT 8096)" "$up" 'make video-up'
+    item 'Video GPU' "$(file_setting video.env VIDEO_HARDWARE none)"
+  fi
+  [ "$shown" = yes ] || printf '  %sNone configured: make music-up, make video-detect (docs/JELLYFIN.md).%s\n' "$dim" "$reset"
+}
 printf '\n%s======================================================%s\n' "$cyan" "$reset"
 printf '%s  LARAVEL FOUNDRY  /  %s%s\n' "$cyan" "$label" "$reset"
 printf '%s======================================================%s\n' "$cyan" "$reset"
@@ -76,6 +123,8 @@ esac
 if [ "$https" != 1 ] && active node; then
   link 'Vite HMR' "http://localhost:$(setting VITE_PORT 5173)" yes "$cyan"
 fi
+section 'MULTISUITE SERVICES'
+nas_services
 section 'CONFIGURATION'
 item 'Project / Starter' "$name / $starter"
 item 'Database' "$db | $db_name"
