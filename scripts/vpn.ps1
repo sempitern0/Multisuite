@@ -1,11 +1,12 @@
 # Private network operations (docs/VPN.md), called by `make vpn-*`. POSIX twin: scripts/vpn.sh.
 #   join | person NAME | approve NAME CODE | key NAME | devices | remove ID | urls
+#   compose ARGS: docker compose with this stack's files (the only place that chooses them)
 # Only validated values reach Headscale; nothing from the env files is evaluated.
-param(
-    [Parameter(Position = 0)][string]$Command = '',
-    [Parameter(Position = 1)][string]$First = '',
-    [Parameter(Position = 2)][string]$Second = ''
-)
+# A plain param block on purpose: everything after the command stays in $args (compose flags).
+param([string]$Command = '')
+$rest = @($args)
+$First = if ($rest.Count -gt 0) { [string]$rest[0] } else { '' }
+$Second = if ($rest.Count -gt 1) { [string]$rest[1] } else { '' }
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path -Parent $PSScriptRoot)
 
@@ -46,6 +47,7 @@ function PersonName([string]$Value) {
 function LastLine($Output) { return (@($Output) | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ -ne '' } | Select-Object -Last 1) }
 
 switch ($Command) {
+    'compose' { Compose @rest }
     'join' {
         $current = ''
         try { $current = LastLine (Compose exec -T vpn-node tailscale ip -4 2>$null) } catch { $current = '' }
@@ -103,7 +105,7 @@ switch ($Command) {
         if ($video) { Write-Output '# video.env:'; Write-Output "PORTAL_VIDEO_URL=${scheme}://$video" }
     }
     default {
-        Write-Output 'Uso: make vpn-join | vpn-person NAME= | vpn-approve NAME= CODE= | vpn-key NAME= | vpn-devices | vpn-remove ID= | vpn-urls'
+        Write-Output 'Uso: make vpn-up | vpn-join | vpn-person NAME= | vpn-approve NAME= CODE= | vpn-key NAME= | vpn-devices | vpn-remove ID= | vpn-urls'
         exit 2
     }
 }

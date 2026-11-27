@@ -6,6 +6,7 @@
 #   key NAME        single-use key valid 1 hour, for a computer joining from the command line
 #   devices         lists devices;  remove ID: removes a device (it must sign in again)
 #   urls            prints the addresses to set in .env and the services' env files
+#   compose ARGS    docker compose with this stack's files (the only place that chooses them)
 # Only validated values reach Headscale; nothing from the env files is evaluated by the shell.
 set -eu
 cd "$(dirname "$0")/.."
@@ -40,6 +41,10 @@ person_name() { need 'Nombre' "$1" '^[a-z0-9][a-z0-9-]{0,30}$' 'Usa minúsculas,
 
 command=${1:-}
 case "$command" in
+compose)
+    shift
+    compose "$@"
+    ;;
 join)
     if compose exec -T vpn-node tailscale ip -4 >/dev/null 2>&1; then
         echo "El NAS ya está en la red privada: $(compose exec -T vpn-node tailscale ip -4 | tr -d '\r' | head -n 1)"

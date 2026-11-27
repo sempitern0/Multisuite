@@ -63,13 +63,7 @@ else
 VIDEO_DETECT := HW="$(HW)" sh scripts/video-detect.sh
 endif
 # Red privada (Headscale, docs/VPN.md): a vpn.env opts in to `make vpn-*` only; `make up` never
-# starts it. Its KEY=VALUE lines are valid Make assignments: VPN_TLS selects the HTTPS override.
--include vpn.env
-VPN_TLS ?= none
-VPN_DC := docker compose --env-file vpn.env -f compose.vpn.yaml
-ifeq ($(VPN_TLS),acme-dns)
-VPN_DC += -f deploy/compose.vpn-tls.yaml
-endif
+# starts it. scripts/vpn.{sh,ps1} alone choose the stack's Compose files (HTTPS override included).
 ifeq ($(OS),Windows_NT)
 VPN_SCRIPT := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/vpn.ps1
 else
@@ -447,17 +441,17 @@ video-config:
 # Independent commands deliberately fail if vpn.env is absent or invalid (docs/VPN.md).
 vpn-up:
 	@$(ACCOUNTS_NETWORK)
-	@$(VPN_DC) up -d
+	@$(VPN_SCRIPT) compose up --detach
 vpn-stop:
-	@$(VPN_DC) stop
+	@$(VPN_SCRIPT) compose stop
 vpn-restart:
-	@$(VPN_DC) restart headscale vpn-entry
+	@$(VPN_SCRIPT) compose restart headscale vpn-entry
 vpn-status:
-	@$(VPN_DC) ps
+	@$(VPN_SCRIPT) compose ps
 vpn-logs:
-	@$(VPN_DC) logs -f --tail=100 headscale vpn-node vpn-entry
+	@$(VPN_SCRIPT) compose logs --follow --tail=100 headscale vpn-node vpn-entry
 vpn-config:
-	@$(VPN_DC) config --quiet
+	@$(VPN_SCRIPT) compose config --quiet
 vpn-join:
 	@$(VPN_SCRIPT) join
 vpn-person:

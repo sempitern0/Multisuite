@@ -94,7 +94,7 @@ archivo que mantiene `vpn-node`. No hace falta crear registros DNS públicos par
 
 - `python3 tests/vpn-smoke.py` (CI): Headscale, el NAS y un dispositivo reales; unión con clave
   etiquetada, nombres privados por DNS, política (el puerto 8082 del NAS queda cerrado), entrada al
-  portal y retirada del dispositivo.
-- `tests/vpn.ps1` (CI Windows): validación de entradas y direcciones impresas por `scripts/vpn.ps1`.
+  portal, retirada del dispositivo y carga de las rutas en modo HTTPS (`VPN_TLS=acme-dns`) sin emitir certificados.
+- `tests/vpn.ps1` (CI Windows): validación de entradas, direcciones impresas y paso de argumentos a Compose por `scripts/vpn.ps1` (Make delega en los scripts, que son los únicos que eligen los archivos de Compose).
 - Validación de Compose con y sin HTTPS en el job `unix-scripts`.
 - Manual (no automatizable): servidor con nombre público, móvil Android e iPhone reales fuera de casa.

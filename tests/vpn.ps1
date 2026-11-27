@@ -16,6 +16,18 @@ try {
   }
   if ($urls -match 'PORTAL_MUSIC_URL') { throw 'An empty private name must be skipped' }
 
+  # Make delegates every stack command here: compose arguments, flags included, pass through intact.
+  $full = Join-Path $temp 'full.env'
+  Copy-Item -LiteralPath (Join-Path (Split-Path -Parent $PSScriptRoot) 'vpn.env.example') -Destination $full
+  $env:VPN_ENV_FILE = $full
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script compose config --quiet
+  if ($LASTEXITCODE -ne 0) { throw "compose passthrough failed ($LASTEXITCODE)" }
+  $services = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script compose config --services | Out-String)
+  foreach ($service in @('headscale', 'vpn-node', 'vpn-entry')) {
+    if ($services -notmatch $service) { throw "compose config missing $service" }
+  }
+  $env:VPN_ENV_FILE = $envFile
+
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script person 'Ana Lopez' 2>$null | Out-Null
   if ($LASTEXITCODE -ne 2) { throw "Invalid person name must exit 2, got $LASTEXITCODE" }
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script approve ana 'x; rm' 2>$null | Out-Null

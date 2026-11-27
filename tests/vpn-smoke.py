@@ -77,6 +77,7 @@ with tempfile.TemporaryDirectory(prefix="vpn-ci-") as directory:
         return run("docker", "exec", client, *args, check=check)
 
     passed = False
+    cleanup = []
     try:
         run("docker", "network", "create", accounts)
         # Stand-in for the portal's web container (same alias as deploy/compose.portal-accounts).
@@ -132,13 +133,36 @@ with tempfile.TemporaryDirectory(prefix="vpn-ci-") as directory:
         vpn("remove", str(device[0]["id"]))
         eventually(lambda: from_client("wget", "-qO-", "-T", "4", "http://" + node_ip + "/", check=False).returncode != 0,
                    "A removed device must lose access", timeout=120)
+        # HTTPS mode renders the same routes file: every private name on websecure with the resolver.
+        tls_entry = project + "-tls"
+        cleanup.append(tls_entry)
+        run("docker", "run", "-d", "--name", tls_entry,
+            "-e", "VPN_TLS=acme-dns", "-e", "VPN_PORTAL_HOST=" + host, "-e", "VPN_VIDEO_HOST=video.example.org",
+            "-v", str(root / "docker/vpn-entry/routes.yml") + ":/etc/traefik/dynamic/routes.yml:ro",
+            os.environ.get("TRAEFIK_IMAGE", "traefik:v3.8.0"),
+            "--entrypoints.web.address=:80", "--entrypoints.websecure.address=:443",
+            "--providers.file.directory=/etc/traefik/dynamic", "--api.insecure=true",
+            "--certificatesresolvers.letsencrypt.acme.email=ci@example.org",
+            "--certificatesresolvers.letsencrypt.acme.storage=/tmp/acme.json",
+            "--certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare")
+
+        def router(name):
+            out = run("docker", "exec", tls_entry, "wget", "-qO-", "http://127.0.0.1:8080/api/http/routers/" + name + "@file", check=False)
+            return json.loads(out.stdout) if out.returncode == 0 else None
+
+        for name in ("portal", "video"):
+            loaded = eventually(lambda: router(name), "HTTPS route " + name + " not loaded", timeout=30)
+            assert loaded["status"] == "enabled" and loaded["entryPoints"] == ["websecure"], loaded
+            assert loaded["tls"]["certResolver"] == "letsencrypt", loaded
+        assert router("music") is None, "An unset private name must not get a route"
+
         passed = True
-        print("PASS private network: join, private names, policy and device removal")
+        print("PASS private network: join, private names, policy, device removal and HTTPS routes")
     finally:
         if not passed:
             device_logs = run("docker", "logs", "--tail", "60", client, check=False)
             logs = run(*compose, "logs", "--tail", "80", check=False)
             print(device_logs.stdout[-3000:], device_logs.stderr[-3000:], logs.stdout[-6000:], logs.stderr[-2000:])
-        run("docker", "rm", "-f", client, portal, check=False)
+        run("docker", "rm", "-f", client, portal, *cleanup, check=False)
         run(*compose, "down", "-v", "--remove-orphans", check=False)
         run("docker", "network", "rm", accounts, check=False)
