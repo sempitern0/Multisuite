@@ -21,10 +21,22 @@ DB_UI_PORT="8081"
 MAILPIT_PORT="8025"
 COMPOSE_PROFILES="mariadb,mailpit,phpmyadmin,https,workers"
 ENV
+printf 'MUSIC_PROJECT_NAME=multisuite-music\nNAVIDROME_PORT=14533\n' > "$temp/project/music.env"
+printf 'VIDEO_PORT=18096\nVIDEO_HARDWARE=nvidia\n' > "$temp/project/video.env"
 cat > "$temp/bin/docker" <<'DOCKER'
 #!/bin/sh
 if [ "$1 $2 $3 $4 $5" = "compose ps --services --status running" ]; then
   printf 'app\nweb\ncaddy-local\nmariadb\nmailpit\nphpmyadmin\nworker\n'
+  exit 0
+fi
+if [ "$1" = ps ]; then
+  # Music and Video gateways running; the Komga stack exists but is stopped.
+  case "$*" in
+    *project=multisuite-music*service=music-gateway*status=running*) echo m1 ;;
+    *project=multisuite-video*service=video-gateway*status=running*) echo v1 ;;
+    *project=multisuite-komga*status=running*) ;;
+    *-aq*project=multisuite-komga*) echo k1 ;;
+  esac
   exit 0
 fi
 exit 1
@@ -37,6 +49,29 @@ grep -q 'http://localhost:8081' "$temp/out"
 grep -q 'http://localhost:8025' "$temp/out"
 grep -q 'mariadb' "$temp/out"
 if grep -q 'SECRET-NOT-FOR-LOGS' "$temp/out"; then echo 'Status leaked secrets' >&2; exit 1; fi
+grep -q 'Music (Navidrome).*http://localhost:14533' "$temp/out"
+grep -q 'Video (Jellyfin).*http://localhost:18096' "$temp/out"
+grep -q 'Video GPU.*nvidia' "$temp/out"
+grep -q 'Reading (Komga).*stopped.*make komga-up' "$temp/out"
+if grep -q 'Kavita' "$temp/out"; then echo 'Status showed an unconfigured service' >&2; exit 1; fi
+# After make down Komga still appears (Make starts it with the development NAS); Kavita, configured
+# but disabled, is never offered as something to start.
+printf 'KAVITA_PORT=15000\n' > "$temp/project/reading.env"
+cat > "$temp/bin/docker" <<'DOCKER'
+#!/bin/sh
+if [ "$1 $2 $3 $4 $5" = "compose ps --services --status running" ]; then printf 'app\nweb\n'; exit 0; fi
+[ "$1" = ps ] && exit 0
+exit 1
+DOCKER
+PATH="$temp/bin:$PATH" sh "$temp/project/scripts/status.sh" > "$temp/down"
+grep -q 'Reading (Komga).*stopped.*make komga-up' "$temp/down"
+grep -q 'Video (Jellyfin).*stopped.*make video-up' "$temp/down"
+grep -q 'Reading (Kavita).*disabled' "$temp/down"
+if grep -q 'make reading-up' "$temp/down"; then echo 'Status suggested starting disabled Kavita' >&2; exit 1; fi
+touch "$temp/project/compose.nas.yaml"
+PATH="$temp/bin:$PATH" sh "$temp/project/scripts/status.sh" > "$temp/real"
+if grep -q 'Reading (Komga)' "$temp/real"; then echo 'Komga shown with real disks and no containers' >&2; exit 1; fi
+rm -f "$temp/project/reading.env" "$temp/project/compose.nas.yaml"
 cat > "$temp/bin/docker" <<'DOCKER'
 #!/bin/sh
 exit 1

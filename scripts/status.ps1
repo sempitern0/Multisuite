@@ -19,7 +19,7 @@ if (-not (Test-Path -LiteralPath $envPath)) {
 $allowed = @('PROJECT_NAME','APP_LABEL','SETUP_CONFIGURED','DB_ENGINE','DB_DATABASE',
     'QUEUE_ENGINE','MAIL_ENGINE','DB_UI','HTTP_PORT','HTTPS_ENABLED','HTTPS_PORT',
     'LOCAL_DOMAIN','VITE_PORT','DB_UI_PORT','MAILPIT_PORT',
-    'COMPOSE_PROFILES')
+    'COMPOSE_PROFILES','KOMGA_PORT')
 $settings = @{}
 foreach ($line in [System.IO.File]::ReadAllLines($envPath)) {
     if ($line -match '^([A-Z][A-Z0-9_]*)=(.*)$' -and $Matches[1] -in $allowed) {
@@ -117,6 +117,45 @@ function Show-Link([string]$Label,[string]$Url,[bool]$Available,[bool]$Primary =
         Write-Host 'OFF      service not running' -ForegroundColor DarkYellow
     }
 }
+# Multisuite services run as separate Compose stacks (music.env, video.env, reading.env, Komga),
+# queried by Compose labels so the override files Make adds do not matter. Only known keys are read.
+function FileSetting([string]$File, [string]$Name, [string]$Fallback) {
+    $path = Join-Path $Root $File
+    if (-not (Test-Path -LiteralPath $path)) { return $Fallback }
+    $found = $Fallback
+    foreach ($line in [System.IO.File]::ReadAllLines($path)) {
+        if ($line -match ('^' + [regex]::Escape($Name) + '=(.*)$')) {
+            $value = $Matches[1].Trim().Trim('"') -replace '[\x00-\x1f\x7f]', ''
+            if ($value -ne '') { $found = $value }
+        }
+    }
+    return $found
+}
+# Number of containers of a Compose stack (or of one of its services), running or in any state.
+# Returns a number, never an array: PowerShell unrolls empty arrays and strict mode rejects .Count on $null.
+function ContainerCount([string]$Project, [string]$Service = '', [switch]$Running) {
+    if (-not $hasDockerStatus) { return 0 }
+    $arguments = @('ps', $(if ($Running) { '-q' } else { '-aq' }), '--filter', "label=com.docker.compose.project=$Project")
+    if ($Service -ne '') { $arguments += @('--filter', "label=com.docker.compose.service=$Service") }
+    if ($Running) { $arguments += @('--filter', 'status=running') }
+    try {
+        $ids = @(& docker @arguments 2>$null)
+        if ($LASTEXITCODE -ne 0) { return 0 }
+        return @($ids | Where-Object { ([string]$_).Trim() -ne '' }).Count
+    } catch { return 0 }
+}
+# Entry is the gateway when the stack runs with the portal's account bridge, else the service itself.
+function EntryRunning([string]$Project, [string]$Gateway, [string]$Service) {
+    if ((ContainerCount $Project $Gateway -Running) -gt 0) { return $true }
+    return ((ContainerCount $Project $Gateway) -eq 0) -and ((ContainerCount $Project $Service -Running) -gt 0)
+}
+function Show-NasLink([string]$Label, [string]$Url, [bool]$Running, [string]$Command) {
+    Write-Host ('  {0,-22}' -f $Label) -NoNewline -ForegroundColor Gray
+    if ($Running) { Write-Host $Url -ForegroundColor Green }
+    elseif (-not $hasDockerStatus) { Write-Host 'UNKNOWN  Docker unavailable' -ForegroundColor Yellow }
+    else { Write-Host ('OFF      stopped  ({0})' -f $Command) -ForegroundColor DarkYellow }
+}
+
 $name = Setting 'PROJECT_NAME' 'foundry'
 $title = Setting 'APP_LABEL' $name
 $db = Setting 'DB_ENGINE' 'postgres'
@@ -158,6 +197,39 @@ if ($ui -in @('pgweb','phpmyadmin','adminer')) {
 }
 if ((-not $https) -and (Active 'node')) {
     Show-Link 'Vite HMR' ("http://localhost:{0}" -f (Setting 'VITE_PORT' '5173')) $true
+}
+
+Section 'Multisuite services'
+$nasShown = $false
+if (Test-Path -LiteralPath (Join-Path $Root 'music.env')) {
+    $nasShown = $true
+    $project = FileSetting 'music.env' 'MUSIC_PROJECT_NAME' 'multisuite-music'
+    Show-NasLink 'Music (Navidrome)' ("http://localhost:{0}" -f (FileSetting 'music.env' 'NAVIDROME_PORT' '4533')) (EntryRunning $project 'music-gateway' 'navidrome') 'make music-up'
+}
+# Make starts Komga whenever the development NAS is used (no compose.nas.yaml): same rule here.
+if (-not (Test-Path -LiteralPath (Join-Path $Root 'compose.nas.yaml')) -or (ContainerCount 'multisuite-komga') -gt 0) {
+    $nasShown = $true
+    Show-NasLink 'Reading (Komga)' ("http://localhost:{0}" -f (Setting 'KOMGA_PORT' '25600')) ((ContainerCount 'multisuite-komga' 'komga-gateway' -Running) -gt 0) 'make komga-up'
+}
+if (Test-Path -LiteralPath (Join-Path $Root 'reading.env')) {
+    # Kavita stays configured but disabled (Make stops it unless READING_AUTO=1): never suggest starting it.
+    $project = FileSetting 'reading.env' 'READING_PROJECT_NAME' 'multisuite-reading'
+    if (EntryRunning $project 'reading-gateway' 'kavita') {
+        $nasShown = $true
+        Show-NasLink 'Reading (Kavita)' ("http://localhost:{0}" -f (FileSetting 'reading.env' 'KAVITA_PORT' '5000')) $true ''
+    } elseif ($hasDockerStatus) {
+        Write-Host ('  {0,-22}' -f 'Reading (Kavita)') -NoNewline -ForegroundColor Gray
+        Write-Host 'disabled (Komga is used; READING_AUTO=1 enables it)' -ForegroundColor DarkGray
+    }
+}
+if (Test-Path -LiteralPath (Join-Path $Root 'video.env')) {
+    $nasShown = $true
+    $project = FileSetting 'video.env' 'VIDEO_PROJECT_NAME' 'multisuite-video'
+    Show-NasLink 'Video (Jellyfin)' ("http://localhost:{0}" -f (FileSetting 'video.env' 'VIDEO_PORT' '8096')) ((ContainerCount $project 'video-gateway' -Running) -gt 0) 'make video-up'
+    Item 'Video GPU' (FileSetting 'video.env' 'VIDEO_HARDWARE' 'none')
+}
+if (-not $nasShown) {
+    Write-Host '  None configured: make music-up, make video-detect (docs/JELLYFIN.md).' -ForegroundColor DarkGray
 }
 
 Section 'Configuration'
