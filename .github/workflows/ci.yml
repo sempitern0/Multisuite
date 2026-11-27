@@ -248,9 +248,28 @@ jobs:
           docker compose config -q
       - name: Validate Compose
         run: docker compose config -q
-      - name: Build and smoke-test PHP development toolchain
+      - name: Resolve development image targets and tags from Compose
+        run: docker compose build --print app composer node > "$RUNNER_TEMP/dev-toolchain.json"
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Build development images and load them for smoke tests
+        uses: docker/bake-action@5be5f02ff8819ecd3092ea6b2e6261c31774f2b4 # v6
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          source: .
+          files: ${{ runner.temp }}/dev-toolchain.json
+          targets: |
+            app
+            composer
+            node
+          load: true
+          pull: true
+          # tooling (composer) descends from frontend (node) and development (app).
+          set: |
+            *.cache-from=type=gha,scope=multisuite-dev-toolchain
+            composer.cache-to=type=gha,scope=multisuite-dev-toolchain,mode=max,ignore-error=true
+      - name: Smoke-test PHP development toolchain
         run: |
-          docker compose build app composer node
           docker compose run --rm --no-deps --entrypoint php app -r 'exit(extension_loaded("redis") ? 0 : 1);'
           docker compose run --rm --no-deps --user 0:0 composer sh -ec 'chown "$DEV_UID:$DEV_GID" /var/www/html/vendor /var/www/html/node_modules /tmp/npm-cache /tmp/composer'
           docker compose run --rm --no-deps composer sh -ec 'php -v && composer --version && node --version && npm --version && touch /var/www/html/node_modules/.cache-write-test && touch /tmp/npm-cache/.cache-write-test && touch /tmp/composer/.cache-write-test'

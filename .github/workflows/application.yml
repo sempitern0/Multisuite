@@ -150,13 +150,15 @@ jobs:
           path: /tmp/video-screens
           if-no-files-found: ignore
       - name: Navidrome account integration
+        env:
+          NAVIDROME_TEST_WINDOW_SECONDS: 2
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: |
           docker network create navidrome-ci
           # Connected folders: the portal mirrors into this tree, Navidrome reads it as /personal.
           mkdir -p /tmp/nas-ci-music/.multisuite-media/music
           trap 'docker rm -f music-gateway-ci navidrome-ci >/dev/null 2>&1; docker network rm navidrome-ci >/dev/null' EXIT
-          docker run -d --name navidrome-ci --network navidrome-ci --network-alias navidrome \
+          docker run -d --name navidrome-ci --network navidrome-ci --network-alias navidrome -e ND_AUTHWINDOWLENGTH="${NAVIDROME_TEST_WINDOW_SECONDS}s" \
             -v /tmp/nas-ci-music/.multisuite-media/music:/personal:ro navidrome/navidrome:0.64.2
           docker run -d --name music-gateway-ci --network navidrome-ci -p 127.0.0.1:4533:8080 \
             --user 101:101 --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges:true \
