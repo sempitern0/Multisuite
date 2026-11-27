@@ -18,19 +18,13 @@ Instantánea del 27 de noviembre de 2026. Se reescribe al cerrar cada incremento
 - **Mejoras técnicas (PR #47)**: registro de clientes OAuth limitado y solo con el interruptor del owner; borrado del índice semántico al retirar el consentimiento; enums de roles y estados con `CHECK` en PostgreSQL; sin Flux (OTP nativo `x-ui::otp`) ni andamiaje SaaS heredado.
 - **Publicación para todos (S04b, PR #47)**: proponer desde Mis archivos, decidir en Administración → Para todos; biblioteca común por enlaces duros concedida en el servicio antes de confirmar; espacio al fondo común; lo publicado sobrevive a la baja del aportante (STORAGE.md § Publicación para todos). Validado en CI; QA con dos cuentas pendiente.
 - **Vídeo con Jellyfin 10.11.11 (P04.2, PR #47)**: `make video-detect` (Intel, AMD, NVIDIA o procesador), conexión del owner, cuentas privadas no administradoras con carpeta común del operador, control parental por persona, aceleración elegible, gateway con aspecto de Multisuite y botón de vuelta, entrada desde la portada sin segundo inicio de sesión (un dispositivo por navegador, inactivos retirados a los 30 días) y copia de su configuración en instantánea propia ([JELLYFIN.md](JELLYFIN.md)). Validado en CI contra Jellyfin real (web con sesión iniciada en Chrome); el propietario confirmó la conexión y la subida de un MP4 en desarrollo. Pendiente QA con GPU y apps reales.
-
-## En revisión (PR #48)
-- **Seguridad de cuentas**: suspender cierra Multisuite al momento (sesiones, OAuth, invitaciones emitidas, cambio de correo pendiente) y bloquea los servicios justo después; uno caído queda en «bloqueo remoto pendiente» y se reintenta. Cambio de correo propio con confirmación en el nuevo buzón y aviso al anterior; Ajustes → Seguridad reorganizado.
-- **Privacidad del asistente**: carpetas de Mis archivos excluidas del asistente (con sus subcarpetas); revocar invalida el índice y lo que esté en curso.
-- **Lector de facturas** con un trabajo a la vez y límites de memoria, CPU y salida.
-- **Vídeo**: la carpeta Vídeos admite AVI, MKV, MPEG-TS/PS, WMV/ASF y FLV (sin recodificar); un formato rechazado se explica junto al archivo.
-- Integrada con `main` tras la #47; pendiente de CI y de QA visual de Ajustes → Seguridad.
+- **Seguridad de cuentas y privacidad (PR #48)**: suspender cierra Multisuite al momento (sesiones, OAuth, invitaciones emitidas, cambio de correo pendiente) y bloquea los servicios justo después; uno caído queda en «bloqueo remoto pendiente» y se reintenta, y uno sin configurar se muestra en rojo hasta volver a configurarlo. Cambio de correo propio con confirmación en el nuevo buzón y aviso al anterior; Ajustes → Seguridad en secciones desplegables. Carpetas excluidas del asistente con sus subcarpetas. Lector de facturas con un trabajo a la vez y límites de memoria, CPU y salida. La carpeta Vídeos admite AVI, MKV, MPEG-TS/PS, WMV/ASF y FLV, y un formato rechazado se explica. Validado en CI (incluido PostgreSQL); QA visual de Ajustes → Seguridad pendiente.
 
 ## Próximos pasos
-QA de #47 (publicar con dos cuentas; Vídeo con GPU real y apps, JELLYFIN.md § QA). Fusionar la PR #48 cuando CI y la QA visual estén listas. QA del asistente con un modelo real (MCP.md § Probar con un modelo real) y de Komga; después P03 (red privada) para probar los clientes externos y MCP-08 (piloto).
+QA de #47 (publicar con dos cuentas; Vídeo con GPU real y apps, JELLYFIN.md § QA). QA visual de Ajustes → Seguridad (escritorio y móvil) y subir un AVI o MKV a Vídeos. QA del asistente con un modelo real (MCP.md § Probar con un modelo real) y de Komga; después P03 (red privada) para probar los clientes externos y MCP-08 (piloto).
 
 ## Acciones pendientes del usuario
-- `make rebuild` (añade `pdftotext`), `make composer CMD="install"` y `make up` (migraciones y claves OAuth); conectar un proveedor desde *Ajustes del asistente*.
+- `make rebuild` (añade `pdftotext` y `util-linux` para el lector de facturas), `make composer CMD="install"` y `make up` (migraciones y claves OAuth); conectar un proveedor desde *Ajustes del asistente*.
 - `make composer CMD="audit --locked"`.
 - `make composer CMD="install"` (sale Flux), `make up` (migraciones) y, para Vídeo, `make video-detect`, `make up` y Administración → Conexión de Vídeo; en producción declarar `VIDEO_COMMON_PATH`.
 - Guardar `NAS_FILES_KEY` y `APP_KEY` fuera del servidor (sin `APP_KEY` las claves de IA no se pueden descifrar) y ensayar la copia (`make nas-backup`, `make nas-backup-verify`).
