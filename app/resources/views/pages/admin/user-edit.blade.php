@@ -5,11 +5,13 @@ use App\Actions\Users\DeleteUser;
 use App\Actions\Users\RemoveAvatar;
 use App\Actions\Users\SetServiceAccess;
 use App\Actions\Users\SetSuspension;
+use App\Actions\Users\SetVideoRating;
 use App\Actions\Users\UpdateUser;
 use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
 use App\Models\User;
 use App\Models\UserStorageQuota;
+use App\Services\JellyfinAccounts;
 use App\Services\ServiceAccounts;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
@@ -31,6 +33,8 @@ new #[Title('Gestionar persona')] class extends Component {
 
     public string $role = 'member';
 
+    public ?string $videoRating = null;
+
     public string $username = '';
 
     public bool $email_confirmed = false;
@@ -42,6 +46,7 @@ new #[Title('Gestionar persona')] class extends Component {
         Gate::authorize('update', $user);
         $this->userId = $user->id;
         $this->fill($user->only('name', 'email', 'role'));
+        $this->videoRating = $user->video_max_rating === null ? '' : (string) $user->video_max_rating;
         $this->username = (string) $user->username;
     }
 
@@ -89,6 +94,7 @@ new #[Title('Gestionar persona')] class extends Component {
         if (Gate::denies('view-storage')) {
             return null;
         }
+
         return UserStorageQuota::summaryFor($this->userId);
     }
 
@@ -121,6 +127,14 @@ new #[Title('Gestionar persona')] class extends Component {
         $access->handle(Auth::user(), $this->managed, $service, $enabled);
         unset($this->managed, $this->services);
         $this->toast($enabled ? 'Servicio activado' : 'Servicio desactivado');
+    }
+
+    public function saveVideoRating(SetVideoRating $set): void
+    {
+        $this->throttle('admin');
+        $set->handle(Auth::user(), $this->managed, $this->videoRating === null || $this->videoRating === '' ? null : (int) $this->videoRating);
+        unset($this->managed);
+        $this->toast('Límite de Vídeo guardado');
     }
 
     public function setSuspended(bool $suspend, SetSuspension $suspension): void
@@ -230,6 +244,14 @@ new #[Title('Gestionar persona')] class extends Component {
                                 </x-ui::actions>
                             </x-ui::row>
                         @endforeach
+                        @if (collect($this->services)->contains(fn (array $service): bool => $service['id'] === 'video' && $service['enabled']))
+                            <x-ui::form wire:submit="saveVideoRating" inline>
+                                <x-ui::select name="videoRating" label="Vídeo: contenido permitido" wire:model="videoRating"
+                                    :options="['' => 'Sin límite'] + JellyfinAccounts::AGE_LIMITS"
+                                    help="Lo aplica Jellyfin en la web y en sus aplicaciones. Con límite, las películas y series sin clasificación quedan ocultas; sus propios vídeos siguen visibles." />
+                                <x-ui::button type="submit" variant="secondary">Guardar límite</x-ui::button>
+                            </x-ui::form>
+                        @endif
                     </x-ui::stack>
                 </x-ui::panel>
             @endif

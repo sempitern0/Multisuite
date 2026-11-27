@@ -3,6 +3,7 @@
 namespace App\Actions\Users;
 
 use App\Concerns\ProfileValidationRules;
+use App\Enums\Role;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Services\AdminAudit;
@@ -24,7 +25,7 @@ class UpdateUser
         return [
             'name' => $this->nameRules(),
             'email' => ['required', 'string', 'email', 'lowercase', 'max:255', Rule::unique('users', 'email')->ignore($target->id)],
-            'role' => ['required', Rule::in(['member', 'admin'])],
+            'role' => ['required', Rule::in([Role::Admin->value, Role::Member->value])],
             'email_confirmed' => ['sometimes', 'accepted'],
         ];
     }

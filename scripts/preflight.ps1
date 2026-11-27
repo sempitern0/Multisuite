@@ -30,7 +30,6 @@ $choices = @{
     MAIL_ENGINE = @('mailpit','log','smtp')
     DB_UI = @('none','pgweb','phpmyadmin','adminer')
     HTTPS_ENABLED = @('0','1')
-    TENANCY_MODE = @('none','shared-db','database-per-tenant')
 }
 foreach ($key in $choices.Keys) {
     if ((Val $key '') -cnotin $choices[$key]) { throw "Invalid $key. Run make reconfigure." }

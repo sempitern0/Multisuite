@@ -6,8 +6,7 @@ declare(strict_types=1);
 function foundryKeys(): array {
     return ['PROJECT_NAME','APP_LABEL','DB_ENGINE','DB_DATABASE','DB_USERNAME',
         'QUEUE_ENGINE','MAIL_ENGINE','DB_UI','HTTP_PORT','HTTPS_ENABLED','HTTPS_PORT',
-        'LOCAL_DOMAIN','VITE_PORT','DB_UI_PORT','MAILPIT_PORT','TENANCY_MODE',
-        'TENANCY_TEST_TENANTS','TENANCY_TEST_PATH','TENANCY_ASSERT_HEADER'];
+        'LOCAL_DOMAIN','VITE_PORT','DB_UI_PORT','MAILPIT_PORT'];
 }
 function foundryRead(string $path): array {
     $values = [];
@@ -33,8 +32,7 @@ function foundryValidate(array $values): void {
     }
     foreach (['DB_ENGINE'=>['postgres','mariadb','mysql','sqlite'],
         'QUEUE_ENGINE'=>['sync','database','redis'], 'MAIL_ENGINE'=>['mailpit','log','smtp'],
-        'DB_UI'=>['none','pgweb','phpmyadmin','adminer'], 'HTTPS_ENABLED'=>['0','1'],
-        'TENANCY_MODE'=>['none','shared-db','database-per-tenant']] as $key=>$allowed) {
+        'DB_UI'=>['none','pgweb','phpmyadmin','adminer'], 'HTTPS_ENABLED'=>['0','1']] as $key=>$allowed) {
         if (isset($values[$key]) && !in_array($values[$key],$allowed,true)) throw new RuntimeException('Invalid '.$key);
     }
     if (!preg_match('/^[a-z][a-z0-9_-]{0,40}$/', $values['PROJECT_NAME'] ?? '')) throw new RuntimeException('Invalid PROJECT_NAME');
@@ -65,7 +63,7 @@ function foundryProfiles(array $v): array {
     $profiles[]=$https?'https':'dev'; $profiles[]='scheduler';
     if ($queue!=='sync') $profiles[]='workers';
     return ['COMPOSE_PROFILES'=>implode(',',$profiles),'DB_SERVER'=>$db==='sqlite'?'':$db,
-        'CADDY_LOCAL_CONFIG_FILE'=>(($v['TENANCY_MODE']??'none')!=='none' && $https)?'./docker/caddy/Caddyfile.saas':'./docker/caddy/Caddyfile.local'];
+        'CADDY_LOCAL_CONFIG_FILE'=>'./docker/caddy/Caddyfile.local'];
 }
 function foundryProject(string $mode, string $root, string $app): void {
     $path=$root.'/.env'; $manifest=$root.'/.foundry.json';

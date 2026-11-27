@@ -21,6 +21,5 @@
 
         <x-ui::toasts />
 
-        @fluxScripts
     </body>
 </html>

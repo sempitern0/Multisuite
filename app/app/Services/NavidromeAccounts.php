@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ServiceAccount;
 use App\Models\User;
+use App\Services\Provisioning\CommonLibraries;
 use App\Services\Provisioning\PersonalLibraries;
 use App\Services\Provisioning\ServiceProvisioner;
 use App\Services\Provisioning\ServiceUrl;
@@ -12,7 +13,7 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
-class NavidromeAccounts implements PersonalLibraries, ServiceProvisioner
+class NavidromeAccounts implements CommonLibraries, PersonalLibraries, ServiceProvisioner
 {
     public function synchronize(ServiceAccount $account, #[\SensitiveParameter] string $password): void
     {
@@ -120,6 +121,24 @@ class NavidromeAccounts implements PersonalLibraries, ServiceProvisioner
     public function ensurePersonalLibrary(ServiceAccount $account, ?string $section, string $label): void
     {
         $path = PersonalLibraries::MOUNT.'/'.strtolower($account->remote_id).($section === null ? '' : '/'.$section);
+        $this->assignLibrary($account, $path, fn (array $remote): string => $label.' · '.$remote['userName']);
+    }
+
+    /** The common library (S04b): one Navidrome library for everyone, assigned to this account too. */
+    public function ensureCommonLibrary(ServiceAccount $account, ?string $section, string $label): void
+    {
+        $path = PersonalLibraries::MOUNT.'/'.CommonLibraries::DIRECTORY.($section === null ? '' : '/'.$section);
+        $this->assignLibrary($account, $path, fn (): string => $label);
+    }
+
+    /**
+     * Creates the library at $path when missing and adds it to the account's libraries (never
+     * removes the others).
+     *
+     * @param  callable(array<string, mixed>): string  $name
+     */
+    private function assignLibrary(ServiceAccount $account, string $path, callable $name): void
+    {
         try {
             $client = $this->client();
             $remote = $client->get('/api/user/'.$account->remote_id);
@@ -142,7 +161,7 @@ class NavidromeAccounts implements PersonalLibraries, ServiceProvisioner
                 }
             }
             if ($id === null) {
-                $created = $client->post('/api/library', ['name' => $label.' · '.$remote->json('userName'), 'path' => $path, 'defaultNewUsers' => false]);
+                $created = $client->post('/api/library', ['name' => $name((array) $remote->json()), 'path' => $path, 'defaultNewUsers' => false]);
                 if (! $created->successful() || ! is_numeric($created->json('id'))) {
                     // Typically the personal folder is not mounted in the Navidrome container.
                     throw new RuntimeException($created->clientError() ? 'configuration' : 'unavailable');

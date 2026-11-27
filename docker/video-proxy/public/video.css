@@ -1,0 +1,60 @@
+/*
+ * Multisuite look for Jellyfin's web interface (Nocturne dark palette, docs/design-system.md).
+ * Only colours, focus and the return link: Jellyfin keeps its layout, player and settings.
+ * Values copied from app/resources/css/themes/nocturne-tokens.css; keep them in step.
+ */
+:root {
+    --ms-bg: #0b0f13;
+    --ms-bg-2: #101317;
+    --ms-panel: #161a1e;
+    --ms-panel-2: #1e2226;
+    --ms-line: #383c42;
+    --ms-text: #eef0f3;
+    --ms-sub: #b5bbc2;
+    --ms-accent: #dbf368;
+    --ms-accent-ink: #1a2300;
+    --ms-accent-soft: #22331d;
+}
+html, body, .skinBody, .backgroundContainer, .backdropContainer + .backgroundContainer { background-color: var(--ms-bg) !important; }
+.skinHeader-withBackground, .skinHeader.semiTransparent { background-color: color-mix(in oklab, var(--ms-bg-2) 92%, transparent) !important; }
+.mainDrawer, .dialog, .formDialogHeader, .formDialogFooter, .actionSheet { background-color: var(--ms-panel) !important; color: var(--ms-text); }
+.navMenuOption:hover, .listItem:hover { background-color: var(--ms-panel-2) !important; }
+.navMenuOption-selected { background-color: var(--ms-accent-soft) !important; color: var(--ms-accent) !important; }
+.button-submit, .emby-button.button-submit { background-color: var(--ms-accent) !important; color: var(--ms-accent-ink) !important; }
+.button-submit:hover { background-color: color-mix(in oklab, var(--ms-accent) 85%, white) !important; }
+.emby-tab-button-active, .emby-tab-button-active .emby-button-foreground, .sectionTitle a:hover, a.button-link { color: var(--ms-accent) !important; }
+.emby-input, .emby-textarea, .emby-select-withcolor { background-color: var(--ms-panel-2) !important; border-color: var(--ms-line) !important; color: var(--ms-text) !important; }
+.emby-input:focus, .emby-textarea:focus, .emby-select-withcolor:focus { border-color: var(--ms-accent) !important; }
+.emby-checkbox:checked + span + .checkboxOutline, .emby-checkbox:checked + .checkboxLabel .checkboxOutline { background-color: var(--ms-accent) !important; border-color: var(--ms-accent) !important; }
+.itemProgressBarForeground, .playedIndicator, .countIndicator { background-color: var(--ms-accent) !important; color: var(--ms-accent-ink) !important; }
+.card:focus .cardBox.visualCardBox, .card:focus .cardBox:not(.visualCardBox) .cardScalable { border-color: var(--ms-accent) !important; }
+.fieldDescription, .secondaryText { color: var(--ms-sub); }
+:focus-visible { outline: 3px solid var(--ms-accent); outline-offset: 2px; }
+
+.ms-video-return {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    flex: 0 0 auto;
+    min-height: 44px;
+    margin: 0 .5rem;
+    padding: 0 .75rem;
+    border: 1px solid var(--ms-accent);
+    border-radius: 10px;
+    background: var(--ms-accent-soft);
+    color: var(--ms-accent) !important;
+    font: 600 14px/1.2 system-ui, sans-serif;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 150ms ease, color 150ms ease;
+}
+.ms-video-return:hover { background: var(--ms-accent); color: var(--ms-accent-ink) !important; }
+.ms-video-return:focus-visible { outline: 3px solid var(--ms-accent); outline-offset: 3px; }
+.ms-video-return > span:first-child { font-size: 18px; }
+@media (max-width: 600px) {
+    .ms-video-return { margin: 0 .25rem; padding: 0 .5rem; }
+    .ms-video-return .ms-video-label { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ms-video-return { transition: none; }
+}

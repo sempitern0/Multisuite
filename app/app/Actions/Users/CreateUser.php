@@ -5,6 +5,7 @@ namespace App\Actions\Users;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Concerns\UsernameValidationRules;
+use App\Enums\Role;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Services\AdminAudit;
@@ -28,7 +29,7 @@ class CreateUser
             'name' => $this->nameRules(),
             'username' => $this->usernameRules(),
             'email' => ['required', 'string', 'email', 'lowercase', 'max:255', Rule::unique('users', 'email')],
-            'role' => ['required', Rule::in(['admin', 'member'])],
+            'role' => ['required', Rule::in([Role::Admin->value, Role::Member->value])],
             'password' => $this->passwordRules(),
             'services' => ['sometimes', 'array'],
             'services.*' => ['string', 'distinct', Rule::in(app(ServiceAccounts::class)->available())],

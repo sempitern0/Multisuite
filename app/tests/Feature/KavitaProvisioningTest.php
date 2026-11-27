@@ -357,7 +357,7 @@ class KavitaProvisioningTest extends TestCase
         $user->service_access = [];
         $user->save();
         $this->actingAs($user)->get('/services/reading')->assertForbidden();
-        $this->assertSame(['komga', 'music', 'reading'], array_keys(config('portal.services')));
+        $this->assertSame(['komga', 'music', 'video', 'reading'], array_keys(config('portal.services')));
         $this->assertContains('reading', app(ServiceAccounts::class)->available());
     }
 }

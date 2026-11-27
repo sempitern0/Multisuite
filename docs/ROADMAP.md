@@ -16,9 +16,8 @@ Pendiente de validar en el piloto: autologin musical con dos usuarios y un naveg
 2. **Asistente y puente MCP** ([MCP.md](MCP.md)), siguiente integración por decisión del usuario:
    - [ ] QA del usuario de MCP-01 a MCP-07 (fusionados en #42 y #44) con un proveedor real (MCP.md § Probar con un modelo real) y `composer audit`.
    - [ ] QA de clientes externos (MCP-05) con Claude/ChatGPT cuando exista P03.
-   - [ ] Límite de peticiones en `/oauth/register` y un único dueño del borrado del índice (`AssistantAccess::setContentConsent` duplica `SemanticIndex::forget`), pendientes de la revisión de calidad de #44 (sin PR propia; ir con el siguiente incremento del asistente).
    - [ ] MCP-08 Piloto: dos personas, dos dispositivos, red privada.
-3. **S04b** Publicación administrativa (tras MCP-04 o cuando el usuario decida las tres cuestiones).
+3. **S04b** Publicación para todos: QA del usuario (en PR #47).
 
 ## Lectura (Komga)
 - [ ] Evaluar Komga con los libros ya subidos (KOMGA.md). Kavita deshabilitado y reactivable.
@@ -32,19 +31,17 @@ Pendiente de validar en el piloto: autologin musical con dos usuarios y un naveg
 ## P04 — Servicios (uno por PR)
 Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúmenes, copia y restauración, cuotas y aislamiento; adaptador `ServiceProvisioner` con prueba en CI contra la versión fijada.
 - [ ] P04.1 Lectura con Kavita: QA del usuario (KAVITA.md § QA) y copia del volumen `kavita-config` en `make nas-backup`.
-- [ ] P04.2 Vídeo: Jellyfin (medir transcodificación antes de dimensionar).
+- [ ] P04.2 Vídeo con Jellyfin (PR #47): QA del usuario con Docker y GPU reales (JELLYFIN.md § QA) y medir transcodificación antes de dimensionar.
 - [ ] P04.3 Descargas: interfaz mantenida para yt-dlp con cuotas y aislamiento.
 - [ ] P04.4 Notas/documentos con interfaz web, adjuntos y exportación.
 - [ ] Ideas sin decidir: automatizaciones, invitados temporales con caducidad.
 
 ## S04a — Puente Mis archivos → servicios (fusionado en PR #36)
 - [ ] QA del usuario: subir un MP3, un EPUB y un CBZ a sus carpetas, verlos en Navidrome y Kavita con su cuenta, comprobar que otra persona no los ve y que la papelera los retira.
-- [ ] Vídeos → Jellyfin cuando llegue P04.2.
 - [ ] Producción con discos reales: generar el montaje de `.multisuite-media/{servicio}` como `/personal` en los compose de cada servicio (hoy solo en desarrollo) → P05.
 
-## S04b — Publicación administrativa
-- [ ] Decidir con el usuario: imputación de contenido global a cuotas, borrado por el aportante de contenido publicado, baja del aportante.
-- [ ] Estados personal → pendiente → global; solo admin publica/retira; permisos aplicados en el servicio antes de confirmar; auditoría e idempotencia sin duplicar bytes.
+## S04b — Publicación para todos (PR #47)
+- [ ] QA del usuario: proponer una canción y un libro, publicarlos, verlos con otra cuenta en Navidrome y Komga, retirar y eliminar (STORAGE.md § Publicación para todos).
 
 ## P03 — Identidad y red privada
 - [ ] VPN (Tailscale u otra), TLS, permisos mínimos y revocación; prueba desde un segundo dispositivo real.
@@ -65,10 +62,8 @@ Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúm
 - [ ] Opcional: foto anterior/siguiente en el visor; miniaturas en el servidor si la galería se vuelve lenta.
 
 ## Deuda técnica
-- [ ] Enums PHP respaldados (`Role`, `ReservationState`, `UploadState`, `ExportState`, `ServiceAccountStatus`) con casts y `CHECK` en PostgreSQL.
-- [ ] Sustituir `flux:otp` por un campo propio del tema y retirar Flux.
+- [ ] Usar `App\Enums\Role` en las comparaciones de rol que aún escriben el texto (políticas, permisos y vistas); los estados ya usan sus enums.
 - [ ] Resumen de administración con métricas reales.
-- [ ] Retirar el andamiaje SaaS heredado de Foundry (`wizard`, `tenancy-check`, `Caddyfile.saas`, docs/foundry/SAAS.md y sus pasos de CI): Multisuite no es multi-inquilino.
 
 ## QA pendiente del usuario (lo que CI no puede comprobar)
 - [ ] Tras `make rebuild`: foto de perfil (encuadrar, guardar, quitar; también en móvil); cambiar el usuario de alguien con Música; desactivar/activar Música; suspender/reactivar una cuenta de prueba (USER_MANAGEMENT.md § QA).
@@ -79,4 +74,3 @@ Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúm
 
 ## Lectura · validación PR #41
 - [ ] QA del usuario: conexión inicial desde panel, invitación, cuenta anterior, subida y lectura sin segundo login.
-- [ ] Publicación administrativa de contenido global: pendiente, sin conceder bibliotecas globales del piloto a miembros.

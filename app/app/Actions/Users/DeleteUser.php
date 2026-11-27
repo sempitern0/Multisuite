@@ -5,6 +5,7 @@ namespace App\Actions\Users;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Services\AdminAudit;
+use App\Services\Files\Publications;
 use App\Services\Provisioning\ServiceProvisioners;
 use App\Services\Storage\StorageReservations;
 use App\Support\LockedUsers;
@@ -26,6 +27,8 @@ class DeleteUser
                 throw ValidationException::withMessages(['confirm_email' => 'Escribe el correo de esta cuenta para confirmar.']);
             }
             app(StorageReservations::class)->prepareUserDeletion($target);
+            // What they published stays for everyone as common property (decision 2026-11-22).
+            app(Publications::class)->releaseContributor($target);
             $accounts = $target->serviceAccounts()->orderBy('id')->lockForUpdate()->get();
             $provisioners = app(ServiceProvisioners::class);
             if ($accounts->contains(fn ($account) => ! $provisioners->supports($account->service))) {

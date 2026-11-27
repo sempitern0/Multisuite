@@ -2,6 +2,7 @@
 
 return [
     'komga_internal_url' => env('KOMGA_INTERNAL_URL', 'http://komga-gateway:8080'),
+    'video_internal_url' => env('JELLYFIN_INTERNAL_URL', 'http://jellyfin:8096'),
     'reading_autologin' => env('KAVITA_AUTOLOGIN_ENABLED', false),
     'music_autologin' => env('NAVIDROME_AUTOLOGIN_ENABLED', false),
     'music_session_bridge' => env('NAVIDROME_SESSION_BRIDGE_ENABLED', false),
@@ -24,6 +25,15 @@ return [
             'category' => 'Escuchar',
             'enabled' => env('PORTAL_MUSIC_ENABLED', false),
             'url' => env('PORTAL_MUSIC_URL', ''),
+        ],
+        'video' => [
+            'name' => 'Vídeo',
+            'icon' => 'video',
+            'description' => 'Tus películas, series y vídeos en Jellyfin.',
+            'category' => 'Ver',
+            'hidden_when_disabled' => true,
+            'enabled' => env('PORTAL_VIDEO_ENABLED', false),
+            'url' => env('PORTAL_VIDEO_URL', ''),
         ],
         'reading' => [
             'name' => 'Lectura',

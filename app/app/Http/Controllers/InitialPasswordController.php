@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Concerns\PasswordValidationRules;
 use App\Services\KomgaSession;
 use App\Services\ServiceAccounts;
+use App\Services\VideoSession;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -41,6 +42,7 @@ class InitialPasswordController extends Controller
         $request->session()->regenerate();
         $request->session()->forget('auth.password_confirmed_at');
         app(KomgaSession::class)->prepare($request->user(), $data['password']);
+        app(VideoSession::class)->prepare($request->user(), $data['password']);
 
         return redirect()->route('dashboard')->with('status', 'Contraseña personal establecida.');
     }

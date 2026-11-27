@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Events\AssistantContentRevoked;
 use App\Events\PrivateUploadReady;
 use App\Models\Folder;
 use App\Models\PersonalTransaction;
@@ -12,10 +13,14 @@ use App\Policies\PersonalTransactionPolicy;
 use App\Policies\UserFilePolicy;
 use App\Policies\UserPolicy;
 use App\Services\Assistant\AssistantAccess;
+use App\Services\Assistant\SemanticIndex;
 use App\Services\Files\PersonalFiles;
+use App\Services\Files\Publications;
+use App\Services\VideoSession;
 use App\Support\Finance\ReadsReceipts;
 use App\Support\Finance\ReceiptReader;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
@@ -56,15 +61,20 @@ class AppServiceProvider extends ServiceProvider
         Passport::refreshTokensExpireIn(now()->addDays(30));
         // Named limiters: unnamed `throttle:N,1` share one counter per user across every
         // route (and nested ones count twice), so each area gets its own key.
-        foreach (['files' => 120, 'uploads' => 60, 'upload-chunks' => 1200, 'receipt-ocr' => 4, 'finances' => 60, 'file-exports' => 10, 'invitation-accept' => 10, 'account-change' => 5, 'avatar-sticker' => 30, 'admin' => 10, 'admin-storage' => 60, 'assistant' => 20, 'assistant-mcp' => 60] as $name => $perMinute) {
+        foreach (['files' => 120, 'uploads' => 60, 'upload-chunks' => 1200, 'receipt-ocr' => 4, 'finances' => 60, 'file-exports' => 10, 'invitation-accept' => 10, 'account-change' => 5, 'avatar-sticker' => 30, 'admin' => 10, 'admin-storage' => 60, 'assistant' => 20, 'assistant-mcp' => 60, 'mcp-oauth' => 10] as $name => $perMinute) {
             RateLimiter::for($name, fn (Request $request) => Limit::perMinute($perMinute)->by($name.':'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
         }
         // Registered here (no app/Listeners) so event discovery cannot attach it twice.
         Event::listen(PrivateUploadReady::class, fn (PrivateUploadReady $event) => app(PersonalFiles::class)->onUploadReady($event->uploadId, $event->userId));
+        // Signing out of Multisuite also ends the Jellyfin session it opened for that browser.
+        Event::listen(Logout::class, fn () => app(VideoSession::class)->forget());
+        Event::listen(AssistantContentRevoked::class, fn (AssistantContentRevoked $event) => app(SemanticIndex::class)->forget($event->userId));
         Gate::define('view-admin-audit', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
         Gate::define('manage-invitations', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
         Gate::define('view-storage', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
         // Disks and the default are infrastructure policy: owner only.
+        // Publication for everyone (S04b): only administrators decide.
+        Gate::define('publish-content', fn (User $user): bool => Publications::canDecide($user));
         Gate::define('manage-storage-pools', fn (User $user): bool => $user->role === 'owner');
         // The assistant is configured only by the owner (decision 2026-11-20, docs/MCP.md).
         Gate::define('manage-assistant', fn (User $user): bool => $user->role === 'owner');

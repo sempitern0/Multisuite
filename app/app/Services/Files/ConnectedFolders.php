@@ -28,6 +28,7 @@ class ConnectedFolders
         'books' => ['service' => 'reading', 'name' => 'Libros', 'section' => 'libros', 'icon' => 'book', 'library' => 'Mis libros', 'mimes' => []],
         'comics' => ['service' => 'reading', 'name' => 'Cómics', 'section' => 'comics', 'icon' => 'book', 'library' => 'Mis cómics',
             'mimes' => ['application/zip', 'application/x-rar', 'application/vnd.rar', 'application/x-rar-compressed', 'application/x-7z-compressed']],
+        'videos' => ['service' => 'video', 'name' => 'Vídeos', 'section' => null, 'icon' => 'video', 'library' => 'Mis vídeos', 'mimes' => []],
     ];
 
     public function __construct(private ServiceAccounts $accounts) {}

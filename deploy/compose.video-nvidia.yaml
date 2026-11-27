@@ -1,0 +1,13 @@
+# NVIDIA GPU (NVENC), chosen by `make video-detect`. Needs the NVIDIA Container Toolkit on the
+# host (Linux) or Docker Desktop with WSL 2 GPU support (Windows).
+services:
+  jellyfin:
+    environment:
+      NVIDIA_DRIVER_CAPABILITIES: "compute,video,utility"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

@@ -5,6 +5,7 @@ Portal Laravel/Livewire separado de servicios con interfaces propias.
 - Foundry conserva compose.yaml para generar y ejecutar el portal; configuración y release aún pendientes P02/P05.
 - compose.music.yaml es autónomo con nombre de proyecto propio. No combinar ambos archivos ni incorporar Navidrome al wizard/reset de Laravel.
 - Navidrome puede probarse antes de instalar PHP/Laravel: seguir [NAVIDROME.md](NAVIDROME.md).
+- Vídeo: `compose.video.yaml` autónomo (Jellyfin). `make video-detect` crea `video.env` con la GPU detectada (Intel, AMD, NVIDIA o procesador) y Make añade el override de dispositivos; el portal nunca recibe dispositivos ni el socket ([JELLYFIN.md](JELLYFIN.md)).
 - No guardar música ni DB del servicio en app/storage. Los datos locales están ignorados en /local/; producción usará directorios durables configurados.
 - Windows con Docker Desktop; Linux con permisos UID/GID reales. Comprobar ambas plataformas, no asumir equivalencia.
 - PORTAL: versiones/lockfiles y PostgreSQL si el starter requiere persistencia. No añadir colas/Redis para simples enlaces.

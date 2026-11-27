@@ -57,6 +57,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Profile photos from the private disk; never under /storage/ (Nginx public disk).
     Route::get('avatars/{user}/{hash}', AvatarController::class)->whereNumber('user')->where('hash', '[a-f0-9]{20}')->name('avatars.show');
     Route::livewire('services/komga/confirm', 'pages::komga-confirm')->middleware('throttle:account-change')->name('komga.confirm');
+    Route::livewire('services/video/confirm', 'pages::video-confirm')->middleware('throttle:account-change')->name('video.confirm');
     // Chat: remote images blocked by CSP so a model answer can never load an external pixel.
     Route::livewire('assistant', 'pages::assistant')
         ->middleware(['can:use-assistant', 'throttle:files', RestrictPreviewImages::class])->name('assistant.index');
@@ -64,6 +65,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware(['can:manage-assistant', 'password.confirm', 'throttle:admin'])->name('assistant.settings');
     Route::livewire('admin/reading-connection', 'pages::admin.komga-connection')
         ->middleware(['can:manage-storage-pools', 'password.confirm', 'throttle:admin'])->name('komga.connect');
+    Route::livewire('admin/video-connection', 'pages::admin.video-connection')
+        ->middleware(['can:manage-storage-pools', 'password.confirm', 'throttle:admin'])->name('video.connect');
     Route::get('services/{service}', ServiceController::class)->where('service', '[a-z0-9-]+')->name('services.open');
 
     Route::middleware(['can:manage-invitations', 'password.confirm', 'throttle:admin'])->group(function () {
@@ -74,6 +77,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::livewire('users/{user}/edit', 'pages::admin.user-edit')->name('users.edit');
         Route::livewire('users/create', 'pages::admin.user-create')->name('users.create');
         Route::livewire('invitations', 'pages::admin.invitations')->name('invitations.index');
+        Route::livewire('admin/publications', 'pages::admin.publications')->middleware('can:publish-content')->name('publications.index');
     });
 
     // Storage limits: same audience, but a higher rate so a family can be configured in one sitting.

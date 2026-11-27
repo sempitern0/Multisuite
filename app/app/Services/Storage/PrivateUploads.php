@@ -2,6 +2,8 @@
 
 namespace App\Services\Storage;
 
+use App\Enums\ReservationState;
+use App\Enums\UploadState;
 use App\Events\PrivateUploadReady;
 use App\Models\PrivateUpload;
 use App\Models\StorageReservation;
@@ -38,7 +40,7 @@ class PrivateUploads
                 return $upload;
             }
             $reservation = StorageReservation::findOrFail($key);
-            if ($reservation->state !== 'reserved' || $reservation->expires_at->isPast()) {
+            if ($reservation->state !== ReservationState::Reserved->value || $reservation->expires_at->isPast()) {
                 throw new RuntimeException('Reserva no disponible.');
             }
             $upload = new PrivateUpload;
@@ -46,7 +48,7 @@ class PrivateUploads
             $upload->location_id = $location;
             $upload->root_hash = hash('sha256', $root);
             $upload->media_link = $connection;
-            $upload->state = 'pending';
+            $upload->state = UploadState::Pending->value;
             $upload->save();
 
             return $upload;
@@ -70,10 +72,10 @@ class PrivateUploads
         // Do not retry this transaction: the input stream cannot be replayed.
         return DB::transaction(function () use ($user, $key, $input, $offset, $chunkSha256): PrivateUpload {
             [$upload, $reservation, $base] = $this->locked($user, $key);
-            if ($upload->state === 'ready') {
+            if ($upload->state === UploadState::Ready->value) {
                 return $upload;
             }
-            if ($upload->state !== 'pending' || $reservation->state !== 'reserved' || $reservation->expires_at->isPast()) {
+            if ($upload->state !== UploadState::Pending->value || $reservation->state !== ReservationState::Reserved->value || $reservation->expires_at->isPast()) {
                 throw new RuntimeException('La subida no está disponible.');
             }
             [$part, $sealed, $final] = [$base.'.part', $base.'.enc', $base.'.blob'];
@@ -140,7 +142,7 @@ class PrivateUploads
             }
             // A crash/rollback leaves pending + reserved, with bytes for cleanup.
             $this->reservations->commit($user, $key, $actual);
-            $upload->state = 'ready';
+            $upload->state = UploadState::Ready->value;
             $upload->sha256 = $sha256;
             $upload->hash_state = null;
             $upload->save();
@@ -268,10 +270,10 @@ class PrivateUploads
     {
         $upload = PrivateUpload::whereKey($key)->firstOrFail();
         $reservation = StorageReservation::whereKey($key)->where('user_id', $user->id)->firstOrFail();
-        if ($upload->state === 'ready') {
+        if ($upload->state === UploadState::Ready->value) {
             return (int) $reservation->actual_bytes;
         }
-        if ($upload->state !== 'pending') {
+        if ($upload->state !== UploadState::Pending->value) {
             return 0;
         }
         [$root, , $location] = $this->destination();
@@ -300,10 +302,10 @@ class PrivateUploads
     {
         DB::transaction(function () use ($user, $key): void {
             [$upload, $reservation, $base] = $this->locked($user, $key);
-            if ($upload->state === 'cancelled') {
+            if ($upload->state === UploadState::Cancelled->value) {
                 return;
             }
-            if ($upload->state !== 'pending' || $reservation->state !== 'reserved') {
+            if ($upload->state !== UploadState::Pending->value || $reservation->state !== ReservationState::Reserved->value) {
                 throw new RuntimeException('No se puede cancelar contenido confirmado.');
             }
             foreach (['.part', '.enc', '.blob'] as $suffix) {
@@ -317,7 +319,7 @@ class PrivateUploads
                 }
             }
             $this->reservations->release($user, $key);
-            $upload->state = 'cancelled';
+            $upload->state = UploadState::Cancelled->value;
             $upload->save();
         });
     }
@@ -331,10 +333,10 @@ class PrivateUploads
     {
         DB::transaction(function () use ($user, $key): void {
             [$upload, , $base] = $this->locked($user, $key);
-            if ($upload->state === 'purged') {
+            if ($upload->state === UploadState::Purged->value) {
                 return;
             }
-            if ($upload->state !== 'ready') {
+            if ($upload->state !== UploadState::Ready->value) {
                 throw new RuntimeException('Solo se puede borrar contenido confirmado.');
             }
             $path = $base.'.blob';
@@ -346,7 +348,37 @@ class PrivateUploads
                 throw new RuntimeException('No se ha podido confirmar el borrado en el disco.');
             }
             $this->reservations->releaseCommitted($user, $key);
-            $upload->state = 'purged';
+            $upload->state = UploadState::Purged->value;
+            $upload->save();
+        });
+    }
+
+    /**
+     * Permanent deletion of common content (published for everyone, maybe without a contributor
+     * any more): same checks as purge(), then the bytes leave the pool and the common fund.
+     */
+    public function purgeCommon(string $key): void
+    {
+        DB::transaction(function () use ($key): void {
+            $upload = PrivateUpload::whereKey($key)->lockForUpdate()->firstOrFail();
+            if ($upload->state === UploadState::Purged->value) {
+                return;
+            }
+            if ($upload->state !== UploadState::Ready->value) {
+                throw new RuntimeException('Solo se puede borrar contenido confirmado.');
+            }
+            [$root, , $location] = $this->destination();
+            $this->checkRoot($upload, $root, $location);
+            $path = $root.'/'.$upload->id.'.blob';
+            if (is_link($path) || (file_exists($path) && (! is_file($path) || ! unlink($path)))) {
+                throw new RuntimeException('No se pudo borrar el archivo del disco; se conserva y sigue contando.');
+            }
+            clearstatcache(true, $path);
+            if (file_exists($path) || is_link($path)) {
+                throw new RuntimeException('No se ha podido confirmar el borrado en el disco.');
+            }
+            $this->reservations->releaseCommon($key);
+            $upload->state = UploadState::Purged->value;
             $upload->save();
         });
     }
@@ -359,7 +391,7 @@ class PrivateUploads
     {
         $reservation = StorageReservation::whereKey($key)->where('user_id', $user->id)->firstOrFail();
         $upload = PrivateUpload::whereKey($key)->firstOrFail();
-        if ($upload->state !== 'ready' || $reservation->state !== 'committed') {
+        if ($upload->state !== UploadState::Ready->value || $reservation->state !== ReservationState::Committed->value) {
             throw new RuntimeException('El archivo no está disponible.');
         }
         [$root, , $location] = $this->destination();
@@ -379,7 +411,7 @@ class PrivateUploads
      */
     public function connectedPath(PrivateUpload $upload): ?string
     {
-        if ($upload->state !== 'ready' || $upload->media_link === null || $upload->cipher !== null) {
+        if ($upload->state !== UploadState::Ready->value || $upload->media_link === null || $upload->cipher !== null) {
             return null;
         }
         [$root, , $location] = $this->destination();

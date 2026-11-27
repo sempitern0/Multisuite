@@ -1,0 +1,65 @@
+# Vídeo (Jellyfin, docs/JELLYFIN.md). Standalone stack: do NOT merge with Laravel's compose.yaml.
+# GPU access is added by the override `make video-detect` selects (deploy/compose.video-*.yaml);
+# without one Jellyfin converts with the CPU. The portal never gets devices or this stack's socket.
+name: ${VIDEO_PROJECT_NAME:-multisuite-video}
+services:
+  jellyfin:
+    image: ${JELLYFIN_IMAGE:-jellyfin/jellyfin:10.11.11}
+    user: "${VIDEO_UID:-1000}:${VIDEO_GID:-1000}"
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Madrid
+      # Address the apps and the web interface use to reach it (no trailing slash).
+      JELLYFIN_PublishedServerUrl: "${PORTAL_VIDEO_URL:-http://127.0.0.1:8096}"
+    # Not published: people, apps and the portal go through video-gateway.
+    networks: [default, accounts]
+    volumes:
+      - jellyfin-config:/config
+      - jellyfin-cache:/cache
+      # Common folder declared by the operator (an existing NAS folder), read-only for everyone.
+      - type: bind
+        source: ${VIDEO_COMMON_PATH:-./docker/jellyfin/common}
+        target: /common
+        read_only: true
+        bind:
+          create_host_path: false
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8096/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 12
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  # The published entry (loopback; P03 puts it behind the private network). Adds the Multisuite
+  # look and the «Volver a Multisuite» link to the web interface (docker/video-proxy).
+  video-gateway:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${VIDEO_PORT:-8096}:8080"
+    depends_on:
+      jellyfin:
+        condition: service_healthy
+    networks: [default, accounts]
+    volumes:
+      - ./docker/video-proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/video-proxy/public:/usr/share/nginx/html:ro
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/_multisuite/video.css"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+networks:
+  accounts:
+    external: true
+    name: multisuite-accounts
+volumes:
+  jellyfin-config: {}
+  jellyfin-cache: {}

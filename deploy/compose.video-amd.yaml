@@ -1,0 +1,8 @@
+# AMD GPU (VA-API), chosen by `make video-detect`. Jellyfin needs the render
+# node and the host's render group; VIDEO_RENDER_GID is detected alongside.
+services:
+  jellyfin:
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "${VIDEO_RENDER_GID:-109}"

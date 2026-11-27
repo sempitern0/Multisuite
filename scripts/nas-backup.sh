@@ -20,6 +20,7 @@ rehearsal=multisuite-restore-rehearsal
 step=preflight
 started=''
 music_stopped=0
+video_stopped=0
 locked=0
 
 die() { echo "nas-backup: $*" >&2; exit 1; }
@@ -42,13 +43,39 @@ write_status() {
     printf '{"schema_version":1,"started_at":"%s","finished_at":"%s","ok":%s,"step":"%s"}\n' "$started" "$2" "$1" "$step" > "$status"
 }
 music() { "$DOCKER" compose --env-file music.env -f compose.music.yaml "$@"; }
+video() { "$DOCKER" compose --env-file video.env -f compose.video.yaml "$@"; }
+
+# Jellyfin's configuration (its SQLite database) in its own short snapshot, right after the portal
+# database dump that holds the account mapping: Jellyfin is stopped only while its volume is copied,
+# never during the much longer copy of the NAS files.
+backup_video() {
+    container=$(video ps --all -q jellyfin)
+    [ -n "$container" ] || die "Vídeo está configurado pero falta su contenedor. Comprueba make video-status."
+    volume=$("$DOCKER" inspect --format '{{range .Mounts}}{{if and (eq .Destination "/config") (eq .Type "volume")}}{{.Name}}{{end}}{{end}}' "$container")
+    case "$volume" in ''|*[!A-Za-z0-9_.-]*) die "no se pudo identificar el volumen de configuración de Jellyfin." ;; esac
+    state=$("$DOCKER" inspect --format '{{.State.Status}}' "$container")
+    case "$state" in
+        running) video_stopped=1; video stop jellyfin >/dev/null ;;
+        exited|created) ;;
+        *) die "Jellyfin está en estado $state. Reintenta la copia cuando esté estable." ;;
+    esac
+    extra_mounts="-v $volume:/source/jellyfin-config:ro"
+    restic backup --tag jellyfin /source
+    if [ "$video_stopped" = 1 ]; then
+        video start jellyfin >/dev/null
+        video_stopped=0
+    fi
+}
 cleanup() {
     code=$?
     trap - EXIT HUP INT TERM
+    if [ "$video_stopped" = 1 ]; then
+        video start jellyfin >/dev/null || { echo "nas-backup: arranca Jellyfin con make video-up." >&2; code=1; }
+    fi
     if [ "$music_stopped" = 1 ]; then
         music start navidrome >/dev/null 2>&1 || echo "nas-backup: Navidrome no volvió a arrancar; ejecuta make music-up." >&2
     fi
-    rm -rf "$staging"
+    [ "$locked" != 1 ] || rm -rf "$staging"
     [ "$step" != database ] || "$DOCKER" compose exec -T postgres rm -f /tmp/portal.dump >/dev/null 2>&1 || true
     [ "$command" != verify ] || "$DOCKER" volume rm -f "$rehearsal" >/dev/null 2>&1 || true
     if [ "$command" = run ] && [ "$code" != 0 ] && [ "$locked" = 1 ]; then
@@ -116,7 +143,8 @@ restic() { "$DOCKER" run --rm --hostname multisuite $repo_args -e RESTIC_CACHE_D
 extra_mounts=''
 
 mkdir -p local
-trap cleanup EXIT HUP INT TERM
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
 
 case "$command" in
 snapshots)
@@ -141,6 +169,10 @@ run)
     [ -s "$staging/portal.dump" ] || die "el volcado de la base de datos está vacío."
 
     "$DOCKER" compose exec -T postgres rm -f /tmp/portal.dump
+    if [ -f video.env ]; then
+        step=jellyfin
+        backup_video
+    fi
     step=files
     extra_mounts="-v $PWD/$staging:/source/portal-db:ro $mounts"
     restic backup --tag portal /source
@@ -223,6 +255,7 @@ restore)
     else
         restic restore latest --tag portal --target /restore
         restic restore latest --tag navidrome --target /restore || echo "nas-backup: no hay copia de Navidrome." >&2
+        restic restore latest --tag jellyfin --target /restore || echo "nas-backup: no hay copia de Vídeo." >&2
     fi
     echo "Restaurado en $target/source. Pasos para volver a ponerlo en servicio: docs/STORAGE.md (Restaurar)."
     ;;

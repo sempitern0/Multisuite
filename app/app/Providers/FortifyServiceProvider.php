@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\KomgaSession;
 use App\Services\ReadingSession;
 use App\Services\ServiceAccounts;
+use App\Services\VideoSession;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -76,6 +77,7 @@ class FortifyServiceProvider extends ServiceProvider
 
             app(ReadingSession::class)->prepare($user, $password);
             app(KomgaSession::class)->prepare($user, $password);
+            app(VideoSession::class)->prepare($user, $password);
 
             return $user;
         });

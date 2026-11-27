@@ -2,6 +2,7 @@
 
 namespace App\Services\Assistant;
 
+use App\Events\AssistantContentRevoked;
 use App\Models\AssistantMember;
 use App\Models\AssistantSetting;
 use App\Models\AssistantToolCall;
@@ -134,7 +135,9 @@ class AssistantAccess
                 DB::table('assistant_consents')->insert(['user_id' => $user->id, 'content_accepted_at' => now()]);
             } else {
                 DB::table('assistant_consents')->where('user_id', $user->id)->delete();
-                app(SemanticIndex::class)->forget($user);
+                // Removes what was prepared for search by meaning, in this transaction
+                // (synchronous listener: SemanticIndex::forget).
+                event(new AssistantContentRevoked($user->id));
             }
         });
     }
@@ -151,7 +154,7 @@ class AssistantAccess
             $folder->save();
             User::whereKey($user->id)->increment('assistant_content_revision');
             if ($excluded) {
-                app(SemanticIndex::class)->forget($user);
+                event(new AssistantContentRevoked($user->id));
             }
         });
     }

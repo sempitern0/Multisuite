@@ -1,6 +1,6 @@
 # Diseño de la interfaz (capa de tema)
 
-Todas las pantallas usan el tema Nocturne; de Flux solo queda el campo de código de un solo uso (`flux:otp`). El prototipo visual original quedó en el historial de git (`docs/design/nocturne-v2`, retirado tras la migración).
+Todas las pantallas usan el tema Nocturne. Flux se retiró: el código de un solo uso es `x-ui::otp`, un único campo nativo (`autocomplete="one-time-code"`). El prototipo visual original quedó en el historial de git (`docs/design/nocturne-v2`, retirado tras la migración).
 
 ## Objetivo
 El diseño está separado de la lógica para poder sustituirlo sin tocar controladores, rutas, policies ni la estructura de las vistas de dominio.
@@ -99,11 +99,11 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 ## Reglas
 - Vistas nuevas o modificadas: solo componentes `x-ui::`; sin clases `ui-*`, `style`, colores, sombras ni radios. Si falta algo, se añade un componente al tema (en todos los temas) en vez de estilar la vista.
 - Las pruebas comprueban `data-layout="app|auth"`, no clases del tema.
-- No quedan vistas Flux. `nocturne.css` conserva la reasignación de `zinc`, `teal` y el acento solo para `flux:otp`.
+- Sin Flux: ni paquete, ni hoja `otp.css`, ni escalas `zinc`/`teal`.
 - Nombres de servicio de una palabra (Música, Archivos…); no mostrar nombres técnicos (Navidrome) en la portada.
 - Ocultar un enlace no es autorización: cada ruta mantiene middleware/policies. Los miembros no ven estadísticas globales.
 - Avisos de éxito solo tras confirmación del servidor; sin barras de vista previa en la app.
-- Tema solo oscuro: no hay selector claro/oscuro (`@fluxAppearance` retirado y página Apariencia fuera del menú).
+- Temas claro y oscuro con botón sol/luna y «Según el sistema» en Preferencias (docs/design-system.md § Color).
 - Contraste AA comprobado (texto ≥ 4,5:1, contornos de controles ≥ 3:1). Desviaciones mínimas respecto a la guía para cumplirlo: texto atenuado `#818e81` (guía `#778477`), placeholder `#758575` y borde de campos `#5a675b`.
 - Accesibilidad: foco visible amarillo, `aria-current` en navegación, errores con `role="alert"` y `aria-describedby`, `prefers-reduced-motion`, responsive (≤1050 px barra de iconos, ≤700 px menú desplegable, rejilla de 2 columnas).
 

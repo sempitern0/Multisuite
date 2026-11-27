@@ -9,6 +9,7 @@ use App\Models\Invitation;
 use App\Models\User;
 use App\Services\KomgaSession;
 use App\Services\ServiceAccounts;
+use App\Services\VideoSession;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -70,6 +71,7 @@ class InvitationController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
         app(KomgaSession::class)->prepare($user, $data['password']);
+        app(VideoSession::class)->prepare($user, $data['password']);
 
         return redirect()->route('dashboard');
     }
