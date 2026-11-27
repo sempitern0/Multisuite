@@ -17,6 +17,14 @@ class NavidromeAccountsTest extends TestCase
 {
     use PreparesMediaRoot, RefreshDatabase;
 
+    private function waitForLoginWindows(int $windows): void
+    {
+        // Standalone integrations use Navidrome's default window. CI sets the same
+        // shorter interval on both the disposable server and this test process.
+        $seconds = max(1, (int) (getenv('NAVIDROME_TEST_WINDOW_SECONDS') ?: 20));
+        sleep($windows * $seconds + 1);
+    }
+
     /** @param array<string, string> $credentials */
     private function login(string $url, array $credentials): Response
     {
@@ -65,7 +73,7 @@ class NavidromeAccountsTest extends TestCase
         $this->assertSame(401, $this->login($url, ['username' => 'suite-user', 'password' => 'first-password'])->status());
         // An administrator's rename keeps the password; a lock keeps the account but stops sign-in.
         // Navidrome's login limiter is a sliding window: wait two windows so the operator's own logins fit.
-        sleep(41);
+        $this->waitForLoginWindows(2);
         $account = ServiceAccount::where('user_id', $user->id)->firstOrFail();
         app(NavidromeAccounts::class)->rename($account, 'renamed-user');
         $this->assertTrue($this->login($url, ['username' => 'renamed-user', 'password' => 'second-password'])->successful());
@@ -74,8 +82,8 @@ class NavidromeAccountsTest extends TestCase
         app(NavidromeAccounts::class)->lock($account);
         $this->assertSame(401, $this->login($url, ['username' => 'renamed-user', 'password' => 'second-password'])->status());
         $this->assertSame($remoteId, $account->remote_id);
-        // Start the second enrollment outside Navidrome's sliding 20-second window.
-        sleep(41);
+        // Start the second enrollment outside Navidrome's sliding window.
+        $this->waitForLoginWindows(2);
         $newUser = User::factory()->create(['email' => 'another@example.com']);
         $newUser->username = 'another-user';
         $newUser->save();
@@ -86,7 +94,7 @@ class NavidromeAccountsTest extends TestCase
         app(NavidromeAccounts::class)->remove($account);
         $this->assertSame(401, $this->login($url, ['username' => 'another-user', 'password' => 'another-password'])->status());
         // Retry in a fresh rate-limit window, as an operator would after a failed response.
-        sleep(21);
+        $this->waitForLoginWindows(1);
         app(NavidromeAccounts::class)->remove($account);
     }
 
@@ -107,7 +115,7 @@ class NavidromeAccountsTest extends TestCase
         // The account test may have created the operator already; creating it again is refused harmlessly.
         Http::post($url.'/auth/createAdmin', ['username' => 'ci-operator', 'password' => 'ci-operator-password']);
         $this->prepareMediaRoot($root);
-        sleep(21);
+        $this->waitForLoginWindows(1);
         $people = [];
         foreach (['ana', 'bea'] as $name) {
             $user = User::factory()->create(['email' => $name.'@example.com']);
@@ -121,7 +129,7 @@ class NavidromeAccountsTest extends TestCase
         }
         $song = "ID3\x03\x00\x00\x00\x00\x00\x0a".str_repeat("\x00", 10)."\xff\xfb\x90\x64".str_repeat("\x00", 24);
         $this->storeConnected($people['ana'], 'music', 'cancion.mp3', $song);
-        sleep(21);
+        $this->waitForLoginWindows(1);
 
         app(MediaLibrary::class)->sync($people['ana']);
         app(MediaLibrary::class)->sync($people['bea']);
