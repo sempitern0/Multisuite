@@ -4,8 +4,10 @@ use App\Enums\FileKind;
 use App\Livewire\Concerns\ManagesOwnFiles;
 use App\Livewire\Concerns\NotifiesInterface;
 use App\Livewire\Concerns\ThrottlesActions;
+use App\Models\AssistantSetting;
 use App\Models\Folder;
 use App\Models\UserStorageQuota;
+use App\Services\Assistant\AssistantAccess;
 use App\Services\Files\ConnectedFolders;
 use App\Services\Files\FileExports;
 use App\Services\Files\PersonalFiles;
@@ -175,9 +177,11 @@ new #[Title('Mis archivos')] class extends Component {
         $this->toast('Carpeta «'.$folder->name.'» creada');
     }
 
-    public function setAssistantExcluded(bool $excluded): void
+    public function setAssistantExcluded(AssistantAccess $access, bool $excluded): void
     {
-        app(\App\Services\Assistant\AssistantAccess::class)->setFolderExcluded(Auth::user(), (int) $this->folderId, $excluded);
+        // Each change rebuilds the person's search index with the provider: never in a loop.
+        $this->throttle('files');
+        $access->setFolderExcluded(Auth::user(), (int) $this->folderId, $excluded);
         unset($this->folder);
         $this->toast('Preferencia de privacidad guardada');
     }
@@ -283,7 +287,7 @@ new #[Title('Mis archivos')] class extends Component {
             @endif
         </x-slot:actions>
     </x-ui::page-header>
-    @if ($folder !== null && \App\Models\AssistantSetting::current()->content_allowed)
+    @if ($folder !== null && AssistantSetting::current()->content_allowed)
         <x-ui::button variant="ghost" wire:click="setAssistantExcluded({{ $folder->assistant_excluded ? 'false' : 'true' }})">
             {{ $folder->assistant_excluded ? 'Quitar exclusión de contenido en esta carpeta' : 'Excluir contenido de esta carpeta y subcarpetas del asistente' }}
         </x-ui::button>

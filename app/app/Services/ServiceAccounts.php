@@ -263,8 +263,11 @@ class ServiceAccounts
                 if ($user !== null && ! $this->entitled($user, $account->service)) {
                     try {
                         $this->lock($account);
-                    } catch (RuntimeException) {
-                        $account->retry_at = now()->addMinutes(5);
+                    } catch (RuntimeException $exception) {
+                        // A service that is down is retried in five minutes. One that is not configured
+                        // cannot be retried usefully: it waits, shown as such, until it is configured
+                        // again (the scheduler checks it without calling the service).
+                        $account->retry_at = $exception->getMessage() === 'configuration' ? null : now()->addMinutes(5);
                         $account->save();
                     }
                 }
