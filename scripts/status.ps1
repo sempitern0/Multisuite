@@ -228,6 +228,14 @@ if (Test-Path -LiteralPath (Join-Path $Root 'video.env')) {
     Show-NasLink 'Video (Jellyfin)' ("http://localhost:{0}" -f (FileSetting 'video.env' 'VIDEO_PORT' '8096')) ((ContainerCount $project 'video-gateway' -Running) -gt 0) 'make video-up'
     Item 'Video GPU' (FileSetting 'video.env' 'VIDEO_HARDWARE' 'none')
 }
+if (Test-Path -LiteralPath (Join-Path $Root 'vpn.env')) {
+    $nasShown = $true
+    $project = FileSetting 'vpn.env' 'VPN_PROJECT_NAME' 'multisuite-vpn'
+    Show-NasLink 'VPN (Headscale)' (FileSetting 'vpn.env' 'VPN_SERVER_URL' 'http://127.0.0.1:8090') ((ContainerCount $project 'headscale' -Running) -gt 0) 'make vpn-up'
+    $scheme = if ((FileSetting 'vpn.env' 'VPN_TLS' 'none') -eq 'acme-dns') { 'https' } else { 'http' }
+    $portal = FileSetting 'vpn.env' 'VPN_PORTAL_HOST' ''
+    if ($portal -ne '') { Item 'Private portal' ("{0}://{1}" -f $scheme, $portal) }
+}
 if (-not $nasShown) {
     Write-Host '  None configured: make music-up, make video-detect (docs/JELLYFIN.md).' -ForegroundColor DarkGray
 }

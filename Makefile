@@ -62,6 +62,13 @@ VIDEO_DETECT := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/
 else
 VIDEO_DETECT := HW="$(HW)" sh scripts/video-detect.sh
 endif
+# Red privada (Headscale, docs/VPN.md): a vpn.env opts in to `make vpn-*` only; `make up` never
+# starts it. scripts/vpn.{sh,ps1} alone choose the stack's Compose files (HTTPS override included).
+ifeq ($(OS),Windows_NT)
+VPN_SCRIPT := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/vpn.ps1
+else
+VPN_SCRIPT := sh scripts/vpn.sh
+endif
 SERVICES_AUTO := $(if $(filter 1,$(MUSIC_AUTO) $(READING_AUTO) $(KOMGA_AUTO) $(VIDEO_AUTO)),1,0)
 DC_FILES := -f compose.yaml $(if $(wildcard compose.override.yaml),-f compose.override.yaml)
 ifeq ($(SERVICES_AUTO),1)
@@ -119,6 +126,7 @@ help:
 	@echo "Optional:    make worker | scheduler | redis"
 	@echo "Music:       make music-up | music-stop | music-status | music-logs"
 	@echo "Video:       make video-detect [HW=intel|amd|nvidia|none] | video-up | video-stop | video-status | video-logs"
+	@echo "VPN:         make vpn-up | vpn-join | vpn-person NAME= | vpn-approve NAME= CODE= | vpn-key NAME= | vpn-devices | vpn-remove ID= | vpn-urls | vpn-status | vpn-logs | vpn-stop"
 	@echo "Auto music:  music.env enables Navidrome; use MUSIC_AUTO=0 to skip"
 	@echo "Reading:     make reading-up | reading-stop | reading-status | reading-logs"
 	@echo "Auto read:   reading.env enables Kavita; use READING_AUTO=0 to skip"
@@ -428,6 +436,36 @@ video-logs:
 	@$(VIDEO_DC) logs -f --tail=100 jellyfin
 video-config:
 	@$(VIDEO_DC) config --quiet
+
+.PHONY: vpn-up vpn-stop vpn-restart vpn-status vpn-logs vpn-config vpn-join vpn-person vpn-approve vpn-key vpn-devices vpn-remove vpn-urls
+# Independent commands deliberately fail if vpn.env is absent or invalid (docs/VPN.md).
+vpn-up:
+	@$(ACCOUNTS_NETWORK)
+	@$(VPN_SCRIPT) compose up --detach
+vpn-stop:
+	@$(VPN_SCRIPT) compose stop
+vpn-restart:
+	@$(VPN_SCRIPT) compose restart headscale vpn-entry
+vpn-status:
+	@$(VPN_SCRIPT) compose ps
+vpn-logs:
+	@$(VPN_SCRIPT) compose logs --follow --tail=100 headscale vpn-node vpn-entry
+vpn-config:
+	@$(VPN_SCRIPT) compose config --quiet
+vpn-join:
+	@$(VPN_SCRIPT) join
+vpn-person:
+	@$(VPN_SCRIPT) person "$(NAME)"
+vpn-approve:
+	@$(VPN_SCRIPT) approve "$(NAME)" "$(CODE)"
+vpn-key:
+	@$(VPN_SCRIPT) key "$(NAME)"
+vpn-devices:
+	@$(VPN_SCRIPT) devices
+vpn-remove:
+	@$(VPN_SCRIPT) remove "$(ID)"
+vpn-urls:
+	@$(VPN_SCRIPT) urls
 
 .PHONY: komga-up komga-stop komga-status komga-logs
 komga-up: up

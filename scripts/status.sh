@@ -99,6 +99,13 @@ nas_services() {
     nas_link 'Video (Jellyfin)' "http://localhost:$(setting VIDEO_PORT 8096 video.env)" "$up" 'make video-up'
     item 'Video GPU' "$(setting VIDEO_HARDWARE none video.env)"
   fi
+  if [ -f vpn.env ]; then
+    shown=yes; up=no; stack_running "$(setting VPN_PROJECT_NAME multisuite-vpn vpn.env)" headscale && up=yes
+    nas_link 'VPN (Headscale)' "$(setting VPN_SERVER_URL http://127.0.0.1:8090 vpn.env)" "$up" 'make vpn-up'
+    scheme=http; [ "$(setting VPN_TLS none vpn.env)" = acme-dns ] && scheme=https
+    portal=$(setting VPN_PORTAL_HOST '' vpn.env)
+    [ -z "$portal" ] || item 'Private portal' "$scheme://$portal"
+  fi
   [ "$shown" = yes ] || printf '  %sNone configured: make music-up, make video-detect (docs/JELLYFIN.md).%s\n' "$dim" "$reset"
 }
 printf '\n%s======================================================%s\n' "$cyan" "$reset"

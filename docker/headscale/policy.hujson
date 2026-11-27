@@ -1,0 +1,17 @@
+// Who may reach what in Multisuite's private network (docs/VPN.md).
+// - Each person's devices (untagged, "members") reach only the NAS, and only its web entry.
+// - Devices of different people never see each other; the NAS starts no connections.
+// - tag:nas is applied by `make vpn-join` with a single-use key created by the operator.
+// Headscale reads this file at start: `make vpn-restart` after changing it.
+{
+  "tagOwners": {
+    "tag:nas": []
+  },
+  "grants": [
+    {
+      "src": ["autogroup:member"],
+      "dst": ["tag:nas"],
+      "ip": ["tcp:80", "tcp:443"]
+    }
+  ]
+}
