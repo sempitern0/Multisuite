@@ -131,20 +131,23 @@ function FileSetting([string]$File, [string]$Name, [string]$Fallback) {
     }
     return $found
 }
-function StackContainers([string]$Project, [string]$Service, [bool]$RunningOnly) {
-    if (-not $hasDockerStatus) { return @() }
-    $arguments = @('ps', '-q', '--filter', "label=com.docker.compose.project=$Project")
+# Number of containers of a Compose stack (or of one of its services), running or in any state.
+# Returns a number, never an array: PowerShell unrolls empty arrays and strict mode rejects .Count on $null.
+function ContainerCount([string]$Project, [string]$Service = '', [switch]$Running) {
+    if (-not $hasDockerStatus) { return 0 }
+    $arguments = @('ps', $(if ($Running) { '-q' } else { '-aq' }), '--filter', "label=com.docker.compose.project=$Project")
     if ($Service -ne '') { $arguments += @('--filter', "label=com.docker.compose.service=$Service") }
-    if ($RunningOnly) { $arguments += @('--filter', 'status=running') } else { $arguments[1] = '-aq' }
+    if ($Running) { $arguments += @('--filter', 'status=running') }
     try {
         $ids = @(& docker @arguments 2>$null)
-        if ($LASTEXITCODE -ne 0) { return @() }
-        return @($ids | Where-Object { ([string]$_).Trim() -ne '' })
-    } catch { return @() }
+        if ($LASTEXITCODE -ne 0) { return 0 }
+        return @($ids | Where-Object { ([string]$_).Trim() -ne '' }).Count
+    } catch { return 0 }
 }
+# Entry is the gateway when the stack runs with the portal's account bridge, else the service itself.
 function EntryRunning([string]$Project, [string]$Gateway, [string]$Service) {
-    if (@(StackContainers $Project $Gateway $true).Count -gt 0) { return $true }
-    return (@(StackContainers $Project $Gateway $false).Count -eq 0) -and (@(StackContainers $Project $Service $true).Count -gt 0)
+    if ((ContainerCount $Project $Gateway -Running) -gt 0) { return $true }
+    return ((ContainerCount $Project $Gateway) -eq 0) -and ((ContainerCount $Project $Service -Running) -gt 0)
 }
 function Show-NasLink([string]$Label, [string]$Url, [bool]$Running, [string]$Command) {
     Write-Host ('  {0,-22}' -f $Label) -NoNewline -ForegroundColor Gray
@@ -203,19 +206,26 @@ if (Test-Path -LiteralPath (Join-Path $Root 'music.env')) {
     $project = FileSetting 'music.env' 'MUSIC_PROJECT_NAME' 'multisuite-music'
     Show-NasLink 'Music (Navidrome)' ("http://localhost:{0}" -f (FileSetting 'music.env' 'NAVIDROME_PORT' '4533')) (EntryRunning $project 'music-gateway' 'navidrome') 'make music-up'
 }
-if (@(StackContainers 'multisuite-komga' '' $false).Count -gt 0) {
+# Make starts Komga whenever the development NAS is used (no compose.nas.yaml): same rule here.
+if (-not (Test-Path -LiteralPath (Join-Path $Root 'compose.nas.yaml')) -or (ContainerCount 'multisuite-komga') -gt 0) {
     $nasShown = $true
-    Show-NasLink 'Reading (Komga)' ("http://localhost:{0}" -f (Setting 'KOMGA_PORT' '25600')) (@(StackContainers 'multisuite-komga' 'komga-gateway' $true).Count -gt 0) 'make komga-up'
+    Show-NasLink 'Reading (Komga)' ("http://localhost:{0}" -f (Setting 'KOMGA_PORT' '25600')) ((ContainerCount 'multisuite-komga' 'komga-gateway' -Running) -gt 0) 'make komga-up'
 }
 if (Test-Path -LiteralPath (Join-Path $Root 'reading.env')) {
-    $nasShown = $true
+    # Kavita stays configured but disabled (Make stops it unless READING_AUTO=1): never suggest starting it.
     $project = FileSetting 'reading.env' 'READING_PROJECT_NAME' 'multisuite-reading'
-    Show-NasLink 'Reading (Kavita)' ("http://localhost:{0}" -f (FileSetting 'reading.env' 'KAVITA_PORT' '5000')) (EntryRunning $project 'reading-gateway' 'kavita') 'make reading-up'
+    if (EntryRunning $project 'reading-gateway' 'kavita') {
+        $nasShown = $true
+        Show-NasLink 'Reading (Kavita)' ("http://localhost:{0}" -f (FileSetting 'reading.env' 'KAVITA_PORT' '5000')) $true ''
+    } elseif ($hasDockerStatus) {
+        Write-Host ('  {0,-22}' -f 'Reading (Kavita)') -NoNewline -ForegroundColor Gray
+        Write-Host 'disabled (Komga is used; READING_AUTO=1 enables it)' -ForegroundColor DarkGray
+    }
 }
 if (Test-Path -LiteralPath (Join-Path $Root 'video.env')) {
     $nasShown = $true
     $project = FileSetting 'video.env' 'VIDEO_PROJECT_NAME' 'multisuite-video'
-    Show-NasLink 'Video (Jellyfin)' ("http://localhost:{0}" -f (FileSetting 'video.env' 'VIDEO_PORT' '8096')) (@(StackContainers $project 'video-gateway' $true).Count -gt 0) 'make video-up'
+    Show-NasLink 'Video (Jellyfin)' ("http://localhost:{0}" -f (FileSetting 'video.env' 'VIDEO_PORT' '8096')) ((ContainerCount $project 'video-gateway' -Running) -gt 0) 'make video-up'
     Item 'Video GPU' (FileSetting 'video.env' 'VIDEO_HARDWARE' 'none')
 }
 if (-not $nasShown) {

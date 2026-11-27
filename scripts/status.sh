@@ -6,11 +6,12 @@ if [ -t 1 ] && [ "${NO_COLOR:-}" = '' ] && [ "${TERM:-}" != dumb ]; then
 else cyan=''; green=''; yellow=''; dim=''; reset=''; fi
 cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 [ -f .env ] || { echo 'Foundry: missing .env; run make setup.' >&2; exit 1; }
-value() {
-  sed -n "s/^$1=//p" .env | tail -n 1 | tr -d '\r' | sed 's/^"//;s/"$//'
-}
+# setting KEY DEFAULT [FILE]: last KEY= line of FILE (default .env), quotes and CR removed.
+# Only the keys asked for are read; nothing is sourced or evaluated.
 setting() {
-  v=$(value "$1")
+  file=${3:-.env}
+  v=''
+  [ -f "$file" ] && v=$(sed -n "s/^$1=//p" "$file" | tail -n 1 | tr -d '\r' | sed 's/^"//;s/"$//')
   if [ -n "$v" ]; then printf '%s' "$v" | tr -d '\r\n'; else printf '%s' "$2"; fi
 }
 name=$(setting PROJECT_NAME foundry)
@@ -55,24 +56,20 @@ if active app && active web; then ready=yes; fi
 
 # Multisuite services run as separate Compose stacks (music.env, video.env, reading.env, Komga).
 # Queried by Compose labels, so the extra override files Make adds do not matter.
-file_setting() {
-  [ -f "$1" ] || { printf '%s' "$3"; return; }
-  v=$(sed -n "s/^$2=//p" "$1" | tail -n 1 | tr -d '\r' | sed 's/^"//;s/"$//')
-  if [ -n "$v" ]; then printf '%s' "$v" | tr -d '\r\n'; else printf '%s' "$3"; fi
+# container_ids PROJECT [SERVICE] [running]: ids of that Compose stack (or one of its services).
+container_ids() {
+  [ "$status" = available ] || return 0
+  flags=-aq; [ "${3:-}" = running ] && flags=-q
+  if [ -n "${2:-}" ]; then
+    docker ps $flags --filter "label=com.docker.compose.project=$1" --filter "label=com.docker.compose.service=$2" ${3:+--filter status=running} 2>/dev/null
+  else
+    docker ps $flags --filter "label=com.docker.compose.project=$1" 2>/dev/null
+  fi
 }
-stack_running() {
-  [ "$status" = available ] || return 1
-  [ -n "$(docker ps -q --filter "label=com.docker.compose.project=$1" --filter "label=com.docker.compose.service=$2" --filter status=running 2>/dev/null)" ]
-}
-stack_exists() {
-  [ "$status" = available ] || return 1
-  [ -n "$(docker ps -aq --filter "label=com.docker.compose.project=$1" 2>/dev/null)" ]
-}
+stack_running() { [ -n "$(container_ids "$1" "$2" running)" ]; }
+stack_exists() { [ -n "$(container_ids "$1" "${2:-}")" ]; }
 # Entry is the gateway when the stack runs with the portal's account bridge, else the service itself.
-entry_running() {
-  if stack_running "$1" "$2"; then return 0; fi
-  [ -z "$(docker ps -aq --filter "label=com.docker.compose.project=$1" --filter "label=com.docker.compose.service=$2" 2>/dev/null)" ] && stack_running "$1" "$3"
-}
+entry_running() { stack_running "$1" "$2" || { ! stack_exists "$1" "$2" && stack_running "$1" "$3"; }; }
 nas_link() {
   if [ "$3" = yes ]; then printf '  %-20s %s%s%s\n' "$1" "$green" "$2" "$reset"
   elif [ "$status" = unavailable ]; then printf '  %-20s %s[?] unknown%s\n' "$1" "$yellow" "$reset"
@@ -81,21 +78,26 @@ nas_link() {
 nas_services() {
   shown=no
   if [ -f music.env ]; then
-    shown=yes; up=no; entry_running "$(file_setting music.env MUSIC_PROJECT_NAME multisuite-music)" music-gateway navidrome && up=yes
-    nas_link 'Music (Navidrome)' "http://localhost:$(file_setting music.env NAVIDROME_PORT 4533)" "$up" 'make music-up'
+    shown=yes; up=no; entry_running "$(setting MUSIC_PROJECT_NAME multisuite-music music.env)" music-gateway navidrome && up=yes
+    nas_link 'Music (Navidrome)' "http://localhost:$(setting NAVIDROME_PORT 4533 music.env)" "$up" 'make music-up'
   fi
-  if stack_exists multisuite-komga; then
+  # Make starts Komga whenever the development NAS is used (no compose.nas.yaml): same rule here.
+  if [ ! -f compose.nas.yaml ] || stack_exists multisuite-komga; then
     shown=yes; up=no; stack_running multisuite-komga komga-gateway && up=yes
     nas_link 'Reading (Komga)' "http://localhost:$(setting KOMGA_PORT 25600)" "$up" 'make komga-up'
   fi
   if [ -f reading.env ]; then
-    shown=yes; up=no; entry_running "$(file_setting reading.env READING_PROJECT_NAME multisuite-reading)" reading-gateway kavita && up=yes
-    nas_link 'Reading (Kavita)' "http://localhost:$(file_setting reading.env KAVITA_PORT 5000)" "$up" 'make reading-up'
+    # Kavita stays configured but disabled (Make stops it unless READING_AUTO=1): never suggest starting it.
+    if entry_running "$(setting READING_PROJECT_NAME multisuite-reading reading.env)" reading-gateway kavita; then
+      shown=yes; nas_link 'Reading (Kavita)' "http://localhost:$(setting KAVITA_PORT 5000 reading.env)" yes ''
+    elif [ "$status" = available ]; then
+      printf '  %-20s %sdisabled (Komga is used; READING_AUTO=1 enables it)%s\n' 'Reading (Kavita)' "$dim" "$reset"
+    fi
   fi
   if [ -f video.env ]; then
-    shown=yes; up=no; stack_running "$(file_setting video.env VIDEO_PROJECT_NAME multisuite-video)" video-gateway && up=yes
-    nas_link 'Video (Jellyfin)' "http://localhost:$(file_setting video.env VIDEO_PORT 8096)" "$up" 'make video-up'
-    item 'Video GPU' "$(file_setting video.env VIDEO_HARDWARE none)"
+    shown=yes; up=no; stack_running "$(setting VIDEO_PROJECT_NAME multisuite-video video.env)" video-gateway && up=yes
+    nas_link 'Video (Jellyfin)' "http://localhost:$(setting VIDEO_PORT 8096 video.env)" "$up" 'make video-up'
+    item 'Video GPU' "$(setting VIDEO_HARDWARE none video.env)"
   fi
   [ "$shown" = yes ] || printf '  %sNone configured: make music-up, make video-detect (docs/JELLYFIN.md).%s\n' "$dim" "$reset"
 }

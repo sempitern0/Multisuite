@@ -35,5 +35,19 @@ try {
   if ($output -notmatch 'Video GPU\s+nvidia') { throw 'Video GPU missing' }
   if ($output -notmatch 'Reading \(Komga\)\s+OFF\s+stopped\s+\(make komga-up\)') { throw 'Stopped Komga not shown' }
   if ($output -match 'Kavita') { throw 'Unconfigured Kavita shown' }
+  # After make down Komga still appears (Make starts it with the development NAS); disabled Kavita is never offered.
+  [System.IO.File]::WriteAllLines((Join-Path $temp 'reading.env'), @('KAVITA_PORT=15000'))
+  function docker {
+    $global:LASTEXITCODE = 0
+    if ($args[0] -eq 'ps') { return }
+    @('app','web')
+  }
+  $down = (& $statusScript -Root $temp 6>&1 | Out-String)
+  if ($down -notmatch 'Reading \(Komga\)\s+OFF\s+stopped\s+\(make komga-up\)') { throw 'Komga missing after make down' }
+  if ($down -notmatch 'Reading \(Kavita\)\s+disabled') { throw 'Disabled Kavita not explained' }
+  if ($down -match 'make reading-up') { throw 'Suggested starting disabled Kavita' }
+  [void](New-Item -ItemType File -Path (Join-Path $temp 'compose.nas.yaml'))
+  $real = (& $statusScript -Root $temp 6>&1 | Out-String)
+  if ($real -match 'Reading \(Komga\)') { throw 'Komga shown with real disks and no containers' }
   Write-Host 'PASS Windows status script parameter binding and GUI output'
 } finally { if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Recurse -Force } }

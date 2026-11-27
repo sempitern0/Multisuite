@@ -54,6 +54,24 @@ grep -q 'Video (Jellyfin).*http://localhost:18096' "$temp/out"
 grep -q 'Video GPU.*nvidia' "$temp/out"
 grep -q 'Reading (Komga).*stopped.*make komga-up' "$temp/out"
 if grep -q 'Kavita' "$temp/out"; then echo 'Status showed an unconfigured service' >&2; exit 1; fi
+# After make down Komga still appears (Make starts it with the development NAS); Kavita, configured
+# but disabled, is never offered as something to start.
+printf 'KAVITA_PORT=15000\n' > "$temp/project/reading.env"
+cat > "$temp/bin/docker" <<'DOCKER'
+#!/bin/sh
+if [ "$1 $2 $3 $4 $5" = "compose ps --services --status running" ]; then printf 'app\nweb\n'; exit 0; fi
+[ "$1" = ps ] && exit 0
+exit 1
+DOCKER
+PATH="$temp/bin:$PATH" sh "$temp/project/scripts/status.sh" > "$temp/down"
+grep -q 'Reading (Komga).*stopped.*make komga-up' "$temp/down"
+grep -q 'Video (Jellyfin).*stopped.*make video-up' "$temp/down"
+grep -q 'Reading (Kavita).*disabled' "$temp/down"
+if grep -q 'make reading-up' "$temp/down"; then echo 'Status suggested starting disabled Kavita' >&2; exit 1; fi
+touch "$temp/project/compose.nas.yaml"
+PATH="$temp/bin:$PATH" sh "$temp/project/scripts/status.sh" > "$temp/real"
+if grep -q 'Reading (Komga)' "$temp/real"; then echo 'Komga shown with real disks and no containers' >&2; exit 1; fi
+rm -f "$temp/project/reading.env" "$temp/project/compose.nas.yaml"
 cat > "$temp/bin/docker" <<'DOCKER'
 #!/bin/sh
 exit 1
