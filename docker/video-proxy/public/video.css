@@ -15,8 +15,15 @@
     --ms-accent-ink: #1a2300;
     --ms-accent-soft: #22331d;
 }
-html, body, .skinBody, .backgroundContainer, .backdropContainer + .backgroundContainer { background-color: var(--ms-bg) !important; }
-.skinHeader-withBackground, .skinHeader.semiTransparent { background-color: color-mix(in oklab, var(--ms-bg-2) 92%, transparent) !important; }
+/*
+ * Jellyfin draws the video *behind* the page and makes the page transparent while it plays. So the
+ * page background is only painted while no player exists (an opaque one hides the picture: sound,
+ * controls and time keep working on a black screen), and the semi-transparent header of the
+ * player's controls keeps Jellyfin's own style.
+ */
+html:not(:has(.htmlvideoplayer)), html:not(:has(.htmlvideoplayer)) body,
+html:not(:has(.htmlvideoplayer)) .backgroundContainer:not(.withBackdrop) { background-color: var(--ms-bg) !important; }
+.skinHeader-withBackground:not(.semiTransparent) { background-color: color-mix(in oklab, var(--ms-bg-2) 92%, transparent) !important; }
 .mainDrawer, .dialog, .formDialogHeader, .formDialogFooter, .actionSheet { background-color: var(--ms-panel) !important; color: var(--ms-text); }
 .navMenuOption:hover, .listItem:hover { background-color: var(--ms-panel-2) !important; }
 .navMenuOption-selected { background-color: var(--ms-accent-soft) !important; color: var(--ms-accent) !important; }

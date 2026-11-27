@@ -47,6 +47,19 @@ try {
       stored: !!JSON.parse(localStorage.getItem('jellyfin_credentials') || '{}').Servers?.some(s => s.AccessToken) })`);
     if (state?.user && state.back) break;
   }
+  // Playing a video: nothing of ours may paint over the player (Jellyfin puts it behind the page).
+  const playing = await evaluate(`(() => {
+    const before = getComputedStyle(document.body).backgroundColor;
+    const container = document.createElement('div');
+    container.className = 'videoPlayerContainer';
+    container.innerHTML = '<video class="htmlvideoplayer"></video>';
+    document.body.append(container);
+    const layers = [document.documentElement, document.body, ...document.querySelectorAll('.backgroundContainer, .skinHeader')]
+      .map(element => getComputedStyle(element).backgroundColor);
+    container.remove();
+    return { before, layers };
+  })()`);
+  state.playing = playing;
   console.log(JSON.stringify(state));
   const shot = await send('Page.captureScreenshot', { format: 'png' });
   if (shot.result?.data) writeFileSync(join(screens, 'home-1280.png'), Buffer.from(shot.result.data, 'base64'));
@@ -54,6 +67,8 @@ try {
   else if (!state.user || state.login) failed = 'Jellyfin did not resume the session';
   else if (!state.back) failed = 'return link missing in the header';
   else if (state.look !== '#dbf368') failed = 'Multisuite look not applied';
+  else if (playing.before !== 'rgb(11, 15, 19)') failed = 'Multisuite background missing outside playback';
+  else if (playing.layers.includes('rgb(11, 15, 19)')) failed = 'an opaque Multisuite background covers the video player';
 } finally {
   socket.close();
   chrome.kill();
