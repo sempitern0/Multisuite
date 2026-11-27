@@ -17,7 +17,7 @@ class TrustedProxiesTest extends TestCase
         $this->route();
 
         $this->withServerVariables(['REMOTE_ADDR' => '172.18.0.5'])
-            ->get('/_test/origin', ['X-Forwarded-Proto' => 'https', 'X-Forwarded-Host' => 'multisuite.example.org'])
+            ->get('http://localhost/_test/origin', ['X-Forwarded-Proto' => 'https', 'X-Forwarded-Host' => 'multisuite.example.org'])
             ->assertJsonPath('secure', false)->assertJsonMissing(['host' => 'multisuite.example.org']);
     }
 
@@ -27,12 +27,14 @@ class TrustedProxiesTest extends TestCase
         $this->route();
         $headers = ['X-Forwarded-Proto' => 'https', 'X-Forwarded-Host' => 'multisuite.example.org'];
 
-        $this->withServerVariables(['REMOTE_ADDR' => '172.18.0.5'])->get('/_test/origin', $headers)
+        $this->withServerVariables(['REMOTE_ADDR' => '172.18.0.5'])->get('http://localhost/_test/origin', $headers)
             ->assertExactJson(['secure' => true, 'host' => 'multisuite.example.org']);
-        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.9'])->get('/_test/origin', $headers)
+        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.9'])->get('http://localhost/_test/origin', $headers)
             ->assertJsonPath('secure', false)->assertJsonMissing(['host' => 'multisuite.example.org']);
     }
 
+    // Absolute URLs: the test client would otherwise build the next request from the URL root the
+    // previous (forwarded) request left behind.
     private function route(): void
     {
         Route::get('/_test/origin', fn (Request $request) => ['secure' => $request->isSecure(), 'host' => $request->getHost()]);

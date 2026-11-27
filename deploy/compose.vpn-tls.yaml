@@ -24,8 +24,7 @@ services:
       - --global.checknewversion=false
       - --global.sendanonymoususage=false
       - --log.level=WARN
-    volumes: !override
-      - ./docker/vpn-entry/tls.yml:/etc/traefik/dynamic/routes.yml:ro
+    volumes:
       - vpn-certificates:/letsencrypt
 volumes:
   vpn-certificates:

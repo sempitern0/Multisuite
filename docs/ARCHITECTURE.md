@@ -101,7 +101,7 @@ Tres piezas con una responsabilidad cada una: `JellyfinClient` (transporte: cabe
 
 ## Red privada (P03)
 
-`compose.vpn.yaml` es autónomo y opcional (solo `make vpn-*` con `vpn.env`): `headscale` (coordinación, única pieza pública en el servidor), `vpn-node` (el NAS como dispositivo, modo usuario; publica los nombres privados en el archivo DNS de Headscale, `docker/vpn-node/node.sh`) y `vpn-entry` (Traefik en el espacio de red de `vpn-node`: nombre privado → portal o pasarela por `multisuite-accounts`, `docker/vpn-entry/{http,tls}.yml`). Política en `docker/headscale/policy.hujson`. Operación con `scripts/vpn.{sh,ps1}`. El portal solo confía en `X-Forwarded-*` de `TRUSTED_PROXIES` (`config/app.php`, `AppServiceProvider`). Ver [VPN.md](VPN.md).
+`compose.vpn.yaml` es autónomo y opcional (solo `make vpn-*` con `vpn.env`): `headscale` (coordinación, única pieza pública en el servidor), `vpn-node` (el NAS como dispositivo, modo usuario; publica los nombres privados en el archivo DNS de Headscale, `docker/vpn-node/node.sh`) y `vpn-entry` (Traefik en el espacio de red de `vpn-node`: nombre privado → portal o pasarela por `multisuite-accounts`, `docker/vpn-entry/routes.yml`). Política en `docker/headscale/policy.hujson`. Operación con `scripts/vpn.{sh,ps1}`. El portal solo confía en `X-Forwarded-*` de `TRUSTED_PROXIES` (`config/app.php`, `AppServiceProvider`). Ver [VPN.md](VPN.md).
 
 ## Lectura con Komga
 

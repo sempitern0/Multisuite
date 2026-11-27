@@ -6,10 +6,11 @@
 #   Docker Desktop). Joins with `make vpn-join`; its address is published as the private names.
 # - vpn-entry: Traefik inside vpn-node's network namespace. It only answers on the private network
 #   and forwards each private name to the portal or a service gateway on the accounts network.
-#   HTTPS for those names comes from deploy/compose.vpn-tls.yaml (VPN_TLS=acme-dns).
+#   HTTPS for those names: VPN_TLS=acme-dns adds deploy/compose.vpn-tls.yaml (same routes file).
 # The portal never receives this stack's socket, keys or devices.
 name: ${VPN_PROJECT_NAME:-multisuite-vpn}
 x-hosts: &hosts
+  VPN_TLS: ${VPN_TLS:-none}
   VPN_PORTAL_HOST: ${VPN_PORTAL_HOST:-multisuite.multisuite.internal}
   VPN_MUSIC_HOST: ${VPN_MUSIC_HOST:-}
   VPN_READING_HOST: ${VPN_READING_HOST:-}
@@ -95,7 +96,7 @@ services:
       - --global.sendanonymoususage=false
       - --log.level=WARN
     volumes:
-      - ./docker/vpn-entry/http.yml:/etc/traefik/dynamic/routes.yml:ro
+      - ./docker/vpn-entry/routes.yml:/etc/traefik/dynamic/routes.yml:ro
     depends_on: [vpn-node]
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8082/ping"]
