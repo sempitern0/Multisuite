@@ -13,6 +13,7 @@ use App\Services\JellyfinAccounts;
 use App\Services\JellyfinClient;
 use App\Services\JellyfinServer;
 use App\Services\ServiceAccounts;
+use App\Services\Storage\StorageReservations;
 use App\Services\VideoSession;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -282,6 +283,7 @@ class JellyfinProvisioningTest extends TestCase
     {
         $this->connect();
         $member = User::factory()->create(['role' => 'member', 'username' => 'lola', 'service_access' => ['video']]);
+        app(StorageReservations::class)->setUserQuota($member, 100000);
         app(ConnectedFolders::class)->ensure($member);
         $videos = Folder::where('user_id', $member->id)->where('media_link', 'videos')->firstOrFail();
         $avi = 'RIFF'.pack('V', 1000).'AVI LIST'.str_repeat("\0", 200);
