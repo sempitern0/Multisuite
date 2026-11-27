@@ -12,7 +12,7 @@ nombres privados y retirada). Pendiente: prueba del usuario con un servidor y un
 | Pieza | Qué hace | Qué se expone |
 | --- | --- | --- |
 | `headscale` 0.29.8 | Servidor de coordinación libre: alta de dispositivos, claves y permisos. No ve el contenido. | Solo él, y solo en el servidor público: 443 (y 80 para su certificado). En local, `127.0.0.1:8090`. |
-| `vpn-node` (Tailscale 1.106.1) | El NAS como dispositivo de la red, en modo usuario: sin `/dev/net/tun` ni privilegios, también en Docker Desktop. Publica los nombres privados con su dirección. | Nada. |
+| `vpn-node` (Tailscale 1.104.7) | El NAS como dispositivo de la red, en modo usuario: sin `/dev/net/tun` ni privilegios, también en Docker Desktop. Publica los nombres privados con su dirección. | Nada. |
 | `vpn-entry` (Traefik 3.8.0) | Dentro del espacio de red de `vpn-node`: solo responde por la red privada y envía cada nombre privado al portal o a la pasarela de su servicio por la red `multisuite-accounts`. | Nada (puertos 80/443 solo dentro de la red privada). |
 
 Permisos (`docker/headscale/policy.hujson`): los dispositivos de cada persona solo llegan al NAS y

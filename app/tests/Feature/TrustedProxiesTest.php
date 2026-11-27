@@ -12,12 +12,6 @@ use Tests\TestCase;
  */
 class TrustedProxiesTest extends TestCase
 {
-    protected function tearDown(): void
-    {
-        unset($_ENV['TRUSTED_PROXIES'], $_SERVER['TRUSTED_PROXIES']);
-        parent::tearDown();
-    }
-
     public function test_forwarded_scheme_and_host_are_ignored_by_default(): void
     {
         $this->route();
@@ -29,8 +23,7 @@ class TrustedProxiesTest extends TestCase
 
     public function test_the_private_entry_is_trusted_only_from_its_ranges(): void
     {
-        $_ENV['TRUSTED_PROXIES'] = $_SERVER['TRUSTED_PROXIES'] = '172.16.0.0/12, 10.0.0.0/8';
-        $this->refreshApplication();
+        config(['app.trusted_proxies' => ['172.16.0.0/12', '10.0.0.0/8']]);
         $this->route();
         $headers = ['X-Forwarded-Proto' => 'https', 'X-Forwarded-Host' => 'multisuite.example.org'];
 

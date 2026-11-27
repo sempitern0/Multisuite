@@ -111,7 +111,7 @@ with tempfile.TemporaryDirectory(prefix="vpn-ci-") as directory:
             "-e", "TS_USERSPACE=false", "-e", "TS_AUTHKEY=" + key, "-e", "TS_ACCEPT_DNS=true",
             "-e", "TS_STATE_DIR=/var/lib/tailscale", "-e", "TS_HOSTNAME=ana-movil",
             "-e", "TS_EXTRA_ARGS=--login-server=http://headscale:8080",
-            os.environ.get("TAILSCALE_IMAGE", "tailscale/tailscale:v1.106.1"))
+            os.environ.get("TAILSCALE_IMAGE", "tailscale/tailscale:v1.104.7"))
         eventually(lambda: from_client("tailscale", "ip", "-4", check=False).returncode == 0, "The device did not join")
 
         # The portal answers by its private name, resolved by the network's DNS.

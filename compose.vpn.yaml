@@ -17,7 +17,7 @@ x-hosts: &hosts
 services:
   # Headscale refuses to start without its records file: create an empty list once.
   vpn-dns-init:
-    image: ${TAILSCALE_IMAGE:-tailscale/tailscale:v1.106.1}
+    image: ${TAILSCALE_IMAGE:-tailscale/tailscale:v1.104.7}
     entrypoint: ["sh", "-c", "[ -s /dns/extra-records.json ] || echo '[]' > /dns/extra-records.json"]
     network_mode: none
     volumes:
@@ -57,7 +57,7 @@ services:
         # (no hairpin NAT), and the certificate still matches.
         aliases: ["${VPN_CONTROL_DOMAIN:-headscale.vpn.internal}"]
   vpn-node:
-    image: ${TAILSCALE_IMAGE:-tailscale/tailscale:v1.106.1}
+    image: ${TAILSCALE_IMAGE:-tailscale/tailscale:v1.104.7}
     entrypoint: ["sh", "/opt/multisuite/node.sh"]
     restart: unless-stopped
     hostname: multisuite

@@ -2,9 +2,11 @@
 
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureInitialPasswordChanged;
+use App\Http\Middleware\TrustPrivateEntry;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -16,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [EnsureAccountIsActive::class, EnsureInitialPasswordChanged::class]);
+        // X-Forwarded-* only from the private entry's proxies (docs/VPN.md).
+        $middleware->replace(TrustProxies::class, TrustPrivateEntry::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->dontFlash(['invitation', 'ticket']);

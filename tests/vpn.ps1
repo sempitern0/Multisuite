@@ -23,6 +23,8 @@ try {
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script remove abc 2>$null | Out-Null
   if ($LASTEXITCODE -ne 2) { throw "Invalid device id must exit 2, got $LASTEXITCODE" }
   Write-Host 'PASS Windows private network commands validate input and print addresses'
+  # The refused commands above leave exit code 2 behind: this test itself passed.
+  $global:LASTEXITCODE = 0
 } finally {
   Remove-Item Env:VPN_ENV_FILE -ErrorAction SilentlyContinue
   if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Recurse -Force }
