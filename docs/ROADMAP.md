@@ -42,6 +42,7 @@ Para cada uno: licencia, mantenimiento, consumo, autenticación, puertos, volúm
 
 ## S04b — Publicación para todos (PR #47)
 - [ ] QA del usuario: proponer una canción y un libro, publicarlos, verlos con otra cuenta en Navidrome y Komga, retirar y eliminar (STORAGE.md § Publicación para todos).
+- [ ] QA del usuario de la selección múltiple (PR #51): proponer varios con una cuenta normal y publicar varios como owner desde Mis archivos.
 
 ## P03 — Identidad y red privada
 - [ ] VPN (Tailscale u otra), TLS, permisos mínimos y revocación; prueba desde un segundo dispositivo real.

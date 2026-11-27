@@ -83,6 +83,56 @@ class Publications
         });
     }
 
+    /**
+     * Several of the person's files at once (Mis archivos selection bar), all or nothing: a file
+     * that cannot be proposed cancels the whole batch and the message names it. Files already
+     * proposed or published keep their publication.
+     *
+     * @param  list<int>  $fileIds
+     * @return list<Publication>
+     */
+    public function requestMany(User $user, array $fileIds): array
+    {
+        return DB::transaction(function () use ($user, $fileIds): array {
+            $publications = [];
+            foreach ($fileIds as $fileId) {
+                try {
+                    $publications[] = $this->request($user, $fileId);
+                } catch (ValidationException $exception) {
+                    $name = UserFile::where('user_id', $user->id)->whereKey($fileId)->value('name');
+                    $message = (string) collect($exception->errors())->flatten()->first();
+                    throw ValidationException::withMessages(['publication' => is_string($name) ? '«'.$name.'»: '.$message : $message]);
+                }
+            }
+
+            return $publications;
+        });
+    }
+
+    /**
+     * Sends the person's files to the common fund as their role allows: an administrator
+     * publishes them straight away (same checks as Administración → Para todos), anyone else
+     * proposes them. If publishing fails the proposals stay pending for a later decision.
+     *
+     * @param  list<int>  $fileIds
+     * @return array{published: int, requested: int}
+     */
+    public function share(User $user, array $fileIds): array
+    {
+        $publications = $this->requestMany($user, $fileIds);
+        $pending = array_values(array_map(fn (Publication $p): int => $p->id,
+            array_filter($publications, fn (Publication $p): bool => $p->state === PublicationState::Requested->value)));
+        if (! Gate::forUser($user)->allows('publish-content') || $pending === []) {
+            return ['published' => 0, 'requested' => count($pending)];
+        }
+        try {
+            return ['published' => $this->publishMany($user, $pending), 'requested' => 0];
+        } catch (ValidationException $exception) {
+            $message = (string) collect($exception->errors())->flatten()->first();
+            throw ValidationException::withMessages(['publication' => $message.' Han quedado propuestos en Administración → Para todos.']);
+        }
+    }
+
     /** The contributor changes their mind before a decision. */
     public function cancel(User $user, int $id): void
     {
@@ -111,30 +161,61 @@ class Publications
     public function publish(User $actor, int $id): Publication
     {
         $this->authorize($actor);
-        $publication = Publication::whereKey($id)->where('state', PublicationState::Requested->value)->first()
-            ?? throw ValidationException::withMessages(['publication' => 'Esa propuesta ya no está pendiente.']);
+        if (! Publication::whereKey($id)->where('state', PublicationState::Requested->value)->exists()) {
+            throw ValidationException::withMessages(['publication' => 'Esa propuesta ya no está pendiente.']);
+        }
+        $this->publishMany($actor, [$id]);
+
+        return Publication::findOrFail($id);
+    }
+
+    /**
+     * Several pending proposals, all or nothing: one pass links them, each service grants its
+     * common library once, and a single transaction moves the bytes and confirms them all.
+     *
+     * @param  list<int>  $ids
+     * @return int how many were published
+     */
+    public function publishMany(User $actor, array $ids): int
+    {
+        $this->authorize($actor);
+        $connections = Publication::whereIn('id', $ids)->where('state', PublicationState::Requested->value)
+            ->distinct()->pluck('connection')->all();
+        if ($connections === []) {
+            return 0;
+        }
         try {
-            $this->library->sync(include: [$publication->id]);
-            $this->library->grant($publication->connection);
+            $this->library->sync(include: $ids);
+            foreach ($connections as $connection) {
+                $this->library->grant((string) $connection);
+            }
         } catch (RuntimeException) {
-            $this->unlinkQuietly($publication->id);
+            $this->unlinkQuietly();
             throw ValidationException::withMessages(['publication' => 'El servicio no ha confirmado el acceso para todos. No se ha publicado; inténtalo de nuevo.']);
         }
 
         try {
-            return $this->confirm($actor, $id);
+            return DB::transaction(function () use ($actor, $ids): int {
+                $published = 0;
+                foreach ($ids as $id) {
+                    $published += $this->confirm($actor, $id) ? 1 : 0;
+                }
+
+                return $published;
+            });
         } catch (Throwable $exception) {
-            $this->unlinkQuietly($id); // linked and granted, but not confirmed: take it back
+            $this->unlinkQuietly(); // linked and granted, but not confirmed: take them back
             throw $exception;
         }
     }
 
-    private function confirm(User $actor, int $id): Publication
+    /** @return bool whether it was published now (false: someone already did) */
+    private function confirm(User $actor, int $id): bool
     {
-        return DB::transaction(function () use ($actor, $id): Publication {
+        return DB::transaction(function () use ($actor, $id): bool {
             $publication = Publication::whereKey($id)->lockForUpdate()->firstOrFail();
             if ($publication->state === PublicationState::Published->value) {
-                return $publication;
+                return false;
             }
             $contributor = $publication->contributor_id === null ? null : User::find($publication->contributor_id);
             if ($contributor === null) {
@@ -148,7 +229,7 @@ class Publications
             $this->media->changed($contributor); // their personal copy leaves their library: it is common now
             $this->record($actor, $publication, 'content.published');
 
-            return $publication;
+            return true;
         });
     }
 
@@ -187,7 +268,7 @@ class Publications
             $publication->delete();
             $this->media->changed($contributor);
         });
-        $this->unlinkQuietly(null);
+        $this->unlinkQuietly();
     }
 
     /** Deletes common content from the NAS for good (frees the common fund and the disk). */
@@ -200,7 +281,7 @@ class Publications
         try {
             $this->deleteConfirmed($actor, $publication);
         } catch (Throwable $exception) {
-            $this->unlinkQuietly(null); // not deleted: still published, so link it again
+            $this->unlinkQuietly(); // not deleted: still published, so link it again
             throw $exception;
         }
     }
@@ -266,10 +347,11 @@ class Publications
         Gate::forUser($actor)->authorize('publish-content');
     }
 
-    private function unlinkQuietly(?int $exclude): void
+    /** Rebuilds the common library from what is published (nothing just linked stays). */
+    private function unlinkQuietly(): void
     {
         try {
-            $this->library->sync(exclude: $exclude === null ? [] : [$exclude]);
+            $this->library->sync();
         } catch (RuntimeException) {
             // portal:media-sync converges the common library from the database later.
         }
