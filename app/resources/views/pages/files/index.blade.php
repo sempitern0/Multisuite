@@ -305,6 +305,7 @@ new #[Title('Mis archivos')] class extends Component {
         $summary = $describe($l['summaries'][$folder->id ?? 0] ?? ['items' => 0, 'bytes' => 0]);
         $usage = $l['limit'] > 0 ? ' · Usas '.$fmt($l['used']).' de '.$fmt($l['limit']) : '';
         $selected = '$wire.selectedFiles.length + $wire.selectedFolders.length';
+        $deciding = Gate::allows('publish-content');
     @endphp
     <x-ui::breadcrumbs :items="$crumbs" />
     <x-ui::page-header :title="$folder->name ?? 'Mis archivos'" :description="$summary.$usage"
@@ -362,7 +363,6 @@ new #[Title('Mis archivos')] class extends Component {
                 <span class="ui-selection-count" x-text="(n => n === 1 ? '1 elemento seleccionado' : n + ' elementos seleccionados')({{ $selected }})"></span>
                 <x-ui::button variant="secondary" size="sm" icon="archive" wire:click="export('selection')">Descargar en ZIP</x-ui::button>
                 @if ($this->connection !== null || $l['searching'])
-                    @php($deciding = Gate::allows('publish-content'))
                     <x-ui::confirm :title="$deciding ? '¿Publicar para todos los archivos seleccionados?' : '¿Proponer para todos los archivos seleccionados?'">
                         <x-slot:trigger>
                             <x-ui::button variant="secondary" size="sm" icon="share" x-bind:disabled="$wire.selectedFiles.length === 0" title="Solo archivos de carpetas conectadas (Música, Libros, Cómics, Vídeos…); las carpetas seleccionadas no se envían">{{ $deciding ? 'Publicar para todos' : 'Proponer para todos' }}</x-ui::button>
