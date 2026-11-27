@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Ai\Embeddings;
 use Laravel\Ai\Prompts\EmbeddingsPrompt;
+use Livewire\Livewire;
 use RuntimeException;
 use Tests\Concerns\UsesPrivateStorage;
 use Tests\TestCase;
@@ -136,6 +137,13 @@ class AssistantSemanticTest extends TestCase
         $this->assertSame(0, $this->index()->sync($this->member));
         $access->setFolderExcluded($this->member, $parent->id, false);
         $this->assertSame(1, $this->index()->sync($this->member));
+
+        // From the folder page: the same rule, through the button.
+        $this->actingAs($this->member);
+        Livewire::test('pages::files.index', ['folderId' => $parent->id])
+            ->call('setAssistantExcluded', true)->assertHasNoErrors();
+        $this->assertTrue((bool) $parent->fresh()?->assistant_excluded);
+        $this->assertSame(0, $this->index()->stats($this->member)['chunks']);
     }
 
     public function test_consent_changed_during_embedding_discards_the_result(): void
