@@ -278,6 +278,29 @@ class JellyfinProvisioningTest extends TestCase
         $this->assertSame(['multisuite-web-new', 'multisuite-portal', 'tv-app'], array_keys($this->server['devices']));
     }
 
+    public function test_formats_jellyfin_plays_are_accepted_only_in_the_videos_folder(): void
+    {
+        $this->connect();
+        $member = User::factory()->create(['role' => 'member', 'username' => 'lola', 'service_access' => ['video']]);
+        app(ConnectedFolders::class)->ensure($member);
+        $videos = Folder::where('user_id', $member->id)->where('media_link', 'videos')->firstOrFail();
+        $avi = 'RIFF'.pack('V', 1000).'AVI LIST'.str_repeat("\0", 200);
+        $mkv = "\x1a\x45\xdf\xa3\x93\x42\x82\x88matroska\x42\x87\x81\x04\x42\x85\x81\x02".str_repeat("\0", 200);
+
+        // Outside «Vídeos» the reason is said, not a generic failure.
+        $this->upload($member, 'fuera.avi', $avi)->assertUnprocessable()
+            ->assertJsonPath('errors.upload.0', fn (string $message): bool => str_contains($message, 'solo se admite en la carpeta Vídeos'));
+
+        $this->upload($member, 'viaje.avi', $avi, $videos->id)->assertOk();
+        $this->upload($member, 'serie.mkv', $mkv, $videos->id)->assertOk();
+        $this->assertSame(['video/x-msvideo', 'video/x-matroska'],
+            [$this->entry('viaje.avi')->upload()->value('mime'), $this->entry('serie.mkv')->upload()->value('mime')]);
+
+        // No browser player for it: an honest note and the way to Vídeo instead.
+        $this->actingAs($member)->get(route('files.show', $this->entry('viaje.avi')))->assertOk()
+            ->assertSee('El navegador no reproduce este formato')->assertSee('Ábrelo en Vídeo')->assertDontSee('<video', false);
+    }
+
     public function test_signing_out_of_multisuite_ends_the_jellyfin_session_it_opened(): void
     {
         $this->connect();

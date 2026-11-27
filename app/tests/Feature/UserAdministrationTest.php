@@ -198,11 +198,13 @@ class UserAdministrationTest extends TestCase
         $member->save();
 
         $this->actAs($owner);
+        $this->withoutDefer();
+        // The service is down: Multisuite closes at once, the remote block waits for a retry.
+        $this->remoteDown = true;
         $this->page($member)->call('setSuspended', true)->assertHasNoErrors();
 
         $this->assertTrue($member->fresh()->isSuspended());
         $this->assertSame(ServiceAccounts::LOCK_PENDING, ServiceAccount::firstOrFail()->status);
-        $this->remoteDown = true;
         $this->artisan('portal:sync-accounts')->assertSuccessful();
         $this->assertSame(ServiceAccounts::LOCK_PENDING, ServiceAccount::firstOrFail()->status);
         $this->remoteDown = false;
@@ -219,6 +221,18 @@ class UserAdministrationTest extends TestCase
         $this->assertFalse($member->fresh()->isSuspended());
         $this->assertSame(ServiceAccounts::AWAITING_PASSWORD, ServiceAccount::firstOrFail()->status);
         $this->assertSame('user.reactivated', AdminAuditEvent::latest('id')->value('action'));
+    }
+
+    public function test_suspension_blocks_reachable_services_right_away(): void
+    {
+        $owner = $this->person('owner');
+        $member = $this->memberWithMusic();
+        $this->actAs($owner);
+        $this->withoutDefer();
+
+        $this->page($member)->call('setSuspended', true)->assertHasNoErrors();
+
+        $this->assertSame(ServiceAccounts::LOCKED, ServiceAccount::firstOrFail()->status, 'No wait for the scheduler.');
     }
 
     public function test_a_person_uploads_and_replaces_their_own_photo_which_is_stored_small_and_private(): void

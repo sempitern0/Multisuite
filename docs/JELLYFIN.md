@@ -28,7 +28,7 @@ Nunca se envía una contraseña al navegador ni se acepta una URL o un usuario d
 - Se crea con una contraseña aleatoria descartada y recibe la de la persona solo después de guardar y comprobar su política: Jellyfin da todas las bibliotecas a las cuentas nuevas, así que una cuenta a medias no sirve para entrar. Bloquear cambia primero la contraseña y después desactiva, sin depender de crear bibliotecas.
 - Cuenta **no administradora**, oculta en la pantalla de inicio de Jellyfin, sin borrar contenido, sin controlar otras sesiones ni compartir. Nombre = usuario del portal; una cuenta nativa con el mismo nombre nunca se adopta (`conflict`). El portal no gestiona administradores de Jellyfin.
 - `EnableAllFolders=false` y solo estas bibliotecas, comprobadas tras guardar la política:
-  - **Mis vídeos** (`/personal/{uuid}`, tipo `homevideos`): la carpeta conectada «Vídeos» de Mis archivos, reflejada por enlaces duros (docs/STORAGE.md § Carpetas conectadas).
+  - **Mis vídeos** (`/personal/{uuid}`, tipo `homevideos`): la carpeta conectada «Vídeos» de Mis archivos, reflejada por enlaces duros (docs/STORAGE.md § Carpetas conectadas). Admite MP4, WebM, MOV, AVI, MKV, MPEG-TS/PS, WMV/ASF y FLV, guardados tal cual.
   - **Vídeos para todos** (`/common`, tipo `movies`): carpeta del NAS declarada por el operador con `VIDEO_COMMON_PATH` (solo lectura). Por defecto `docker/jellyfin/common`, vacía; en desarrollo, `.multisuite-video-common` del volumen NAS.
   - **Vídeos para todos** publicado (`/personal/comun`): lo que un administrador publica desde Administración → Para todos (S04b).
 - Bloquear (desactivar el servicio o suspender): `IsDisabled`, sin bibliotecas y contraseña aleatoria descartada. Eliminar la cuenta del portal borra la de Jellyfin.

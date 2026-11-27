@@ -28,7 +28,10 @@ class ConnectedFolders
         'books' => ['service' => 'reading', 'name' => 'Libros', 'section' => 'libros', 'icon' => 'book', 'library' => 'Mis libros', 'mimes' => []],
         'comics' => ['service' => 'reading', 'name' => 'Cómics', 'section' => 'comics', 'icon' => 'book', 'library' => 'Mis cómics',
             'mimes' => ['application/zip', 'application/x-rar', 'application/vnd.rar', 'application/x-rar-compressed', 'application/x-7z-compressed']],
-        'videos' => ['service' => 'video', 'name' => 'Vídeos', 'section' => null, 'icon' => 'video', 'library' => 'Mis vídeos', 'mimes' => []],
+        // Containers Jellyfin plays or converts (AVI, Matroska, MPEG-TS/PS, WMV/ASF, FLV). Stored as
+        // they are, never recoded; outside this folder the portal only keeps browser-playable video.
+        'videos' => ['service' => 'video', 'name' => 'Vídeos', 'section' => null, 'icon' => 'video', 'library' => 'Mis vídeos',
+            'mimes' => ['video/x-msvideo', 'video/avi', 'video/x-matroska', 'video/mp2t', 'video/MP2T', 'video/mpeg', 'video/x-ms-wmv', 'video/x-ms-asf', 'video/x-flv']],
     ];
 
     public function __construct(private ServiceAccounts $accounts) {}

@@ -13,7 +13,14 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 
-/** Commit local suspension and persist remote work for the account scheduler. */
+use function Illuminate\Support\defer;
+
+/**
+ * Suspends or reactivates another person without deleting anything. Suspending closes Multisuite
+ * at once (sessions, «remember me», OAuth tokens, invitations they issued, pending email change)
+ * and blocks every linked service right after the response; a service that is down stays as
+ * «lock_pending» and the account scheduler retries it until it confirms.
+ */
 class SetSuspension
 {
     public function __construct(private ServiceAccounts $accounts, private AdminAudit $audit) {}
@@ -52,5 +59,14 @@ class SetSuspension
             $this->audit->record($actor, $target, $suspend ? 'user.suspended' : 'user.reactivated');
             app(MediaLibrary::class)->changed($target);
         });
+        if ($suspend) {
+            // Block the services right away, after the response; the scheduler only retries what fails.
+            $pending = $target->serviceAccounts()->where('status', ServiceAccounts::LOCK_PENDING)->pluck('id')->all();
+            defer(function () use ($pending): void {
+                foreach ($pending as $id) {
+                    $this->accounts->synchronize((int) $id);
+                }
+            });
+        }
     }
 }

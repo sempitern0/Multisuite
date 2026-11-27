@@ -8,6 +8,7 @@ use App\Models\UserFile;
 use App\Services\Files\FilePreview;
 use App\Services\Files\PersonalFiles;
 use App\Services\Files\Publications;
+use App\Services\ServiceAccounts;
 use App\Support\DomainErrors;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -235,6 +236,16 @@ new #[Title('Archivo')] class extends Component {
             <x-ui::preview kind="rich"><x-ui::prose>{!! $p['html'] !!}</x-ui::prose></x-ui::preview>
         @elseif ($p['text'] !== null)
             <x-ui::preview kind="text" :note="$p['truncated'] ? 'Vista previa limitada a '.$fmt((int) config('nas.preview_text_max_bytes')).'. Descarga el archivo para verlo completo.' : null">{{ $p['text'] }}</x-ui::preview>
+        @elseif (str_starts_with($p['mime'], 'video/'))
+            {{-- AVI, MKV…: the browser cannot play them as stored; Jellyfin plays or converts them. --}}
+            <x-ui::preview kind="none">
+                El navegador no reproduce este formato tal como está guardado.
+                @if ($file->upload()->value('media_link') === 'videos' && app(ServiceAccounts::class)->entitled(Auth::user(), 'video'))
+                    <x-ui::link :href="route('services.open', ['service' => 'video'])">Ábrelo en Vídeo</x-ui::link>, que lo reproduce en cualquier dispositivo, o descárgalo.
+                @else
+                    Descárgalo para verlo, o súbelo a la carpeta Vídeos para verlo en Vídeo.
+                @endif
+            </x-ui::preview>
         @else
             <x-ui::preview kind="none">Este tipo de archivo no tiene vista previa. Puedes descargarlo y abrirlo con tu programa habitual.</x-ui::preview>
         @endif
