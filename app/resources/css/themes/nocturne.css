@@ -148,6 +148,8 @@
     .ui-notice { display: flex; gap: 11px; align-items: flex-start; padding: 13px 15px; --tone: var(--ui-ok); background: color-mix(in oklab, var(--tone) 10%, var(--ui-panel)); border: 1px solid color-mix(in oklab, var(--tone) 32%, var(--ui-panel)); color: color-mix(in oklab, var(--tone) 40%, var(--ui-text)); border-radius: 11px; font-size: 13px; }
     .ui-notice svg { width: 18px; height: 18px; flex: none; margin-top: 1px; }
     .ui-notice-warn { --tone: var(--ui-warn); }
+    .ui-offline-notice { margin-block-end: 1rem; }
+    .ui-offline-notice[hidden] { display: none; }
     .ui-notice-bad { --tone: var(--ui-bad); }
     .ui-notice-info { --tone: var(--ui-info); }
     .ui-status { display: inline-flex; gap: 7px; align-items: center; color: var(--ui-ok); font-size: 12px; font-weight: 650; }
