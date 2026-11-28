@@ -38,6 +38,15 @@ return [
             'enabled' => env('PORTAL_VIDEO_ENABLED', false),
             'url' => env('PORTAL_VIDEO_URL', ''),
         ],
+        'reading' => [
+            'name' => 'Lectura',
+            'hidden_when_disabled' => true,
+            'icon' => 'book',
+            'description' => 'Novelas, cómics, manga y documentación técnica en Kavita.',
+            'category' => 'Leer',
+            'enabled' => env('PORTAL_READING_ENABLED', false),
+            'url' => env('PORTAL_READING_URL', ''),
+        ],
         // Descargas (MeTube, docs/DOWNLOADS.md): only owner and administrators.
         'downloads' => [
             'name' => 'Descargas',
@@ -48,15 +57,6 @@ return [
             'hidden_when_disabled' => true,
             'enabled' => env('PORTAL_DOWNLOADS_ENABLED', false),
             'url' => env('PORTAL_DOWNLOADS_URL', ''),
-        ],
-        'reading' => [
-            'name' => 'Lectura',
-            'hidden_when_disabled' => true,
-            'icon' => 'book',
-            'description' => 'Novelas, cómics, manga y documentación técnica en Kavita.',
-            'category' => 'Leer',
-            'enabled' => env('PORTAL_READING_ENABLED', false),
-            'url' => env('PORTAL_READING_URL', ''),
         ],
     ],
 ];

@@ -106,7 +106,7 @@ class DownloadsTest extends TestCase
 
         $page->call('save', 'f'.str_repeat('0', 31))->assertHasErrors('download');
 
-        app(StorageReservations::class)->setUserQuota($this->owner, 500);
+        app(StorageReservations::class)->setUserQuota($this->owner, strlen($song) + 500); // Less than the next file.
         $page->call('save', $otherId)->assertHasErrors('download');
         $this->assertFileExists($this->staging.'/Lista/otra.mp3', 'Without space it stays staged.');
         $this->assertSame(strlen($song), UserStorageQuota::findOrFail($this->owner->id)->used_bytes);
