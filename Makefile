@@ -141,7 +141,7 @@ help:
 	@echo "Real disks:  make nas-discover | nas-apply TARGETS='/mnt/disk1' (Linux server)"
 	@echo "NAS backup:  make nas-backup | nas-backup-verify | nas-backup-snapshots | nas-backup-restore TARGET=/empty/dir"
 	@echo "Bootstrap:   migrations + unset limits after up/start; DEV_BOOTSTRAP=0 skips"
-	@echo "Operations:  make env-sync | backup | https-setup | reset-project"
+	@echo "Operations:  make env-list | env-sync | backup | https-setup | reset-project"
 	@echo ""
 	@echo "WARNING: reset-project removes generated app files and Docker volumes."
 
@@ -464,6 +464,16 @@ video-logs:
 	@$(VIDEO_DC) logs -f --tail=100 jellyfin
 video-config:
 	@$(VIDEO_DC) config --quiet
+
+ifeq ($(OS),Windows_NT)
+ENV_LIST := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/env-list.ps1
+else
+ENV_LIST := sh scripts/env-list.sh
+endif
+.PHONY: env-list
+# Index of environment files: what each one is for and whether it exists (values never shown).
+env-list:
+	@$(ENV_LIST)
 
 .PHONY: downloads-up downloads-stop downloads-status downloads-logs downloads-config
 downloads-up: accounts-network

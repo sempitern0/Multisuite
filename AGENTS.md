@@ -67,6 +67,7 @@ Leer docs/ENVIRONMENTS.md, docs/NAVIDROME.md y docs/foundry/DEPLOYMENT.md antes 
 - Mantener desarrollo Windows/PowerShell y Linux/WSL; runtime y herramientas containerizados.
 - Automatizar por defecto: `make build`/`make up` deben dejar el entorno de desarrollo listo (migraciones, ubicación privada, límites iniciales) sin crear IDs, marcas ni permisos a mano. Lo que no se pueda automatizar se documenta en README como paso único.
 - Producción configurable por variables y perfiles, sin editar código. Secretos, dominio, TLS, VPN y destino de backup son configuración del operador.
+- Archivos de entorno (docs/ENVIRONMENTS.md § Archivos de entorno, `make env-list`): cada variable en un solo archivo, en la sección de su plantilla y con descripción corta si se presta a confusión; cabecera `# archivo — para qué`.
 - Producción: imágenes inmutables, assets compilados, APP_DEBUG=false, volúmenes persistentes, worker/scheduler y healthchecks.
 - Ningún servicio de administración, base de datos o desarrollo expuesto públicamente. Entrada privada por VPN; comprobar firewall y puertos publicados.
 - No afirmar que la plantilla heredada está lista para producción hasta completar P03 y P05.

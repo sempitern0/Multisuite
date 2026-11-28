@@ -104,6 +104,7 @@ jobs:
           python3 tests/build-resume.py
           sh tests/fresh-setup.sh
           sh tests/status.sh
+          sh tests/env-list.sh
           sh tests/http-health.sh
           sh tests/preflight.sh
           sh tests/setup-recovery.sh
@@ -364,6 +365,8 @@ jobs:
         run: ./tests/status.ps1
       - name: Test private network commands
         run: ./tests/vpn.ps1
+      - name: Test environment index
+        run: ./tests/env-list.ps1
       - name: Guard preflight against duplicated or truncated blocks
         shell: powershell
         run: |

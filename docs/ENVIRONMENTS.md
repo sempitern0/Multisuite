@@ -1,6 +1,24 @@
 # Entornos del portal y servicios
 Portal Laravel/Livewire separado de servicios con interfaces propias.
 
+## Archivos de entorno
+`make env-list` muestra cada archivo, si existe y para qué sirve (nunca sus valores). Todos se crean copiando su plantilla (`cp X.example X`), están ignorados por git y empiezan con una cabecera: qué son, cómo se activan y dónde está su guía.
+
+| Archivo | Para qué | Lo lee |
+| --- | --- | --- |
+| `.env` | Infraestructura de desarrollo: perfiles, base de datos, correo, puertos | `compose.yaml`, Make |
+| `app/.env` | Laravel (el portal); `make up` lo crea y lo mantiene al día con `.env` | Laravel |
+| `music.env` · `video.env` · `downloads.env` · `reading.env` | Un servicio cada uno; su existencia lo activa en `make up` | su `compose.*.yaml` y Make |
+| `vpn.env` · `vpn.secrets.env` | Red privada (solo `make vpn-*`) y credenciales DNS para su HTTPS | `compose.vpn.yaml` |
+| `backup.env` | Copia con restic en el servidor (secretos, modo 600) | `make nas-backup` |
+| `app.production.env` · `db.production.env` | Producción heredada, pendiente de P05 | `compose.production.yaml` |
+
+Reglas:
+- Cada variable vive en **un** archivo. Si hace falta en otro sitio, la pasa Make o un overlay de `deploy/` (por ejemplo `PORTAL_VIDEO_URL` de `video.env` al portal).
+- En desarrollo, lo que `make up` fija en los contenedores (overlays de `deploy/`) manda sobre `app/.env`; `app/.env` describe lo que vale sin overlay, como en producción. `NAVIDROME_SESSION_BRIDGE_ENABLED` y `NAVIDROME_AUTOLOGIN_ENABLED` del `.env` raíz mandan sobre los de `app/.env` cuando hay `music.env`.
+- En `app/.env`, por servicio: `PORTAL_*_ENABLED`/`PORTAL_*_URL` son la tarjeta y la dirección del navegador; `*_PROVISIONING_ENABLED`, que el portal gestiona las cuentas; `*_INTERNAL_URL`, cómo llega el portal al servicio dentro de Docker (nunca `localhost`).
+- Variable nueva: en la plantilla de su archivo, en su sección, con una línea de descripción si se presta a confusión. Los secretos nunca van en una plantilla con valor.
+
 ## Desarrollo
 - Foundry conserva compose.yaml para generar y ejecutar el portal; configuración y release aún pendientes P02/P05.
 - compose.music.yaml es autónomo con nombre de proyecto propio. No combinar ambos archivos ni incorporar Navidrome al wizard/reset de Laravel.
