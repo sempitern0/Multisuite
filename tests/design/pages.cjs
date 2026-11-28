@@ -13,9 +13,10 @@ const pages = (process.env.UI_PAGES || '/dashboard').split(',');
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         page.on('console', message => { if (message.type() === 'error' && !/net::ERR_FAILED|Failed to load resource/.test(message.text())) errors.push(message.text()); });
-        // Service gateways are not running here: keep the portal page instead of leaving it.
+        // Service gateways are not running here: answer them with 204 so the browser stays on the
+        // portal page (a launch page submits itself to its gateway).
         await page.setRequestInterception(true);
-        page.on('request', request => new URL(request.url()).origin === base ? request.continue() : request.abort());
+        page.on('request', request => new URL(request.url()).origin === base ? request.continue() : request.respond({status: 204, body: ''}));
 
         await page.goto(base + '/login', {waitUntil: 'networkidle2'});
         await page.type('input[name=email]', 'test@example.com');
