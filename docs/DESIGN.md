@@ -107,3 +107,6 @@ Las vistas de dominio no cambian. Si un tema necesita un componente nuevo, se a�
 - Contraste AA comprobado (texto ≥ 4,5:1, contornos de controles ≥ 3:1). Desviaciones mínimas respecto a la guía para cumplirlo: texto atenuado `#818e81` (guía `#778477`), placeholder `#758575` y borde de campos `#5a675b`.
 - Accesibilidad: foco visible amarillo, `aria-current` en navegación, errores con `role="alert"` y `aria-describedby`, `prefers-reduced-motion`, responsive (≤1050 px barra de iconos, ≤700 px menú desplegable, rejilla de 2 columnas).
 
+## Comprobación en navegador (CI)
+`.github/workflows/ui-check.yml` levanta un portal desechable y recorre con Chrome las páginas de `UI_PAGES` (`tests/design/pages.cjs`) a 360 y 1280 px en claro y oscuro: sin hallazgos críticos o graves de axe ni de contraste, sin desbordamiento horizontal en móvil, sin errores del navegador y mostrando el texto de `UI_EXPECT`. Se ejecuta en las PR que tocan vistas, CSS o `app/Support`; añade a la lista las páginas nuevas.
+
