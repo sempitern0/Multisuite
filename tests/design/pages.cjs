@@ -4,6 +4,8 @@
 const puppeteer = require('puppeteer-core');
 const base = 'http://127.0.0.1:8000';
 const pages = (process.env.UI_PAGES || '/dashboard').split(',');
+// Optional "route=text" pairs: the page must show that text (proves the checked state rendered).
+const expected = Object.fromEntries((process.env.UI_EXPECT || '').split('|').filter(Boolean).map(pair => pair.split('=')));
 
 (async () => {
     const browser = await puppeteer.launch({executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox']});
@@ -27,6 +29,9 @@ const pages = (process.env.UI_PAGES || '/dashboard').split(',');
             await page.goto(base + route, {waitUntil: 'networkidle2'}).catch(() => {});
             const path = new URL(page.url()).pathname;
             if (path !== route) failures.push(route + ': redirected to ' + path);
+            if (expected[route] && !(await page.evaluate(() => document.body.innerText)).includes(expected[route])) {
+                failures.push(route + ': missing «' + expected[route] + '»');
+            }
             for (const width of [360, 1280]) {
                 await page.setViewport({width, height: 860});
                 for (const scheme of ['light', 'dark']) {

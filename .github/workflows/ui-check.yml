@@ -16,6 +16,7 @@ jobs:
     timeout-minutes: 20
     env:
       UI_PAGES: /dashboard,/files,/admin/downloads,/services/downloads
+      UI_EXPECT: /dashboard=Resumen de administración|/admin/downloads=cancion.mp3|/services/downloads=Continuar a Descargas
     steps:
       - uses: actions/checkout@v4
         with:
