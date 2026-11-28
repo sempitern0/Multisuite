@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserStorageQuota;
+use App\Support\AdminSummary;
 use App\Support\ServiceTiles;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -18,6 +19,7 @@ class DashboardController extends Controller
         return view('dashboard', [
             'tiles' => ServiceTiles::forUser($user),
             'storage' => $storage['limit'] > 0 ? $storage : null,
+            'admin' => AdminSummary::for($user),
         ]);
     }
 }

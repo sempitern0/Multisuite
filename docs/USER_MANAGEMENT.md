@@ -5,6 +5,9 @@ El menú **Usuarios** está disponible solo para propietario y administradores. 
 - Administrador: gestiona miembros. No puede editar/eliminar administradores, propietarios ni su propia cuenta.
 - Propietario: también gestiona administradores. Las cuentas propietarias y la propia están protegidas.
 
+## Resumen de administración
+En la portada, owner y administradores ven cifras reales sacadas de la base de datos (`App\Support\AdminSummary`), cada una solo si su permiso lo permite: personas activas y suspendidas, invitaciones pendientes y cuentas de servicio con incidencias (`manage-invitations`), propuestas para todos (`publish-content`), descargas por guardar (`manage-downloads`) y espacio usado por todas las personas (`view-storage`), con enlaces a cada sección. No se muestran estados de disponibilidad inventados. Los roles se comparan con `App\Enums\Role` y `User::hasRole()`, `isOwner()` e `isAdministrator()`.
+
 ## Ajustes personales de seguridad
 
 En **Ajustes → Seguridad** cada persona ve su correo de recuperación y, si están habilitadas, sus llaves de acceso y la verificación en dos pasos. Cada fila abre sus opciones con clic, Intro o Espacio. El correo también se puede cambiar desde Perfil si la dirección aún está sin verificar.

@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Concerns\PasswordValidationRules;
+use App\Enums\Role;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
@@ -23,7 +24,7 @@ class BootstrapOwner extends Command
 
             return self::FAILURE;
         }
-        if (User::where('role', 'owner')->exists()) {
+        if (User::where('role', Role::Owner->value)->exists()) {
             $this->error('An owner already exists. This command is only for initial bootstrap.');
 
             return self::FAILURE;
@@ -56,7 +57,7 @@ class BootstrapOwner extends Command
 
             return self::FAILURE;
         }
-        $user->role = 'owner';
+        $user->role = Role::Owner->value;
         $user->save();
         $this->info('Initial owner configured. Sign in to manage invitations.');
 

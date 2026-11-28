@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Enums\Role;
 use App\Events\AssistantContentRevoked;
 use App\Events\PrivateUploadReady;
 use App\Models\Folder;
@@ -14,6 +15,7 @@ use App\Policies\UserFilePolicy;
 use App\Policies\UserPolicy;
 use App\Services\Assistant\AssistantAccess;
 use App\Services\Assistant\SemanticIndex;
+use App\Services\Downloads\DownloadsAccess;
 use App\Services\Files\PersonalFiles;
 use App\Services\Files\Publications;
 use App\Services\VideoSession;
@@ -69,21 +71,22 @@ class AppServiceProvider extends ServiceProvider
         // Signing out of Multisuite also ends the Jellyfin session it opened for that browser.
         Event::listen(Logout::class, fn () => app(VideoSession::class)->forget());
         Event::listen(AssistantContentRevoked::class, fn (AssistantContentRevoked $event) => app(SemanticIndex::class)->forget($event->userId));
-        Gate::define('view-admin-audit', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
-        Gate::define('manage-invitations', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
-        Gate::define('view-storage', fn (User $user): bool => in_array($user->role, ['owner', 'admin'], true));
+        Gate::define('view-admin-audit', fn (User $user): bool => $user->isAdministrator());
+        Gate::define('manage-invitations', fn (User $user): bool => $user->isAdministrator());
+        Gate::define('view-storage', fn (User $user): bool => $user->isAdministrator());
+        Gate::define('manage-downloads', fn (User $user): bool => DownloadsAccess::allowed($user));
         // Disks and the default are infrastructure policy: owner only.
         // Publication for everyone (S04b): only administrators decide.
         Gate::define('publish-content', fn (User $user): bool => Publications::canDecide($user));
-        Gate::define('manage-storage-pools', fn (User $user): bool => $user->role === 'owner');
+        Gate::define('manage-storage-pools', fn (User $user): bool => $user->isOwner());
         // The assistant is configured only by the owner (decision 2026-11-20, docs/MCP.md).
-        Gate::define('manage-assistant', fn (User $user): bool => $user->role === 'owner');
+        Gate::define('manage-assistant', fn (User $user): bool => $user->isOwner());
         // Mis finanzas can be switched off by the operator (PORTAL_FINANCES=false); otherwise everyone has their own.
         Gate::define('use-finances', fn (User $user): bool => (bool) config('portal.finances.enabled'));
         Gate::define('use-assistant', fn (User $user): bool => app(AssistantAccess::class)->denial($user) === null);
         // Owner manages everyone (including self); admins only members, as in UserPolicy.
-        Gate::define('manage-storage-quota', fn (User $actor, User $target): bool => $actor->role === 'owner'
-            || ($actor->role === 'admin' && $actor->id !== $target->id && $target->role === 'member'));
+        Gate::define('manage-storage-quota', fn (User $actor, User $target): bool => $actor->isOwner()
+            || ($actor->hasRole(Role::Admin) && $actor->id !== $target->id && $target->hasRole(Role::Member)));
     }
 
     /**

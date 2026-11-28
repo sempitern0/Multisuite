@@ -15,7 +15,7 @@ NAS doméstico con portal privado Laravel + Livewire para el propietario, famili
 
 ## Mantenimiento de la documentación
 - `docs/` describe el estado actual. Lo completado se resume en una línea en PROJECT_STATUS; el detalle vive en git/PRs. No acumular bitácoras de iteraciones, planes sustituidos ni listas de QA ya superadas.
-- Un documento por dominio (DESIGN, STORAGE, PERSONAL_FINANCES, USER_MANAGEMENT, INVITATIONS, ADMIN_AUDIT, NAVIDROME, JELLYFIN, SERVICE_ACCOUNTS, MUSIC_SESSION_BRIDGE, ENVIRONMENTS, VPN, DEPENDENCIES, MCP). Ampliar el existente antes de crear otro.
+- Un documento por dominio (DESIGN, STORAGE, PERSONAL_FINANCES, USER_MANAGEMENT, INVITATIONS, ADMIN_AUDIT, NAVIDROME, JELLYFIN, SERVICE_ACCOUNTS, MUSIC_SESSION_BRIDGE, ENVIRONMENTS, VPN, DOWNLOADS, DEPENDENCIES, MCP). Ampliar el existente antes de crear otro.
 - `docs/foundry/` son guías heredadas de la plantilla; adaptarlas, no tratarlas como estado del producto. CI comprueba algunas rutas de docs (`.github/workflows/ci.yml`): si mueves un documento, actualiza CI y referencias en la misma PR.
 - Distinguir siempre *implementado*, *validado en CI*, *validado por el usuario* y *desplegado*.
 

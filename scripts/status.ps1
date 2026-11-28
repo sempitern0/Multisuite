@@ -228,6 +228,11 @@ if (Test-Path -LiteralPath (Join-Path $Root 'video.env')) {
     Show-NasLink 'Video (Jellyfin)' ("http://localhost:{0}" -f (FileSetting 'video.env' 'VIDEO_PORT' '8096')) ((ContainerCount $project 'video-gateway' -Running) -gt 0) 'make video-up'
     Item 'Video GPU' (FileSetting 'video.env' 'VIDEO_HARDWARE' 'none')
 }
+if (Test-Path -LiteralPath (Join-Path $Root 'downloads.env')) {
+    $nasShown = $true
+    $project = FileSetting 'downloads.env' 'DOWNLOADS_PROJECT_NAME' 'multisuite-downloads'
+    Show-NasLink 'Downloads (MeTube)' ("http://localhost:{0}" -f (FileSetting 'downloads.env' 'DOWNLOADS_PORT' '8084')) ((ContainerCount $project 'downloads-gateway' -Running) -gt 0) 'make downloads-up'
+}
 if (Test-Path -LiteralPath (Join-Path $Root 'vpn.env')) {
     $nasShown = $true
     $project = FileSetting 'vpn.env' 'VPN_PROJECT_NAME' 'multisuite-vpn'

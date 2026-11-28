@@ -78,7 +78,7 @@ final class KomgaAccounts implements CommonLibraries, PersonalLibraries, Service
     /** Authorise the integration once, proving possession of the existing native administrator. */
     public function connect(User $owner, string $email, #[\SensitiveParameter] string $password): void
     {
-        abort_unless($owner->role === 'owner' && ! $owner->isSuspended() && $owner->hasVerifiedEmail(), 403);
+        abort_unless($owner->isOwner() && ! $owner->isSuspended() && $owner->hasVerifiedEmail(), 403);
         Cache::lock('komga-connection', 60)->block(10, function () use ($owner, $email, $password): void {
             $this->guard(function () use ($owner, $email, $password): void {
                 $http = $this->http();
@@ -101,7 +101,7 @@ final class KomgaAccounts implements CommonLibraries, PersonalLibraries, Service
                 }
                 DB::transaction(function () use ($owner, $native, $key): void {
                     $locked = User::whereKey($owner->id)->lockForUpdate()->firstOrFail();
-                    abort_unless($locked->role === 'owner' && ! $locked->isSuspended(), 403);
+                    abort_unless($locked->isOwner() && ! $locked->isSuspended(), 403);
                     $connection = ServiceConnection::find('komga') ?? new ServiceConnection;
                     $connection->service = 'komga';
                     $connection->operator_id = (string) $native['id'];
@@ -348,7 +348,7 @@ final class KomgaAccounts implements CommonLibraries, PersonalLibraries, Service
         }
         // Check privilege drift before any password or library mutation, not only before login.
         if (in_array('ADMIN', $remote['roles'], true)
-            && (User::find($account->user_id)?->role !== 'owner'
+            && (! (User::find($account->user_id)?->isOwner() ?? false)
                 || ServiceConnection::find('komga')?->operator_id !== $account->external_id)) {
             throw new RuntimeException('conflict');
         }

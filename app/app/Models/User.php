@@ -90,10 +90,26 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable,
         return $this->avatar_hash === null ? ProfileStickers::url($this->avatar_sticker) : route('avatars.show', ['user' => $this->id, 'hash' => $this->avatar_hash]);
     }
 
+    public function hasRole(Role $role): bool
+    {
+        return $this->role === $role->value;
+    }
+
+    public function isOwner(): bool
+    {
+        return $this->hasRole(Role::Owner);
+    }
+
+    /** Owner or administrator: the people who manage Multisuite. */
+    public function isAdministrator(): bool
+    {
+        return $this->isOwner() || $this->hasRole(Role::Admin);
+    }
+
     public function canInviteRole(string $role): bool
     {
-        return ($this->role === Role::Owner->value && in_array($role, [Role::Admin->value, Role::Member->value], true))
-            || ($this->role === Role::Admin->value && $role === Role::Member->value);
+        return ($this->isOwner() && in_array($role, [Role::Admin->value, Role::Member->value], true))
+            || ($this->hasRole(Role::Admin) && $role === Role::Member->value);
     }
 
     /**

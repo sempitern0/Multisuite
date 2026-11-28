@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ServiceAccount;
+use App\Services\Downloads\DownloadsAccess;
 use App\Services\KomgaAccounts;
 use App\Services\KomgaSession;
 use App\Services\MusicSessionBridge;
@@ -21,11 +22,11 @@ class ServiceController extends Controller
         abort_unless(is_array($entry) && ($entry['enabled'] ?? false), 404);
 
         $user = Auth::user();
-        abort_if(($entry['admin_only'] ?? false) && ! in_array($user?->role, ['owner', 'admin'], true), 403);
+        abort_if(($entry['admin_only'] ?? false) && ! ($user?->isAdministrator() ?? false), 403);
         if ($service === 'komga' && $user !== null) {
             abort_unless(app(ServiceAccounts::class)->entitled($user, 'komga'), 403);
             if (! KomgaAccounts::connected()) {
-                return redirect()->route($user->role === 'owner' ? 'komga.connect' : 'komga.confirm');
+                return redirect()->route($user->isOwner() ? 'komga.connect' : 'komga.confirm');
             }
             if (! KomgaSession::allowed($user) || ! session()->has('komga.login')) {
                 return redirect()->route('komga.confirm');
@@ -69,6 +70,14 @@ class ServiceController extends Controller
             $origin = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
 
             return response()->view('video-launch', ['action' => $origin.'/_multisuite/launch', 'ticket' => app(VideoSession::class)->issue($user)])
+                ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'origin');
+        }
+
+        if ($service === 'downloads' && $user !== null) {
+            abort_unless(DownloadsAccess::allowed($user), 403);
+            abort_if(app()->isProduction() && $parts['scheme'] !== 'https', 404);
+
+            return response()->view('downloads-launch', ['action' => DownloadsAccess::origin().'/_multisuite/launch', 'ticket' => app(DownloadsAccess::class)->issue($user)])
                 ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'origin');
         }
 

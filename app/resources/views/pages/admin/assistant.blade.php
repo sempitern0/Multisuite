@@ -307,12 +307,12 @@ new #[Title('Asistente')] class extends Component {
             </x-slot:head>
             @foreach ($this->people as $person)
                 @php
-                    $allowed = $person->role === 'owner' || isset($this->members[$person->id]);
+                    $allowed = $person->isOwner() || isset($this->members[$person->id]);
                 @endphp
                 <tr wire:key="assistant-person-{{ $person->id }}">
                     <x-ui::td><x-ui::person :name="$person->name" :sub="$person->roleLabel()" :src="$person->avatarUrl()" :initials="$person->initials()" /></x-ui::td>
                     <x-ui::td label="Acceso">
-                        @if ($person->role === 'owner')
+                        @if ($person->isOwner())
                             <x-ui::status>Siempre</x-ui::status>
                         @elseif ($allowed)
                             <x-ui::status>Puede usarlo</x-ui::status>
@@ -322,7 +322,7 @@ new #[Title('Asistente')] class extends Component {
                     </x-ui::td>
                     <x-ui::td label="Consultas hoy">{{ $this->usage[$person->id] ?? 0 }}</x-ui::td>
                     <x-ui::td align="end">
-                        @if ($person->role !== 'owner')
+                        @if (! $person->isOwner())
                             <x-ui::button size="sm" :variant="$allowed ? 'secondary' : 'primary'" wire:click="allow({{ $person->id }}, {{ $allowed ? 'false' : 'true' }})"
                                 :aria-label="($allowed ? 'Quitar el asistente a ' : 'Permitir el asistente a ').$person->name">{{ $allowed ? 'Quitar acceso' : 'Permitir' }}</x-ui::button>
                         @endif

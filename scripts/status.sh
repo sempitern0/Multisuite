@@ -99,6 +99,10 @@ nas_services() {
     nas_link 'Video (Jellyfin)' "http://localhost:$(setting VIDEO_PORT 8096 video.env)" "$up" 'make video-up'
     item 'Video GPU' "$(setting VIDEO_HARDWARE none video.env)"
   fi
+  if [ -f downloads.env ]; then
+    shown=yes; up=no; stack_running "$(setting DOWNLOADS_PROJECT_NAME multisuite-downloads downloads.env)" downloads-gateway && up=yes
+    nas_link 'Downloads (MeTube)' "http://localhost:$(setting DOWNLOADS_PORT 8084 downloads.env)" "$up" 'make downloads-up'
+  fi
   if [ -f vpn.env ]; then
     shown=yes; up=no; stack_running "$(setting VPN_PROJECT_NAME multisuite-vpn vpn.env)" headscale && up=yes
     nas_link 'VPN (Headscale)' "$(setting VPN_SERVER_URL http://127.0.0.1:8090 vpn.env)" "$up" 'make vpn-up'

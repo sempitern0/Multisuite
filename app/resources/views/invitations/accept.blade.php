@@ -2,7 +2,7 @@
     <x-ui::panel>
         <x-ui::stack gap="sm">
             <p><strong>{{ $invitation->email }}</strong></p>
-            <x-ui::text tone="muted">Rol: {{ $invitation->role === 'admin' ? 'Administrador' : 'Miembro' }}.</x-ui::text>
+            <x-ui::text tone="muted">Rol: {{ \App\Enums\Role::tryFrom($invitation->role)?->label() }}.</x-ui::text>
             @foreach ($invitation->services ?? [] as $service)
                 <x-ui::text tone="muted">{{ config('portal.services.'.$service.'.name', $service) }} se preparará con tu usuario (o correo si no eliges uno) y esta contraseña.</x-ui::text>
             @endforeach

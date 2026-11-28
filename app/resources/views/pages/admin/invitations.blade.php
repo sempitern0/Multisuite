@@ -20,7 +20,7 @@ new #[Title('Invitaciones')] class extends Component {
 
     public string $email = '';
 
-    public string $role = 'member';
+    public string $role = \App\Enums\Role::Member->value;
 
     /** @var list<string> */
     public array $services = [];
@@ -74,7 +74,7 @@ new #[Title('Invitaciones')] class extends Component {
         $data = $this->validate($issue->rules());
         $issue->handle(Auth::user(), $data);
         $this->reset('email');
-        $this->role = 'member';
+        $this->role = \App\Enums\Role::Member->value;
         $this->resetPage();
         $this->toast('Invitación enviada a '.$data['email']);
     }
@@ -124,7 +124,7 @@ new #[Title('Invitaciones')] class extends Component {
                     @php($pending = $invitation->status() === 'pending')
                     <tr wire:key="invitation-{{ $invitation->id }}">
                         <x-ui::td primary>{{ $invitation->email }}</x-ui::td>
-                        <x-ui::td label="Rol">{{ $invitation->role === 'admin' ? 'Administrador' : 'Miembro' }}</x-ui::td>
+                        <x-ui::td label="Rol">{{ \App\Enums\Role::tryFrom($invitation->role)?->label() }}</x-ui::td>
                         <x-ui::td label="Estado">
                             @if ($invitation->status() === 'accepted')
                                 <x-ui::status>Aceptada</x-ui::status>
