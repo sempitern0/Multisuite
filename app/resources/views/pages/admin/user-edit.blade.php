@@ -31,7 +31,7 @@ new #[Title('Gestionar persona')] class extends Component {
 
     public string $email = '';
 
-    public string $role = 'member';
+    public string $role = \App\Enums\Role::Member->value;
 
     public ?string $videoRating = null;
 

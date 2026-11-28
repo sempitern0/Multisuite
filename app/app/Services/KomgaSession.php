@@ -33,7 +33,7 @@ final class KomgaSession
         }
         try {
             if (! KomgaAccounts::connected()) {
-                if ($user->role !== 'owner' || ! $user->hasVerifiedEmail() || ! app(ServiceAccounts::class)->entitled($user, 'komga')) {
+                if (! $user->isOwner() || ! $user->hasVerifiedEmail() || ! app(ServiceAccounts::class)->entitled($user, 'komga')) {
                     return;
                 }
                 // Fresh installs and an existing administrator with the same credentials need no setup form.
@@ -126,7 +126,7 @@ final class KomgaSession
             && ($dto['id'] ?? null) === $account->external_id
             && ($dto['email'] ?? null) === $account->remote_email
             && is_array($dto['roles'] ?? null)
-            && ($user->role === 'owner' || ! in_array('ADMIN', $dto['roles'], true));
+            && ($user->isOwner() || ! in_array('ADMIN', $dto['roles'], true));
     }
 
     /** @param array<string> $headers */

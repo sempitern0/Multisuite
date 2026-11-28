@@ -14,6 +14,7 @@ try {
   [System.IO.File]::WriteAllLines((Join-Path $temp '.env'), $settings)
   [System.IO.File]::WriteAllLines((Join-Path $temp 'music.env'), @('NAVIDROME_PORT=14533'))
   [System.IO.File]::WriteAllLines((Join-Path $temp 'video.env'), @('VIDEO_PORT=18096', 'VIDEO_HARDWARE=nvidia'))
+  [System.IO.File]::WriteAllLines((Join-Path $temp 'downloads.env'), @('DOWNLOADS_PORT=18084'))
   [System.IO.File]::WriteAllLines((Join-Path $temp 'vpn.env'), @('VPN_SERVER_URL=https://vpn.example.org', 'VPN_TLS=acme-dns', 'VPN_PORTAL_HOST=multisuite.example.org'))
   function docker {
     $global:LASTEXITCODE = 0
@@ -36,6 +37,7 @@ try {
   if ($output -notmatch 'Video \(Jellyfin\)\s+http://localhost:18096') { throw 'Video URL missing' }
   if ($output -notmatch 'Video GPU\s+nvidia') { throw 'Video GPU missing' }
   if ($output -notmatch 'VPN \(Headscale\)\s+https://vpn.example.org') { throw 'VPN control URL missing' }
+  if ($output -notmatch 'Downloads \(MeTube\)\s+OFF\s+stopped\s+\(make downloads-up\)') { throw 'Stopped downloads not shown' }
   if ($output -notmatch 'Private portal\s+https://multisuite.example.org') { throw 'Private portal URL missing' }
   if ($output -notmatch 'Reading \(Komga\)\s+OFF\s+stopped\s+\(make komga-up\)') { throw 'Stopped Komga not shown' }
   if ($output -match 'Kavita') { throw 'Unconfigured Kavita shown' }

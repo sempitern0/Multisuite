@@ -1,0 +1,56 @@
+name: UI check
+# Real-browser check of the portal pages a change touches (tests/design/pages.cjs): accessibility,
+# phone width and browser errors in light and dark, on a disposable seeded portal.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/ui-check.yml'
+      - 'tests/design/pages.cjs'
+      - 'app/resources/**'
+      - 'app/app/Support/**'
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      UI_PAGES: /dashboard,/files,/admin/downloads,/services/downloads
+      UI_EXPECT: /dashboard=Resumen de administración|/admin/downloads=cancion.mp3|/services/downloads=Continuar a Descargas
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, pdo_sqlite, gd
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build disposable portal
+        working-directory: app
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          npm ci
+          npm run build
+          cp .env.example .env
+          staging="$RUNNER_TEMP/staging" && mkdir -p "$staging/Lista" && printf 'ID3%04000d' 0 > "$staging/cancion.mp3" && printf 'ID3%0900d' 0 > "$staging/Lista/otra con un nombre bastante largo para un móvil.mp3"
+          { echo "APP_LOCALE=es"; echo "PORTAL_DOWNLOADS_ENABLED=true"; echo "PORTAL_DOWNLOADS_URL=http://127.0.0.1:8084"; echo "DOWNLOADS_STAGING_PATH=$staging"; } >> .env
+          php artisan key:generate
+          touch database/database.sqlite
+          php artisan migrate --seed --force
+          php artisan tinker --execute="App\Models\User::query()->update(['role' => 'owner']);"
+          php artisan serve --host=127.0.0.1 --port=8001 > "$RUNNER_TEMP/server.log" 2>&1 &
+          cp ../tests/design/serve.cjs ../tests/design/pages.cjs "$RUNNER_TEMP/"
+          node "$RUNNER_TEMP/serve.cjs" &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8000/login >/dev/null && break; sleep 1; done
+      - name: Check pages in Chrome
+        working-directory: ${{ runner.temp }}
+        run: |
+          npm install --no-audit --no-fund --no-save puppeteer-core@24.12.1 axe-core@4.10.3
+          node pages.cjs
+      - name: Server log on failure
+        if: failure()
+        run: tail -n 80 "$RUNNER_TEMP/server.log"

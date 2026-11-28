@@ -7,6 +7,7 @@ on:
       - 'compose*.yaml'
       - 'deploy/compose.*-accounts.example.yaml'
       - 'deploy/compose.vpn-*.yaml'
+      - 'deploy/compose.portal-downloads.example.yaml'
       - 'docker/**'
       - 'scripts/**'
       - 'tests/**'
@@ -38,6 +39,8 @@ jobs:
           python3 tests/reading-lifecycle.py
           python3 tests/komga-lifecycle.py
           docker compose -f compose.komga.yaml config --quiet
+          docker compose --env-file downloads.env.example -f compose.downloads.yaml config --quiet
+          docker compose -f compose.yaml -f deploy/compose.portal-accounts.example.yaml -f deploy/compose.portal-downloads.example.yaml config --quiet
           for hw in none intel amd nvidia; do
             overrides="-f deploy/compose.video-media.dev.yaml"
             [ "$hw" = none ] || overrides="-f deploy/compose.video-$hw.yaml $overrides"
@@ -61,6 +64,8 @@ jobs:
         run: python3 tests/komga-smoke.py
       - name: Private network integration (Headscale, NAS node, entry, device)
         run: python3 tests/vpn-smoke.py
+      - name: Descargas gateway integration (MeTube behind the portal session)
+        run: python3 tests/downloads-smoke.py
       - name: Test music session bridge and gateway
         run: |
           node --test tests/music-session.test.mjs

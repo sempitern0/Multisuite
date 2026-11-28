@@ -8,7 +8,7 @@ class UserPolicy
 {
     public function viewAny(User $actor): bool
     {
-        return in_array($actor->role, ['owner', 'admin'], true);
+        return $actor->isAdministrator();
     }
 
     public function update(User $actor, User $target): bool

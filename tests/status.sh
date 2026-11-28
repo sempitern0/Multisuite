@@ -23,6 +23,7 @@ COMPOSE_PROFILES="mariadb,mailpit,phpmyadmin,https,workers"
 ENV
 printf 'MUSIC_PROJECT_NAME=multisuite-music\nNAVIDROME_PORT=14533\n' > "$temp/project/music.env"
 printf 'VIDEO_PORT=18096\nVIDEO_HARDWARE=nvidia\n' > "$temp/project/video.env"
+printf 'DOWNLOADS_PORT=18084\n' > "$temp/project/downloads.env"
 printf 'VPN_SERVER_URL=https://vpn.example.org\nVPN_TLS=acme-dns\nVPN_PORTAL_HOST=multisuite.example.org\n' > "$temp/project/vpn.env"
 cat > "$temp/bin/docker" <<'DOCKER'
 #!/bin/sh
@@ -55,6 +56,7 @@ grep -q 'Music (Navidrome).*http://localhost:14533' "$temp/out"
 grep -q 'Video (Jellyfin).*http://localhost:18096' "$temp/out"
 grep -q 'Video GPU.*nvidia' "$temp/out"
 grep -q 'VPN (Headscale).*https://vpn.example.org' "$temp/out"
+grep -q 'Downloads (MeTube).*stopped.*make downloads-up' "$temp/out"
 grep -q 'Private portal.*https://multisuite.example.org' "$temp/out"
 grep -q 'Reading (Komga).*stopped.*make komga-up' "$temp/out"
 if grep -q 'Kavita' "$temp/out"; then echo 'Status showed an unconfigured service' >&2; exit 1; fi

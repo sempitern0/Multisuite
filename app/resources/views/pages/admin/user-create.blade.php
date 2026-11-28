@@ -20,7 +20,7 @@ new #[Title('Crear cuenta')] class extends Component {
 
     public string $email = '';
 
-    public string $role = 'member';
+    public string $role = \App\Enums\Role::Member->value;
 
     /** @var list<string> */
     public array $services = [];
@@ -63,7 +63,7 @@ new #[Title('Crear cuenta')] class extends Component {
             return $create->handle(Auth::user(), $data);
         });
         $this->reset('name', 'username', 'email');
-        $this->role = 'member';
+        $this->role = \App\Enums\Role::Member->value;
         $this->services = $this->availableServices;
         $this->toast('Cuenta de '.$user->name.' creada. Entrégale la contraseña temporal por un canal seguro');
     }

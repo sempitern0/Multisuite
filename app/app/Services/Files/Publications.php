@@ -39,7 +39,7 @@ class Publications
 
     public static function canDecide(User $user): bool
     {
-        return in_array($user->role, [Role::Owner->value, Role::Admin->value], true);
+        return $user->isAdministrator();
     }
 
     /** The publication of a person's file, if any (requested or published). */

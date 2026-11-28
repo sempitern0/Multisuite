@@ -62,6 +62,9 @@ VIDEO_DETECT := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/
 else
 VIDEO_DETECT := HW="$(HW)" sh scripts/video-detect.sh
 endif
+# Descargas (MeTube, docs/DOWNLOADS.md): a downloads.env opts in; DOWNLOADS_AUTO=0 skips it.
+DOWNLOADS_AUTO ?= $(if $(wildcard downloads.env),1,0)
+DOWNLOADS_DC := docker compose --env-file downloads.env -f compose.downloads.yaml
 # Red privada (Headscale, docs/VPN.md): a vpn.env opts in to `make vpn-*` only; `make up` never
 # starts it. scripts/vpn.{sh,ps1} alone choose the stack's Compose files (HTTPS override included).
 ifeq ($(OS),Windows_NT)
@@ -69,7 +72,7 @@ VPN_SCRIPT := powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/vp
 else
 VPN_SCRIPT := sh scripts/vpn.sh
 endif
-SERVICES_AUTO := $(if $(filter 1,$(MUSIC_AUTO) $(READING_AUTO) $(KOMGA_AUTO) $(VIDEO_AUTO)),1,0)
+SERVICES_AUTO := $(if $(filter 1,$(MUSIC_AUTO) $(READING_AUTO) $(KOMGA_AUTO) $(VIDEO_AUTO) $(DOWNLOADS_AUTO)),1,0)
 DC_FILES := -f compose.yaml $(if $(wildcard compose.override.yaml),-f compose.override.yaml)
 ifeq ($(SERVICES_AUTO),1)
 # Keep host-generated overrides; append service connectivity without rewriting them.
@@ -87,6 +90,9 @@ DC_FILES += -f deploy/compose.portal-komga.example.yaml
 endif
 ifeq ($(VIDEO_AUTO),1)
 DC_FILES += -f deploy/compose.portal-video.example.yaml
+endif
+ifeq ($(DOWNLOADS_AUTO),1)
+DC_FILES += -f deploy/compose.portal-downloads.example.yaml
 endif
 ifeq ($(READING_AUTO),0)
 DC_FILES += -f deploy/compose.portal-kavita-disabled.yaml
@@ -126,6 +132,7 @@ help:
 	@echo "Optional:    make worker | scheduler | redis"
 	@echo "Music:       make music-up | music-stop | music-status | music-logs"
 	@echo "Video:       make video-detect [HW=intel|amd|nvidia|none] | video-up | video-stop | video-status | video-logs"
+	@echo "Descargas:   make downloads-up | downloads-stop | downloads-status | downloads-logs (con downloads.env)"
 	@echo "VPN:         make vpn-up | vpn-join | vpn-person NAME= | vpn-approve NAME= CODE= | vpn-key NAME= | vpn-devices | vpn-remove ID= | vpn-urls | vpn-status | vpn-logs | vpn-stop"
 	@echo "Auto music:  music.env enables Navidrome; use MUSIC_AUTO=0 to skip"
 	@echo "Reading:     make reading-up | reading-stop | reading-status | reading-logs"
@@ -167,6 +174,9 @@ endif
 ifeq ($(VIDEO_AUTO),1)
 	@$(VIDEO_DC) up -d
 endif
+ifeq ($(DOWNLOADS_AUTO),1)
+	@$(DOWNLOADS_DC) up -d
+endif
 ifeq ($(READING_AUTO),0)
 ifneq ($(wildcard reading.env),)
 	@docker compose --env-file reading.env -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml stop
@@ -193,6 +203,9 @@ endif
 ifeq ($(VIDEO_AUTO),1)
 	@$(VIDEO_DC) up -d --wait --wait-timeout 180
 endif
+ifeq ($(DOWNLOADS_AUTO),1)
+	@$(DOWNLOADS_DC) up -d --wait --wait-timeout 180
+endif
 ifeq ($(READING_AUTO),0)
 ifneq ($(wildcard reading.env),)
 	@docker compose --env-file reading.env -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml stop
@@ -216,6 +229,9 @@ ifeq ($(KOMGA_AUTO),1)
 endif
 ifeq ($(VIDEO_AUTO),1)
 	@$(VIDEO_DC) up -d
+endif
+ifeq ($(DOWNLOADS_AUTO),1)
+	@$(DOWNLOADS_DC) up -d
 endif
 ifeq ($(READING_AUTO),0)
 ifneq ($(wildcard reading.env),)
@@ -245,6 +261,9 @@ endif
 ifeq ($(VIDEO_AUTO),1)
 	@$(VIDEO_DC) up -d
 endif
+ifeq ($(DOWNLOADS_AUTO),1)
+	@$(DOWNLOADS_DC) up -d
+endif
 ifeq ($(READING_AUTO),0)
 ifneq ($(wildcard reading.env),)
 	@docker compose --env-file reading.env -f compose.reading.yaml -f deploy/compose.reading-accounts.example.yaml stop
@@ -256,6 +275,9 @@ endif
 stop:
 ifeq ($(VIDEO_AUTO),1)
 	@$(VIDEO_DC) stop
+endif
+ifeq ($(DOWNLOADS_AUTO),1)
+	@$(DOWNLOADS_DC) stop
 endif
 ifeq ($(KOMGA_AUTO),1)
 	@$(KOMGA_DC) stop
@@ -273,6 +295,9 @@ restart: stop start
 down:
 ifeq ($(VIDEO_AUTO),1)
 	@$(VIDEO_DC) down
+endif
+ifeq ($(DOWNLOADS_AUTO),1)
+	@$(DOWNLOADS_DC) down
 endif
 ifeq ($(KOMGA_AUTO),1)
 	@$(KOMGA_DC) down
@@ -421,6 +446,9 @@ ifeq ($(SERVICES_AUTO),1)
 	@$(ACCOUNTS_NETWORK)
 	@docker volume create multisuite-music-identity
 endif
+ifeq ($(DOWNLOADS_AUTO),1)
+	@docker volume create multisuite-downloads
+endif
 
 .PHONY: video-detect video-up video-stop video-status video-logs video-config
 # Detects the GPU and writes video.env; run again after changing the graphics card.
@@ -436,6 +464,18 @@ video-logs:
 	@$(VIDEO_DC) logs -f --tail=100 jellyfin
 video-config:
 	@$(VIDEO_DC) config --quiet
+
+.PHONY: downloads-up downloads-stop downloads-status downloads-logs downloads-config
+downloads-up: accounts-network
+	@$(DOWNLOADS_DC) up -d
+downloads-stop:
+	@$(DOWNLOADS_DC) stop
+downloads-status:
+	@$(DOWNLOADS_DC) ps
+downloads-logs:
+	@$(DOWNLOADS_DC) logs -f --tail=100 metube downloads-gateway
+downloads-config:
+	@$(DOWNLOADS_DC) config --quiet
 
 .PHONY: vpn-up vpn-stop vpn-restart vpn-status vpn-logs vpn-config vpn-join vpn-person vpn-approve vpn-key vpn-devices vpn-remove vpn-urls
 # Independent commands deliberately fail if vpn.env is absent or invalid (docs/VPN.md).

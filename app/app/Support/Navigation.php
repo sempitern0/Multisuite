@@ -31,6 +31,7 @@ class Navigation
             ['route' => 'users.index', 'label' => 'Personas', 'icon' => 'users', 'gate' => 'manage-invitations', 'active' => ['users.*']],
             ['route' => 'invitations.index', 'label' => 'Invitaciones', 'icon' => 'invite', 'gate' => 'manage-invitations', 'active' => ['invitations.*']],
             ['route' => 'publications.index', 'label' => 'Para todos', 'icon' => 'share', 'gate' => 'publish-content', 'active' => ['publications.*']],
+            ['route' => 'downloads.index', 'label' => 'Descargas por guardar', 'icon' => 'download', 'gate' => 'manage-downloads', 'active' => ['downloads.*']],
             ['route' => 'storage.index', 'label' => 'Almacenamiento', 'icon' => 'storage', 'gate' => 'view-storage', 'active' => ['storage.*']],
             ['route' => 'assistant.settings', 'label' => 'Ajustes del asistente', 'icon' => 'settings', 'gate' => 'manage-assistant', 'active' => ['assistant.settings']],
             ['route' => 'audit.index', 'label' => 'Actividad', 'icon' => 'activity', 'gate' => 'view-admin-audit', 'active' => ['audit.*']],

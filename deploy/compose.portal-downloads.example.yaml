@@ -1,0 +1,22 @@
+# Applied by Make when downloads.env exists (docs/DOWNLOADS.md): the portal lists the staging
+# folder MeTube writes to and saves chosen files into the person's Mis archivos as a normal upload.
+# Read-write so a saved or discarded file leaves the staging folder; never a host path.
+x-downloads: &downloads
+  PORTAL_DOWNLOADS_ENABLED: "true"
+  PORTAL_DOWNLOADS_URL: "${PORTAL_DOWNLOADS_URL:-http://127.0.0.1:8084}"
+  DOWNLOADS_STAGING_PATH: /srv/downloads
+services:
+  app:
+    environment: *downloads
+    volumes:
+      - downloads-staging:/srv/downloads
+  worker:
+    environment: *downloads
+    volumes:
+      - downloads-staging:/srv/downloads
+  scheduler:
+    environment: *downloads
+volumes:
+  downloads-staging:
+    external: true
+    name: ${DOWNLOADS_STAGING_VOLUME:-multisuite-downloads}

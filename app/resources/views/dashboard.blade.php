@@ -20,5 +20,19 @@
                 </x-ui::stack>
             </x-ui::panel>
         @endif
+
+        @if ($admin)
+            <x-ui::panel aria-labelledby="admin-summary">
+                <x-ui::stack gap="sm">
+                    <x-ui::heading id="admin-summary">Resumen de administración</x-ui::heading>
+                    <x-ui::metrics :items="$admin['metrics']" />
+                    <x-ui::toolbar>
+                        @foreach ($admin['links'] as $link)
+                            <x-ui::link :href="$link['href']">{{ $link['label'] }}</x-ui::link>
+                        @endforeach
+                    </x-ui::toolbar>
+                </x-ui::stack>
+            </x-ui::panel>
+        @endif
     </x-ui::stack>
 </x-layouts::app>

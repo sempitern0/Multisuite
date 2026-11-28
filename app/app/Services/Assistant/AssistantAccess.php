@@ -81,7 +81,7 @@ class AssistantAccess
 
     public function isMember(User $user): bool
     {
-        return $user->role === 'owner' || AssistantMember::whereKey($user->id)->exists();
+        return $user->isOwner() || AssistantMember::whereKey($user->id)->exists();
     }
 
     /**

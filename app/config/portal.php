@@ -8,6 +8,9 @@ return [
     'music_session_bridge' => env('NAVIDROME_SESSION_BRIDGE_ENABLED', false),
     // Mis finanzas (docs/PERSONAL_FINANCES.md): personal income and expenses for every account.
     'finances' => ['enabled' => (bool) env('PORTAL_FINANCES', true)],
+    // Folder MeTube writes to, shared read-write with the portal (deploy/compose.portal-downloads.example.yaml).
+    'downloads_staging_path' => env('DOWNLOADS_STAGING_PATH', ''),
+
     'services' => [
         'komga' => [
             'name' => 'Lectura',
@@ -43,6 +46,17 @@ return [
             'category' => 'Leer',
             'enabled' => env('PORTAL_READING_ENABLED', false),
             'url' => env('PORTAL_READING_URL', ''),
+        ],
+        // Descargas (MeTube, docs/DOWNLOADS.md): only owner and administrators.
+        'downloads' => [
+            'name' => 'Descargas',
+            'icon' => 'download',
+            'description' => 'Descarga vídeos y audio de webs con MeTube y guárdalos en Mis archivos.',
+            'category' => 'Herramientas',
+            'admin_only' => true,
+            'hidden_when_disabled' => true,
+            'enabled' => env('PORTAL_DOWNLOADS_ENABLED', false),
+            'url' => env('PORTAL_DOWNLOADS_URL', ''),
         ],
     ],
 ];

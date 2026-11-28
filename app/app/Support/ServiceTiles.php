@@ -25,7 +25,7 @@ class ServiceTiles
         /** @var array<string, array<string, mixed>> $services */
         $services = config('portal.services', []);
         foreach ($services as $id => $service) {
-            if ((! empty($service['admin_only']) && ! in_array($user->role, ['owner', 'admin'], true))
+            if ((! empty($service['admin_only']) && ! $user->isAdministrator())
                 || (! empty($service['hidden_when_disabled']) && empty($service['enabled']))) {
                 continue;
             }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Role;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -85,7 +86,7 @@ class Invitation extends Model
     private static function canStillInvite(Builder $issuer): void
     {
         $issuer->whereNull('users.suspended_at')->whereNotNull('users.email_verified_at')->where(fn (Builder $roles) => $roles
-            ->where('users.role', 'owner')->whereIn('invitations.role', ['admin', 'member'])
-            ->orWhere(fn (Builder $admin) => $admin->where('users.role', 'admin')->where('invitations.role', 'member')));
+            ->where('users.role', Role::Owner->value)->whereIn('invitations.role', [Role::Admin->value, Role::Member->value])
+            ->orWhere(fn (Builder $admin) => $admin->where('users.role', Role::Admin->value)->where('invitations.role', Role::Member->value)));
     }
 }

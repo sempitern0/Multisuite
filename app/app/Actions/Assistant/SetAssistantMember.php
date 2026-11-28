@@ -22,7 +22,7 @@ class SetAssistantMember
         DB::transaction(function () use ($actor, $target, $allowed): void {
             [$actor, $target] = LockedUsers::pair($actor->id, $target->id);
             Gate::forUser($actor)->authorize('manage-assistant');
-            if ($target->role === 'owner') {
+            if ($target->isOwner()) {
                 return;
             }
             $member = AssistantMember::whereKey($target->id)->first();

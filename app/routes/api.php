@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\MusicSessionController;
+use App\Services\Downloads\DownloadsAccess;
 use App\Services\KomgaSession;
 use App\Services\ReadingSession;
 use App\Services\VideoSession;
@@ -46,3 +47,19 @@ Route::post('komga/session', function (Request $request, KomgaSession $bridge) {
 
     return $response;
 })->middleware('throttle:30,1');
+
+// Descargas (docs/DOWNLOADS.md). Served through its gateway: the cookie belongs to that origin.
+Route::post('downloads/session', function (Request $request, DownloadsAccess $access) {
+    $session = $access->redeem((string) $request->input('ticket'), (string) $request->header('Origin'));
+    $response = response('', 303)->header('Location', $session === null ? rtrim((string) config('app.url'), '/').'/dashboard' : '/')
+        ->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
+    $secure = parse_url((string) config('portal.services.downloads.url'), PHP_URL_SCHEME) === 'https';
+    $response->headers->setCookie(Cookie::create(DownloadsAccess::COOKIE, $session, $session === null ? 1 : now()->addMinutes(DownloadsAccess::SESSION_MINUTES))
+        ->withSecure($secure)->withHttpOnly(true)->withSameSite('lax')->withRaw(true));
+
+    return $response;
+})->middleware('throttle:30,1');
+// Asked by the gateway on every request (never by browsers directly with a valid session cookie).
+Route::get('downloads/check', fn (Request $request, DownloadsAccess $access) => response('', $access->holder((string) $request->header('X-Multisuite-Downloads', '')) !== null ? 204 : 401)
+    ->header('Cache-Control', 'no-store'));
+Route::get('downloads/portal', fn () => redirect()->away(rtrim((string) config('app.url'), '/').'/services/downloads'));

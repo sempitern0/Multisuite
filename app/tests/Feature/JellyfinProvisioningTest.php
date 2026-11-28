@@ -235,7 +235,7 @@ class JellyfinProvisioningTest extends TestCase
         $this->assertStringNotContainsString('session-', $sealed, 'Kept encrypted.');
 
         $launch = $this->actingAs($member)->withSession([Auth::guard('web')->getName() => $member->id, 'video.login' => $sealed])
-            ->get('/services/video')->assertOk()->assertViewIs('video-launch')->assertSee('http://127.0.0.1:8096/_multisuite/launch', false);
+            ->get('/services/video')->assertOk()->assertViewIs('service-launch')->assertSee('Continuar a Vídeo')->assertSee('http://127.0.0.1:8096/_multisuite/launch', false);
         $ticket = $launch->viewData('ticket');
         $origin = rtrim((string) config('app.url'), '/');
 

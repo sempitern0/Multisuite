@@ -125,3 +125,11 @@ Fuentes (2026-11-21): https://github.com/tesseract-ocr/tesseract · https://pack
 - **Validación**: `tests/vpn-smoke.py` con las tres imágenes reales y un cliente Tailscale en CI; `tests/vpn.ps1`; `docker compose config` con y sin HTTPS.
 - **Retirada**: `make vpn-stop` y borrar los volúmenes del stack; el portal vuelve a usarse solo en local. Fijar por digest al preparar producción (P05).
 
+## D023 — Descargas: MeTube 2026.11.24 (2026-11-28, P04.3)
+- **Necesidad**: descargar vídeo y audio de webs sin construir un descargador propio (AGENTS.md); solo para owner y administradores (decisión del usuario del 2026-11-28).
+- **MeTube** `ghcr.io/alexta69/metube:2026.11.24` (AGPL-3.0, https://github.com/alexta69/metube, etiqueta 2026.11.24 consultada 2026-11-28): interfaz web de yt-dlp con releases semanales en noviembre de 2026 (2026.11.14, .22 y .24), documentación de variables y proxys inversos. Se usa sin modificar, así que la AGPL no obliga a nada más que a su propia licencia. yt-dlp va dentro de la imagen y se actualiza con ella.
+- **Alternativas**: yt-dlp-web-ui (GPL-3.0, autenticación única, sin varias personas), Pinchflat y Tube Archivist (pensados para suscripciones a canales y mucho más pesados). Ninguna separa a varias personas, así que se limita el acceso a quien administra.
+- **Seguridad**: sin puertos publicados ni acceso a la red compartida; la pasarela exige la sesión del portal en cada petición; `ALLOW_YTDL_OPTIONS_OVERRIDES=false`; tamaño máximo por descarga; el portal guarda en Mis archivos con las comprobaciones de una subida.
+- **Validación**: `tests/downloads-smoke.py` con la imagen real; `DownloadsTest`.
+- **Retirada**: borrar `downloads.env`, `make down` del stack y el volumen `multisuite-downloads` tras guardar lo pendiente.
+

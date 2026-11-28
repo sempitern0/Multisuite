@@ -75,7 +75,7 @@ final class JellyfinServer
      */
     public function connect(User $owner, string $name, #[\SensitiveParameter] string $password): void
     {
-        abort_unless($owner->role === 'owner' && ! $owner->isSuspended() && $owner->hasVerifiedEmail(), 403);
+        abort_unless($owner->isOwner() && ! $owner->isSuspended() && $owner->hasVerifiedEmail(), 403);
         Cache::lock('video-connection', 60)->block(10, function () use ($owner, $name, $password): void {
             $this->jellyfin->guard(function () use ($owner, $name, $password): void {
                 if ($this->setupState() === 'empty') {
@@ -104,7 +104,7 @@ final class JellyfinServer
                 }
                 DB::transaction(function () use ($owner, $native, $key): void {
                     $locked = User::whereKey($owner->id)->lockForUpdate()->firstOrFail();
-                    abort_unless($locked->role === 'owner' && ! $locked->isSuspended(), 403);
+                    abort_unless($locked->isOwner() && ! $locked->isSuspended(), 403);
                     $connection = ServiceConnection::find('video') ?? new ServiceConnection;
                     $connection->service = 'video';
                     $connection->operator_id = (string) $native['Id'];
