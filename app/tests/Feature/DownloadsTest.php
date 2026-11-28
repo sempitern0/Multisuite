@@ -46,7 +46,7 @@ class DownloadsTest extends TestCase
     private function launch(User $user): string
     {
         return $this->actingAs($user)->withSession([Auth::guard('web')->getName() => $user->id])
-            ->get('/services/downloads')->assertOk()->assertSee('http://127.0.0.1:8084/_multisuite/launch')->viewData('ticket');
+            ->get('/services/downloads')->assertOk()->assertViewIs('service-launch')->assertSee('http://127.0.0.1:8084/_multisuite/launch')->assertSee('Continuar a Descargas')->viewData('ticket');
     }
 
     public function test_only_active_administrators_open_it_and_the_gateway_session_follows_the_account(): void
@@ -115,5 +115,29 @@ class DownloadsTest extends TestCase
         $page->call('discard', $otherId)->assertHasNoErrors();
         $this->assertFileDoesNotExist($this->staging.'/Lista/otra.mp3');
         $this->assertFileExists('/etc/hostname');
+    }
+
+    public function test_a_failed_save_can_be_retried_once_the_file_is_fixed(): void
+    {
+        $path = $this->staging.'/cancion.mp3';
+        $size = 3000;
+        file_put_contents($path, str_repeat("\0", $size)); // Not really audio: refused when verified.
+        touch($path, 1_700_000_000);
+        $id = app(StagedDownloads::class)->all()[0]['id'];
+        $page = Livewire::actingAs($this->owner)->test('pages::admin.downloads');
+
+        $page->call('save', $id)->assertHasErrors('download');
+        $this->assertSame(0, UserStorageQuota::findOrFail($this->owner->id)->reserved_bytes, 'The refused attempt keeps nothing reserved.');
+        $this->assertFileExists($path);
+
+        // Same place, size and date: the same attempt key, whose upload was cancelled.
+        file_put_contents($path, 'ID3'.str_repeat('a', $size - 3));
+        touch($path, 1_700_000_000);
+        clearstatcache();
+        $page->call('save', $id)->assertHasNoErrors();
+        $this->assertSame($size, UserStorageQuota::findOrFail($this->owner->id)->used_bytes);
+        $this->assertSame(1, UserFile::where('user_files.user_id', $this->owner->id)->where('user_files.name', 'cancion.mp3')
+            ->join('private_uploads', 'private_uploads.id', '=', 'user_files.upload_id')->where('private_uploads.state', 'ready')->count());
+        $this->assertFileDoesNotExist($path);
     }
 }

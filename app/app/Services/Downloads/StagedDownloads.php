@@ -2,6 +2,8 @@
 
 namespace App\Services\Downloads;
 
+use App\Enums\UploadState;
+use App\Models\PrivateUpload;
 use App\Models\User;
 use App\Models\UserFile;
 use App\Services\Files\PersonalFiles;
@@ -88,8 +90,7 @@ final class StagedDownloads
     public function save(User $user, string $id, ?int $folderId): UserFile
     {
         [$path, $item] = $this->locate($id);
-        // Same file, same person: retrying continues the same upload instead of reserving twice.
-        $key = Uuid::uuid5(Uuid::NAMESPACE_URL, 'multisuite-download:'.$user->id.':'.$id.':'.$item['bytes'].':'.$item['modified'])->toString();
+        $key = $this->attemptKey($user, $id, $item);
         $file = $this->files->begin($user, $folderId, $item['name'], $item['bytes'], $key);
         $handle = fopen($path, 'rb');
         if ($handle === false) {
@@ -125,6 +126,21 @@ final class StagedDownloads
         @unlink($path);
 
         return $file->refresh();
+    }
+
+    /**
+     * Same file, same person: retrying continues a pending upload (or finds the one that finished
+     * just before the staged copy could be removed) instead of reserving twice. A cancelled or
+     * already deleted attempt is final for its key, so the next attempt starts with a fresh one.
+     *
+     * @param  array{id: string, name: string, folder: string, bytes: int, modified: int}  $item
+     */
+    private function attemptKey(User $user, string $id, array $item): string
+    {
+        $key = Uuid::uuid5(Uuid::NAMESPACE_URL, 'multisuite-download:'.$user->id.':'.$id.':'.$item['bytes'].':'.$item['modified'])->toString();
+        $previous = PrivateUpload::whereKey($key)->value('state');
+
+        return in_array($previous, [UploadState::Cancelled->value, UploadState::Purged->value], true) ? Uuid::uuid4()->toString() : $key;
     }
 
     public function discard(string $id): void

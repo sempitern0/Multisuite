@@ -74,29 +74,28 @@ new #[Title('Descargas por guardar')] class extends Component {
 }; ?>
 
 <div>
-    <x-ui::page-header eyebrow="Administración" title="Descargas por guardar" description="Lo que MeTube ha terminado de descargar. Guárdalo en tu Mis archivos (cuenta en tu espacio) o descártalo." />
+    <x-ui::page-header eyebrow="Administración" title="Descargas por guardar" description="Lo que MeTube ha terminado de descargar. Guárdalo en tu Mis archivos, donde ocupa tu espacio, o descártalo.">
+        <x-slot:actions>
+            <x-ui::button variant="secondary" icon="download" :href="route('services.open', 'downloads')">Abrir Descargas</x-ui::button>
+        </x-slot:actions>
+    </x-ui::page-header>
 
     <x-ui::stack gap="lg">
         @error('download')<x-ui::notice tone="bad">{{ $message }}</x-ui::notice>@enderror
         <x-ui::panel>
             <x-ui::stack gap="md">
-                <x-ui::toolbar>
-                    <x-ui::link :href="route('services.open', 'downloads')">Abrir Descargas (MeTube)</x-ui::link>
-                    <x-slot:end>
-                        <x-ui::select name="folder" label="Guardar en" :options="$this->folders" wire:model="folder" :value="$folder" help="Música y Vídeos hacen que también aparezca en Navidrome o Jellyfin." />
-                    </x-slot:end>
-                </x-ui::toolbar>
+                <x-ui::select name="folder" label="Guardar en" :options="$this->folders" wire:model="folder" :value="$folder" help="En Música o Vídeos también aparece en Navidrome o Jellyfin con tu cuenta." />
                 <x-ui::table label="Descargas terminadas">
                     <x-slot:head><tr><th>Archivo</th><th>Tamaño</th><th>Terminado</th><th data-align="end"><x-ui::sr>Acciones</x-ui::sr></th></tr></x-slot:head>
                     @forelse ($this->items as $item)
                         <tr wire:key="download-{{ $item['id'] }}">
                             <x-ui::td label="Archivo" primary>{{ $item['folder'] === '' ? $item['name'] : $item['folder'].' / '.$item['name'] }}</x-ui::td>
                             <x-ui::td label="Tamaño" nowrap>{{ Bytes::format($item['bytes']) }}</x-ui::td>
-                            <x-ui::td label="Terminado" nowrap>{{ Carbon::createFromTimestamp($item['modified'])->diffForHumans() }}</x-ui::td>
+                            <x-ui::td label="Terminado" nowrap>{{ Carbon::createFromTimestamp($item['modified'], config('app.timezone'))->format('d/m/Y H:i') }}</x-ui::td>
                             <x-ui::td align="end" nowrap>
-                                <x-ui::button size="sm" icon="download" wire:click="save('{{ $item['id'] }}')" wire:loading.attr="disabled">Guardar</x-ui::button>
+                                <x-ui::button size="sm" wire:click="save('{{ $item['id'] }}')" wire:loading.attr="disabled" :aria-label="'Guardar '.$item['name'].' en Mis archivos'">Guardar</x-ui::button>
                                 <x-ui::confirm title="¿Descartar esta descarga?">
-                                    <x-slot:trigger><x-ui::button variant="ghost" size="sm">Descartar</x-ui::button></x-slot:trigger>
+                                    <x-slot:trigger><x-ui::button variant="ghost" size="sm" :aria-label="'Descartar '.$item['name']">Descartar</x-ui::button></x-slot:trigger>
                                     Se borra de Descargas. Si la quieres más tarde, tendrás que descargarla otra vez.
                                     <x-slot:action><x-ui::button variant="danger" wire:click="discard('{{ $item['id'] }}')">Descartar</x-ui::button></x-slot:action>
                                 </x-ui::confirm>

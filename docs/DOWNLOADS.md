@@ -22,7 +22,8 @@ su cola y su historial son comunes a quien lo abre, por eso no se ofrece a las d
   en loopback; con la red privada, un nombre privado). En cada petición pregunta al portal
   (`/api/downloads/check`) si su cookie pertenece a un owner o administrador activo; si no, vuelve al
   portal. La cookie del portal nunca llega a MeTube.
-- Entrar: la tarjeta **Descargas** de la portada envía un ticket de un minuto y un solo uso, atado a la
+- Entrar: la tarjeta **Descargas** de la portada (página común de entrada a servicios,
+  `App\Support\ServiceLaunch`, la misma que Lectura y Vídeo) envía un ticket de un minuto y un solo uso, atado a la
   sesión del portal y a su página, a `/_multisuite/launch`; el portal responde con una cookie cifrada
   para el origen de la pasarela (`DownloadsAccess`). Dura 8 horas y se anula al cambiar la contraseña
   o el rol, al suspender la cuenta o al quitarle la administración.
@@ -30,7 +31,7 @@ su cola y su historial son comunes a quien lo abre, por eso no se ofrece a las d
   enlaces). «Guardar» lo copia a la carpeta elegida de *tu* Mis archivos como una subida normal
   (cuota, tipos permitidos, cifrado; en Música o Vídeos aparece también en Navidrome o Jellyfin) y
   lo quita de la espera. Si no cabe o el tipo no se admite, sigue en espera y no queda espacio
-  reservado. «Descartar» lo borra. Los archivos se eligen por un identificador opaco, nunca por ruta
+  reservado; se puede volver a intentar (un intento cancelado nunca bloquea el siguiente). «Descartar» lo borra. Los archivos se eligen por un identificador opaco, nunca por ruta
   (`StagedDownloads`).
 - La carpeta de espera es el volumen Docker `multisuite-downloads` (lo crea Make), montado en MeTube
   y en el portal (`deploy/compose.portal-downloads.example.yaml`); nunca una ruta del host.
@@ -46,6 +47,6 @@ su cola y su historial son comunes a quien lo abre, por eso no se ofrece a las d
   todo vuelve al portal (también los archivos), el lanzamiento fija la cookie y MeTube responde con
   ella (página y conexión en vivo).
 - `DownloadsTest`: solo owner/administradores, ticket de un uso atado a la página del portal, sesión
-  anulada al cambiar la contraseña; guardar con cuota y tipos, sin reserva tras un fallo, descartar y
-  archivos ocultos, parciales y enlaces nunca ofrecidos.
+  anulada al cambiar la contraseña; guardar con cuota y tipos, sin reserva tras un fallo, reintento
+  tras un tipo rechazado, descartar y archivos ocultos, parciales y enlaces nunca ofrecidos.
 - Manual: descargar un vídeo y un audio reales y guardarlos en Vídeos y Música.

@@ -8,6 +8,7 @@ use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * Who may open Descargas (MeTube, docs/DOWNLOADS.md) and how its gateway knows it.
@@ -60,7 +61,11 @@ final class DownloadsAccess
         if (! is_array($pass) || ! is_string($pass['origin'] ?? null) || ! hash_equals($pass['origin'], $origin)) {
             return null;
         }
-        PortalSession::requireActive($pass); // The portal session that issued it must still be open.
+        try {
+            PortalSession::requireActive($pass); // The portal session that issued it must still be open.
+        } catch (HttpException) {
+            return null; // Like every other refusal: back to the portal, not an error page on the gateway.
+        }
         $user = User::find((int) ($pass['user_id'] ?? 0));
         if ($user === null || ! self::allowed($user)) {
             return null;
@@ -88,17 +93,6 @@ final class DownloadsAccess
         $user = User::find($data['u']);
 
         return $user !== null && self::allowed($user) && hash_equals(self::fingerprint($user), $data['f']) ? $user : null;
-    }
-
-    /** Origin of the gateway (scheme, host and port of PORTAL_DOWNLOADS_URL). */
-    public static function origin(): string
-    {
-        $parts = parse_url((string) config('portal.services.downloads.url'));
-        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
-            return '';
-        }
-
-        return $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
     }
 
     private static function ticketKey(string $ticket): string

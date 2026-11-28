@@ -101,7 +101,7 @@ Tres piezas con una responsabilidad cada una: `JellyfinClient` (transporte: cabe
 
 ## Descargas (P04.3)
 
-`compose.downloads.yaml` opcional (con `downloads.env`): MeTube sin puertos ni red compartida y `downloads-gateway`, que pregunta al portal en cada petición (`routes/api.php` `downloads/*`, `App\Services\Downloads\DownloadsAccess`). Lo descargado espera en el volumen `multisuite-downloads`, montado en el portal por `deploy/compose.portal-downloads.example.yaml`; `StagedDownloads` lo lista por identificador opaco y lo guarda en Mis archivos con `PersonalFiles::begin` + `PrivateUploads::receive`. Página `pages::admin.downloads`, gate `manage-downloads`. Ver [DOWNLOADS.md](DOWNLOADS.md).
+`compose.downloads.yaml` opcional (con `downloads.env`): MeTube sin puertos ni red compartida y `downloads-gateway`, que pregunta al portal en cada petición (`routes/api.php` `downloads/*`, `App\Services\Downloads\DownloadsAccess`). Lo descargado espera en el volumen `multisuite-downloads`, montado en el portal por `deploy/compose.portal-downloads.example.yaml`; `StagedDownloads` lo lista por identificador opaco y lo guarda en Mis archivos con `PersonalFiles::begin` + `PrivateUploads::receive`. Página `pages::admin.downloads`, gate `manage-downloads`. La entrada desde la portada a Lectura, Vídeo y Descargas pasa por `App\Support\ServiceLaunch` (origen, regla HTTPS y vista común `service-launch`). Ver [DOWNLOADS.md](DOWNLOADS.md).
 
 ## Red privada (P03)
 
